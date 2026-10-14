@@ -296,7 +296,7 @@ def build(wrong: Image.Image, fixed: Image.Image | None, shapes: list[dict], met
     d.text((M, 10), sub[:150], font=font(16), fill=MUTED)
     y = head_h
     lw_ = f"WRONG · as generated · {_fmt_t(meta.get('t_wrong'))}"
-    lf_ = f"RIGHT · {_fmt_t(meta.get('t_fixed'))}" if has_right else "NO RIGHT VERSION · miss example only"
+    lf_ = f"RIGHT · correct version · {_fmt_t(meta.get('t_fixed'))}" if has_right else "NO RIGHT VERSION · miss example only"
     fb = font(17, True)
     d.rectangle([M, y - 32, M + d.textlength(lw_, font=fb) + 20, y - 6], fill=RED)
     d.text((M + 10, y - 29), lw_, font=fb, fill=(255, 255, 255))
