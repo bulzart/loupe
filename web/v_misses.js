@@ -68,12 +68,12 @@ function regionNorm(shapes, pad = 0.07) {        // the same box the server comp
 }
 
 function drawShape(c, s, W, H, lw, col) {
-  const stroke = (path) => { c.lineJoin = 'round'; c.lineCap = 'round'; c.strokeStyle = '#fff'; c.lineWidth = lw + 3; path(); c.stroke(); c.strokeStyle = col; c.lineWidth = lw; path(); c.stroke(); };
+  const stroke = (path) => { c.lineJoin = 'round'; c.lineCap = 'round'; c.strokeStyle = '#fff'; c.lineWidth = lw + 2; path(); c.stroke(); c.strokeStyle = col; c.lineWidth = lw; path(); c.stroke(); };
   if (s.type === 'arrow') {
     const x1 = s.x1 * W, y1 = s.y1 * H, x2 = s.x2 * W, y2 = s.y2 * H, a = Math.atan2(y2 - y1, x2 - x1), hl = Math.max(lw * 7, H / 45), hw = Math.PI / 7;
     const head = () => { c.beginPath(); c.moveTo(x2, y2); c.lineTo(x2 - hl * Math.cos(a - hw), y2 - hl * Math.sin(a - hw)); c.lineTo(x2 - hl * Math.cos(a + hw), y2 - hl * Math.sin(a + hw)); c.closePath(); };
     stroke(() => { c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2 - hl * 0.6 * Math.cos(a), y2 - hl * 0.6 * Math.sin(a)); });
-    c.fillStyle = '#fff'; c.strokeStyle = '#fff'; c.lineWidth = 2; head(); c.fill(); c.stroke(); c.fillStyle = col; head(); c.fill();
+    c.fillStyle = '#fff'; c.strokeStyle = '#fff'; c.lineWidth = 1.5; head(); c.fill(); c.stroke(); c.fillStyle = col; head(); c.fill();
   } else if (s.type === 'circle') stroke(() => { c.beginPath(); c.ellipse(s.cx * W, s.cy * H, Math.max(1, Math.abs(s.rx) * W), Math.max(1, Math.abs(s.ry) * H), 0, 0, Math.PI * 2); });
   else if (s.type === 'rect') stroke(() => { c.beginPath(); c.rect(Math.min(s.x1, s.x2) * W, Math.min(s.y1, s.y2) * H, Math.abs(s.x2 - s.x1) * W, Math.abs(s.y2 - s.y1) * H); });
   else if (s.type === 'text') {
@@ -170,7 +170,7 @@ export async function work(qs) {
     const dpr = window.devicePixelRatio || 1, cw = p.cv.clientWidth, ch = p.cv.clientHeight;
     if (p.cv.width !== Math.round(cw * dpr) || p.cv.height !== Math.round(ch * dpr)) { p.cv.width = Math.round(cw * dpr); p.cv.height = Math.round(ch * dpr); }
     const c = p.cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, cw, ch);
-    const r = pic(p), col = COLORS[p.side], lw = Math.max(2, r.h / 330);
+    const r = pic(p), col = COLORS[p.side], lw = Math.max(1.5, r.h / 480);
     const mine = ws.shapes.filter((s) => s.side === p.side), other = ws.shapes.filter((s) => s.side !== p.side);
     c.save(); c.translate(r.x, r.y);
     for (const s of ws.draft && ws.draft.side === p.side ? [...mine, ws.draft] : mine) drawShape(c, s, r.w, r.h, lw, col);

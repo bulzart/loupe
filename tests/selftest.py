@@ -190,7 +190,7 @@ def main(with_keeper=False):
     from PIL import Image
     im = Image.open(img)
     check("the composite holds both frames (wide, tall) plus zoom and text", im.width > 1100 and im.height > 1500, str(im.size))
-    px_left = Image.open(core.DATA / "samples" / "1" / "annotated.png").convert("RGB").getpixel((int(.38 * 720), int(.42 * 1280)))
+    px_left = Image.open(core.DATA / "samples" / "1" / "annotated.png").convert("RGB").getpixel((int(.38 * 720) - 9, int(.42 * 1280) - 10))     # inside the arrowhead, just behind its tip
     check("the annotation is drawn on the wrong frame (arrow tip is red/white)", px_left[0] > 200, str(px_left))
     # the explanation is burned in the bottom centre, on a dark band
     W_, H_ = im.size
