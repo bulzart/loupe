@@ -230,6 +230,29 @@ def main(with_keeper=False):
     check("a model-independent miss crosses models", [h["id"] for h in hints] == ["S2"])
     check("hint text is shortened and carries no image path", all(len(h["trigger"]) <= 220 and "composite_path" not in h for h in hints))
     s, d, _ = req("PATCH", f"/api/moments/1", {"status": "active"})
+    # a miss that has no right version stays as a miss example
+    s, d, _ = req("POST", "/api/misses", {"run": "20261001-000000-07", "video": "04", "title": "The label is unreadable from the first frame", "explanation": "No fixed take exists.",
+                                          "kinds": ["label-orientation"], "model": "wan3_0_prime", "mode": "analyze-recreate", "wrong_path": wrong})
+    nid = d["miss"]["id"]
+    check("a miss can be saved with no right version", s == 200 and d["miss"]["fixed_path"] == "", str(d)[:200])
+    s, d, _ = req("POST", f"/api/misses/{nid}/moments", {"t_wrong": 1.0, "t_fixed": 1.0, "shapes": [{"type": "rect", "side": "wrong", "x1": .2, "y1": .3, "x2": .6, "y2": .5}],
+                                                          "details": "The label reads as scribbles here."})
+    nm = d["moment"]
+    ndir = core.DATA / "samples" / str(nm["moment_id"])
+    nim = Image.open(ndir / "composite.png").convert("RGB")
+    check("the sample knows it has no right version", s == 200 and nm["has_right"] is False and not (ndir / "fixed.png").exists() and not (ndir / "annotated_fixed.png").exists())
+    check("the right panel is a card that says so", nim.getpixel((618, 84)) == (34, 36, 44), str(nim.getpixel((618, 84))))
+    s, d, _ = req("GET", "/api/qc/samples?limit=20", key=kq)
+    check("QC sees that it is a miss example only", any(x["id"] == nm["id"] and x["has_right"] is False for x in d["samples"]) and any(x["has_right"] is True for x in d["samples"]))
+    s, d, _ = req("POST", "/api/qc/brief", {"q": "label unreadable scribbles", "model": "wan3_0_prime"}, key=kq)
+    check("the brief says there is no right version for it", "NO RIGHT VERSION" in d["text"])
+    s, d, _ = req("PATCH", f"/api/misses/{nid}", {"fixed_path": fixed, "fixed_label": "client fix"})
+    nim2 = Image.open(ndir / "composite.png").convert("RGB")
+    check("a right version attached later rebuilds the saved moments", s == 200 and (ndir / "fixed.png").exists() and nim2.getpixel((618, 84)) != (34, 36, 44))
+    s, d, _ = req("PATCH", f"/api/misses/{nid}", {"fixed_path": ""})
+    nim3 = Image.open(ndir / "composite.png").convert("RGB")
+    check("clearing it makes the miss an example again", s == 200 and not (ndir / "fixed.png").exists() and nim3.getpixel((618, 84)) == (34, 36, 44))
+    s, d, _ = req("DELETE", f"/api/misses/{nid}")
     if with_keeper:
         print("\n[keeper] (a real headless session)")
         s, d, _ = req("POST", "/api/qc/consult", {"run": "r", "video": "03", "model": "wan3_0_prime", "question": "The product changes colour after a cut. Which samples apply?"}, key=kq)

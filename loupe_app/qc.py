@@ -79,10 +79,13 @@ def sample_lines(s: dict, with_path: bool = True) -> str:
          f"  MISS: {s['title']}" + (f". {s['explanation'][:400]}" if s["explanation"] else "")]
     if s["details"]:
         t.append(f"  WRONG HERE: {s['details'][:400]}")
-    if s["correct_note"]:
+    if not s.get("has_right", True):
+        t.append("  NO RIGHT VERSION: a miss example only")
+    elif s["correct_note"]:
         t.append(f"  CORRECT: {s['correct_note'][:400]}")
     if with_path:
-        t.append(f"  image (left: the miss with the marks, right: the correct frame, below: zoom): {s['composite_path']}")
+        t.append(f"  image (left: the miss with the marks, right: the correct frame, below: zoom): {s['composite_path']}" if s.get("has_right", True)
+                 else f"  image (the miss with its marks and a zoom; this sample has NO right version, it is a miss example only): {s['composite_path']}")
     return "\n".join(t)
 
 
@@ -91,7 +94,7 @@ def brief(ctx: dict, limit: int = 8) -> dict:
     text = (f"{len(sam)} sample(s) from the library that match this video ({ctx.get('model') or 'any model'}; "
             f"{', '.join(ctx.get('kinds') or []) or 'any kind'}). Look at each image; compare the marked region with the same place in the video under QC.\n\n"
             + "\n\n".join(sample_lines(s) for s in sam)) if sam else "No sample in the library matches this video."
-    return {"mode": "brief", "samples": [{k: s[k] for k in ("id", "title", "kinds", "model", "details", "correct_note", "composite_path", "image_url", "score")} for s in sam],
+    return {"mode": "brief", "samples": [{k: s[k] for k in ("id", "title", "kinds", "model", "details", "correct_note", "has_right", "composite_path", "image_url", "score")} for s in sam],
             "text": text, "library_size": len(library())}
 
 
@@ -103,6 +106,7 @@ def _digest() -> str:
         compact = len(lib) > 250
         lines.append(f"{s['id']} | {','.join(s['kinds'])} | {s['model'] or 'any'} | {s['title']}"
                      + ("" if compact else f" | miss: {s['explanation'][:240]} | wrong here: {s['details'][:240]} | correct: {s['correct_note'][:240]}")
+                     + ("" if s.get("has_right", True) else " | NO RIGHT VERSION (a miss example only)")
                      + f" | image: {s['composite_path']}")
     return "\n".join(lines) or "(the library is empty)"
 
@@ -116,7 +120,10 @@ ROLE = ("You are the Loupe keeper of a video-generation pipeline. You hold a lib
         "video with the admin's marks) next to the same moment of the right version, with the admin's own words. Rules for every question: you only "
         "READ; you never write, edit or create anything, and you never add to the library (only the admin does, in the web app). Cite only sample ids "
         "that exist in your library; never invent a sample or a rule; judge only from the samples and the admin's words, never from general knowledge "
-        "of video models. You may Read a sample's image (path given) to describe it, nothing else. "
+        "of video models. Some samples are marked NO RIGHT VERSION: they are miss examples only (nothing was corrected); never invent what a right "
+        "version would look like. For QC they still show the wrong pattern to look for; for planning, give a hint from one only when the admin's words "
+        "let you state the right outcome positively, or the lever is a plain restatement at the matching beat, and then at most medium confidence. "
+        "You may Read a sample's image (path given) to describe it, nothing else. "
         "QC QUESTION (the video exists; an agent is checking it): answer ONE JSON object and no other text: "
         '{"relevant":[{"id":"S12","why":"<why it applies>","check":"<what exactly to compare in the video under QC>","wrong_pattern":"<the miss in a phrase>"}],'
         '"advice":"<at most 80 words>","not_covered":"<what in the question the library does not cover, or empty>"}. '

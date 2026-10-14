@@ -17,7 +17,7 @@ export async function gallery() {
   const card = (s) => h('div', { class: 'card sample-card', onclick: () => open(s) },
     h('img', { src: s.image_url + '&v=' + encodeURIComponent(s.updated), alt: s.title, loading: 'lazy' }),
     h('div', { style: 'margin-top:8px' }, h('b', {}, s.id), ' ', s.title, ' ', s.status !== 'active' || s.miss_status !== 'active' ? status('archived') : null),
-    h('div', { class: 'small muted' }, `${s.model || 'any model'} · ${s.run ? s.run.slice(-14) : ''} video ${s.video || '-'} @ ${fmtT(s.t_wrong)}`), h('div', {}, chips(s.kinds)));
+    h('div', { class: 'small muted' }, `${s.model || 'any model'} · ${s.run ? s.run.slice(-14) : ''} video ${s.video || '-'} @ ${fmtT(s.t_wrong)}`), h('div', {}, s.has_right === false ? h('span', { class: 'chip' }, 'miss example only') : null, chips(s.kinds)));
   const open = (s) => {
     const details = h('textarea', {}, s.details), correct = h('textarea', {}, s.correct_note);
     const kp = chipPicker(['counts', 'openings-use', 'permanence', 'scale-size', 'label-orientation', 'solidity', 'blend-paste', 'posture-place', 'identity', 'continuity', 'other'], s.kinds);

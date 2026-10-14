@@ -177,27 +177,46 @@ def _fmt_t(t) -> str:
     return f"{m}:{t - m * 60:05.2f}"
 
 
-def build(wrong: Image.Image, fixed: Image.Image, shapes: list[dict], meta: dict, details: str, correct_note: str,
-          include_zoom: bool = True):
-    """(composite, zoom_or_None, annotated_wrong, annotated_fixed).
+def _placeholder(w: int, h: int, lines: list[str]) -> Image.Image:
+    """The right-hand panel of a miss that has no right version: a quiet card that says so."""
+    im = Image.new("RGB", (w, h), (34, 36, 44))
+    d = ImageDraw.Draw(im)
+    f1, f2 = font(30, True), font(22)
+    y = h // 2 - 70
+    for i, ln in enumerate(lines):
+        f = f1 if i == 0 else f2
+        for part in _wrap(d, ln, f, w - 70):
+            d.text(((w - d.textlength(part, font=f)) / 2, y), part, font=f, fill=(235, 235, 240) if i == 0 else (170, 174, 186))
+            y += f.size + 10
+        y += 8
+    return im
 
-    One image: the miss (WRONG) on the left with the admin's red marks, the same moment in the right version (RIGHT) on the right with the same marks in green, a zoom of the marked
-    place under them, and the explanation burned in the bottom centre (title, what is wrong, what the correct version shows).
-    A side with no marks of its own gets a dashed box at the place that was marked on the other side, so there is always a place to compare."""
+
+def build(wrong: Image.Image, fixed: Image.Image | None, shapes: list[dict], meta: dict, details: str, correct_note: str,
+          include_zoom: bool = True):
+    """(composite, zoom_or_None, annotated_wrong, annotated_right_or_None).
+
+    One image: the miss (WRONG) on the left with the admin's red marks, the same moment in the right version (RIGHT) on the right with the same marks in
+    green, a zoom of the marked place under them, and the explanation burned in the bottom centre (title, what is wrong, what the right version shows).
+    A side with no marks of its own gets a dashed box at the place that was marked on the other side, so there is always a place to compare.
+    fixed=None: the miss has no right version (it stays as a miss example); the right panel is a card that says so, and only the miss is marked and zoomed."""
     wrong = wrong.convert("RGB")
-    fixed = fixed.convert("RGB")
+    has_right = fixed is not None
+    fixed = fixed.convert("RGB") if has_right else None
+    if not has_right:
+        shapes = [dict(s, side="wrong") for s in shapes if s.get("side") != "fixed"]
     sw = [s for s in shapes if s.get("side") != "fixed"]
     sf = [s for s in shapes if s.get("side") == "fixed"]
     annotated = draw_shapes(wrong, sw, RED) if sw else wrong.copy()
-    annotated_f = draw_shapes(fixed, sf, GREEN_DARK) if sf else fixed.copy()
+    annotated_f = (draw_shapes(fixed, sf, GREEN_DARK) if sf else fixed.copy()) if has_right else None
     nbox = region_norm(shapes)           # the place that matters: every mark on both sides
     box_w = to_px(nbox, wrong.width, wrong.height) if nbox else None
-    box_f = to_px(nbox, fixed.width, fixed.height) if nbox else None
+    box_f = to_px(nbox, fixed.width, fixed.height) if (nbox and has_right) else None
     left_src, right_src = annotated, annotated_f
-    if nbox and not sw:                  # only the fixed frame was marked: show the same place, dashed, on the miss
+    if has_right and nbox and not sw:    # only the right frame was marked: show the same place, dashed, on the miss
         left_src = annotated.copy()
         _dashed_rect(ImageDraw.Draw(left_src), box_w, RED, _line_w(left_src))
-    if nbox and not sf:                  # only the miss was marked: the same place, dashed green, on the correct frame
+    if has_right and nbox and not sf:    # only the miss was marked: the same place, dashed green, on the right frame
         right_src = annotated_f.copy()
         _dashed_rect(ImageDraw.Draw(right_src), box_f, GREEN, _line_w(right_src))
 
@@ -206,7 +225,10 @@ def build(wrong: Image.Image, fixed: Image.Image, shapes: list[dict], meta: dict
     pw = round(ph * wrong.width / wrong.height) if ph == 1000 else PW
     pw = max(pw, 200)
     left = left_src.resize((pw, ph), Image.LANCZOS)
-    right = right_src.resize((pw, round(pw * fixed.height / fixed.width)) if abs(fixed.width / fixed.height - wrong.width / wrong.height) > 0.02 else (pw, ph), Image.LANCZOS)
+    if has_right:
+        right = right_src.resize((pw, round(pw * fixed.height / fixed.width)) if abs(fixed.width / fixed.height - wrong.width / wrong.height) > 0.02 else (pw, ph), Image.LANCZOS)
+    else:
+        right = _placeholder(pw, ph, ["No right version", "This sample shows the miss only. Nothing in the video was corrected, so there is no right frame to compare with."])
     ph_r = right.height
     W = M * 3 + pw * 2
 
@@ -215,10 +237,13 @@ def build(wrong: Image.Image, fixed: Image.Image, shapes: list[dict], meta: dict
         zh, zw = 520, pw
         zoom = Image.new("RGB", (M * 3 + zw * 2, zh + M), PAPER)
         zoom.paste(_fit(annotated.crop(box_w), zw, zh), (M, 0))
-        zoom.paste(_fit(annotated_f.crop(box_f), zw, zh), (M * 2 + zw, 0))
+        if has_right:
+            zoom.paste(_fit(annotated_f.crop(box_f), zw, zh), (M * 2 + zw, 0))
+        else:
+            zoom.paste(Image.new("RGB", (zw, zh), (34, 36, 44)), (M * 2 + zw, 0))
         zoom_h = zh + M
 
-    # the burned caption (bottom centre): title, what is wrong here, what the correct version shows
+    # the burned caption (bottom centre): title, what is wrong here, what the right version shows
     scratch = ImageDraw.Draw(Image.new("RGB", (10, 10)))
     cap_w = W - M * 4
     f_title, f_txt, f_cap = font(30, True), font(25), font(23)
@@ -230,7 +255,7 @@ def build(wrong: Image.Image, fixed: Image.Image, shapes: list[dict], meta: dict
         cap.append((f_title, (255, 255, 255), _wrap(scratch, title, f_title, cap_w)))
     if details.strip():
         cap.append((f_txt, (255, 214, 214), _wrap(scratch, details.strip(), f_txt, cap_w)))
-    if correct_note.strip():
+    if correct_note.strip() and has_right:
         cap.append((f_cap, (150, 235, 185), _wrap(scratch, "Right: " + correct_note.strip(), f_cap, cap_w)))
     cap_h = 36 + sum(len(ls) * (f.size + 9) + 12 for f, _c, ls in cap) if cap else 0
 
@@ -242,11 +267,11 @@ def build(wrong: Image.Image, fixed: Image.Image, shapes: list[dict], meta: dict
     d.text((M, 10), sub[:150], font=font(16), fill=MUTED)
     y = head_h
     lw_ = f"WRONG · as generated · {_fmt_t(meta.get('t_wrong'))}"
-    lf_ = f"RIGHT · {_fmt_t(meta.get('t_fixed'))}"
+    lf_ = f"RIGHT · {_fmt_t(meta.get('t_fixed'))}" if has_right else "NO RIGHT VERSION · miss example only"
     fb = font(17, True)
     d.rectangle([M, y - 32, M + d.textlength(lw_, font=fb) + 20, y - 6], fill=RED)
     d.text((M + 10, y - 29), lw_, font=fb, fill=(255, 255, 255))
-    d.rectangle([M * 2 + pw, y - 32, M * 2 + pw + d.textlength(lf_, font=fb) + 20, y - 6], fill=GREEN_DARK)
+    d.rectangle([M * 2 + pw, y - 32, M * 2 + pw + d.textlength(lf_, font=fb) + 20, y - 6], fill=GREEN_DARK if has_right else (96, 100, 112))
     d.text((M * 2 + pw + 10, y - 29), lf_, font=fb, fill=(255, 255, 255))
     img.paste(left, (M, y))
     img.paste(right, (M * 2 + pw, y))

@@ -33,7 +33,8 @@ def sample_dir(mid: int) -> Path:
 def create(data: dict, actor: str) -> dict:
     wrong, fixed = str(data.get("wrong_path") or ""), str(data.get("fixed_path") or "")
     media.resolve_media(wrong)      # raises when the file is missing or not readable
-    media.resolve_media(fixed)
+    if fixed:
+        media.resolve_media(fixed)      # a miss may have no right version at all: it then stays as a miss example
     if not str(data.get("title") or "").strip():
         raise ValueError("a title is needed (one line: what went wrong)")
     con = core.db()
@@ -106,9 +107,11 @@ def update(mid: int, patch: dict, actor: str) -> dict | None:
     if "kinds" in patch:
         cols["kinds"] = _kinds(patch["kinds"])
     for k in ("wrong_path", "fixed_path"):
-        if k in patch and patch[k] != cur[k]:
-            media.resolve_media(str(patch[k]))
-            cols[k] = str(patch[k])
+        if k in patch and (patch[k] or "") != cur[k]:
+            v = str(patch[k] or "")
+            if v or k == "wrong_path":       # the right version can be cleared (a miss example again) or attached later; the wrong one is required
+                media.resolve_media(v)
+            cols[k] = v
     if cols:
         cols["updated"] = core.now()
         con = core.db()
@@ -216,9 +219,13 @@ def regenerate(mid: int):
         miss = con.execute("SELECT * FROM misses WHERE id=?", (mr["miss_id"],)).fetchone()
     finally:
         con.close()
-    wp, fp = media.resolve_media(miss["wrong_path"]), media.resolve_media(miss["fixed_path"])
-    wpng, fpng = media.frame_file(wp, mr["t_wrong"]), media.frame_file(fp, mr["t_fixed"])
-    wrong, fixed = Image.open(wpng).convert("RGB"), Image.open(fpng).convert("RGB")
+    wp = media.resolve_media(miss["wrong_path"])
+    wpng = media.frame_file(wp, mr["t_wrong"])
+    wrong = Image.open(wpng).convert("RGB")
+    fpng, fixed = None, None
+    if miss["fixed_path"]:                   # no right version: only the miss is cut and marked
+        fpng = media.frame_file(media.resolve_media(miss["fixed_path"]), mr["t_fixed"])
+        fixed = Image.open(fpng).convert("RGB")
     shapes = compose.clean_shapes(json.loads(mr["shapes"] or "[]"))
     meta = {"title": miss["title"], "model": miss["model"], "run": miss["run"], "video": miss["video"], "t_wrong": mr["t_wrong"],
             "t_fixed": mr["t_fixed"], "sample": f"S{mid}"}
@@ -226,9 +233,13 @@ def regenerate(mid: int):
     d = sample_dir(mid)
     d.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(wpng, d / "wrong.png")
-    shutil.copyfile(fpng, d / "fixed.png")
     ann.save(d / "annotated.png")
-    ann_f.save(d / "annotated_fixed.png")
+    for nm in ("fixed.png", "annotated_fixed.png"):
+        if (d / nm).exists():
+            (d / nm).unlink()
+    if fixed is not None:
+        shutil.copyfile(fpng, d / "fixed.png")
+        ann_f.save(d / "annotated_fixed.png")
     comp.save(d / "composite.png", optimize=True)
     if zoom:
         zoom.save(d / "zoom.png", optimize=True)
@@ -257,7 +268,7 @@ def moment_view(r, miss: dict) -> dict:
             "correct_note": r["correct_note"], "kinds": kinds, "model": miss["model"], "mode": miss["mode"], "product": miss["product"],
             "run": miss["run"], "video": miss["video"], "t_wrong": r["t_wrong"], "t_fixed": r["t_fixed"], "shapes": json.loads(r["shapes"] or "[]"),
             "status": r["status"], "miss_status": miss["status"], "created": r["created"], "updated": r["updated"],
-            "image_url": f"/api/moments/{mid}/image?kind=composite", "zoom_url": f"/api/moments/{mid}/image?kind=zoom" if (d / "zoom.png").exists() else "",
+            "has_right": bool(miss.get("fixed_path")), "image_url": f"/api/moments/{mid}/image?kind=composite", "zoom_url": f"/api/moments/{mid}/image?kind=zoom" if (d / "zoom.png").exists() else "",
             "composite_path": str(d / "composite.png")}
 
 
