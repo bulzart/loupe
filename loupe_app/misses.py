@@ -118,8 +118,8 @@ def update(mid: int, patch: dict, actor: str) -> dict | None:
         finally:
             con.close()
         core.audit(actor, "miss.update", f"miss {mid}", ",".join(cols))
-        if any(k in cols for k in ("title", "wrong_path", "fixed_path", "model", "run", "video")):
-            for m in cur["moments"]:       # the sample image carries the title and the source of both frames
+        if any(k in cols for k in ("title", "explanation", "wrong_path", "fixed_path", "model", "run", "video")):
+            for m in cur["moments"]:       # the sample image carries the title, the caption and the source of both frames
                 regenerate(m["moment_id"])
     return get(mid)
 
@@ -156,6 +156,13 @@ def add_moment(miss_id: int, data: dict, actor: str) -> dict:
         mid = cur.lastrowid
     finally:
         con.close()
+    if not (m["explanation"] or "").strip() and str(data.get("details") or "").strip():     # the report's summary defaults to its first explanation
+        con = core.db()
+        try:
+            con.execute("UPDATE misses SET explanation=?, updated=? WHERE id=?", (str(data["details"]).strip(), core.now(), miss_id))
+            con.commit()
+        finally:
+            con.close()
     regenerate(mid)
     core.audit(actor, "moment.add", f"moment {mid}", f"miss {miss_id} @ {tw:.2f}s")
     return moment(mid)
@@ -215,12 +222,13 @@ def regenerate(mid: int):
     shapes = compose.clean_shapes(json.loads(mr["shapes"] or "[]"))
     meta = {"title": miss["title"], "model": miss["model"], "run": miss["run"], "video": miss["video"], "t_wrong": mr["t_wrong"],
             "t_fixed": mr["t_fixed"], "sample": f"S{mid}"}
-    comp, zoom, ann = compose.build(wrong, fixed, shapes, meta, mr["details"] or miss["explanation"] or "", mr["correct_note"] or "")
+    comp, zoom, ann, ann_f = compose.build(wrong, fixed, shapes, meta, mr["details"] or miss["explanation"] or "", mr["correct_note"] or "")
     d = sample_dir(mid)
     d.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(wpng, d / "wrong.png")
     shutil.copyfile(fpng, d / "fixed.png")
     ann.save(d / "annotated.png")
+    ann_f.save(d / "annotated_fixed.png")
     comp.save(d / "composite.png", optimize=True)
     if zoom:
         zoom.save(d / "zoom.png", optimize=True)
@@ -236,7 +244,7 @@ def regenerate(mid: int):
 
 
 def moment_file(mid: int, kind: str) -> Path | None:
-    name = {"composite": "composite.png", "zoom": "zoom.png", "wrong": "wrong.png", "fixed": "fixed.png", "annotated": "annotated.png"}.get(kind)
+    name = {"composite": "composite.png", "zoom": "zoom.png", "wrong": "wrong.png", "fixed": "fixed.png", "annotated": "annotated.png", "annotated_fixed": "annotated_fixed.png"}.get(kind)
     p = sample_dir(mid) / (name or "x")
     return p if name and p.is_file() else None
 

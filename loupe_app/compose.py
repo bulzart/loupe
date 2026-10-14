@@ -9,6 +9,7 @@ from PIL import Image, ImageDraw, ImageFont
 
 RED = (255, 45, 45)
 GREEN = (46, 204, 113)
+GREEN_DARK = (22, 163, 74)
 INK = (24, 26, 32)
 PAPER = (245, 245, 247)
 MUTED = (120, 124, 134)
@@ -45,15 +46,16 @@ def clean_shapes(shapes) -> list[dict]:
         if not isinstance(s, dict):
             continue
         t = s.get("type")
+        side = "fixed" if s.get("side") == "fixed" else "wrong"     # a mark belongs to the wrong frame (red) or the fixed one (green)
         try:
             if t == "arrow":
-                out.append({"type": "arrow", **{k: float(s[k]) for k in ("x1", "y1", "x2", "y2")}})
+                out.append({"type": "arrow", "side": side, **{k: float(s[k]) for k in ("x1", "y1", "x2", "y2")}})
             elif t == "circle":
-                out.append({"type": "circle", **{k: float(s[k]) for k in ("cx", "cy", "rx", "ry")}})
+                out.append({"type": "circle", "side": side, **{k: float(s[k]) for k in ("cx", "cy", "rx", "ry")}})
             elif t == "rect":
-                out.append({"type": "rect", **{k: float(s[k]) for k in ("x1", "y1", "x2", "y2")}})
+                out.append({"type": "rect", "side": side, **{k: float(s[k]) for k in ("x1", "y1", "x2", "y2")}})
             elif t == "text" and str(s.get("text", "")).strip():
-                out.append({"type": "text", "x": float(s["x"]), "y": float(s["y"]), "text": str(s["text"]).strip()[:80]})
+                out.append({"type": "text", "side": side, "x": float(s["x"]), "y": float(s["y"]), "text": str(s["text"]).strip()[:80]})
         except (KeyError, TypeError, ValueError):
             continue
     return out
@@ -63,7 +65,8 @@ def _line_w(img) -> int:
     return max(4, round(img.height / 190))
 
 
-def draw_shapes(img: Image.Image, shapes: list[dict]) -> Image.Image:
+def draw_shapes(img: Image.Image, shapes: list[dict], color=RED) -> Image.Image:
+    """Draw the marks (normalised coordinates) on a copy of the frame: a white halo first so they read on any picture, then the colour."""
     im = img.convert("RGB").copy()
     d = ImageDraw.Draw(im)
     W, H = im.size
@@ -84,25 +87,25 @@ def draw_shapes(img: Image.Image, shapes: list[dict]) -> Image.Image:
             # white halo first so the mark reads on any picture, then red
             d.line([(x1, y1), (x2, y2)], fill=(255, 255, 255), width=lw + 5)
             d.polygon(pts, fill=(255, 255, 255), outline=(255, 255, 255))
-            d.line([(x1, y1), (x2 - hl * 0.6 * math.cos(ang), y2 - hl * 0.6 * math.sin(ang))], fill=RED, width=lw)
-            d.polygon(pts, fill=RED)
+            d.line([(x1, y1), (x2 - hl * 0.6 * math.cos(ang), y2 - hl * 0.6 * math.sin(ang))], fill=color, width=lw)
+            d.polygon(pts, fill=color)
         elif t == "circle":
             cx, cy = px(s["cx"], s["cy"])
             rx, ry = abs(s["rx"]) * W, abs(s["ry"]) * H
             box = [cx - rx, cy - ry, cx + rx, cy + ry]
             d.ellipse(box, outline=(255, 255, 255), width=lw + 5)
-            d.ellipse(box, outline=RED, width=lw)
+            d.ellipse(box, outline=color, width=lw)
         elif t == "rect":
             (x1, y1), (x2, y2) = px(s["x1"], s["y1"]), px(s["x2"], s["y2"])
             box = [min(x1, x2), min(y1, y2), max(x1, x2), max(y1, y2)]
             d.rectangle(box, outline=(255, 255, 255), width=lw + 5)
-            d.rectangle(box, outline=RED, width=lw)
+            d.rectangle(box, outline=color, width=lw)
         elif t == "text":
             x, y = px(s["x"], s["y"])
             f = font(max(22, round(H / 38)), True)
             tw = d.textlength(s["text"], font=f)
             d.rectangle([x - 6, y - 4, x + tw + 6, y + f.size + 6], fill=(255, 255, 255))
-            d.text((x, y), s["text"], font=f, fill=RED)
+            d.text((x, y), s["text"], font=f, fill=color)
     return im
 
 
@@ -168,77 +171,96 @@ def _fit(im: Image.Image, w: int, h: int, bg=(18, 18, 22)) -> Image.Image:
     return canvas
 
 
+def _fmt_t(t) -> str:
+    t = max(0.0, float(t or 0))
+    m = int(t // 60)
+    return f"{m}:{t - m * 60:05.2f}"
+
+
 def build(wrong: Image.Image, fixed: Image.Image, shapes: list[dict], meta: dict, details: str, correct_note: str,
           include_zoom: bool = True):
-    """(composite, zoom_or_None, annotated_wrong).  Left: the miss with the admin's marks; right: the same moment, correct."""
+    """(composite, zoom_or_None, annotated_wrong, annotated_fixed).
+
+    One image: the miss on the left with the admin's red marks, the same moment corrected on the right with his green marks, a zoom of the marked
+    place under them, and the explanation burned in the bottom centre (title, what is wrong, what the correct version shows).
+    A side with no marks of its own gets a dashed box at the place that was marked on the other side, so there is always a place to compare."""
     wrong = wrong.convert("RGB")
     fixed = fixed.convert("RGB")
-    annotated = draw_shapes(wrong, shapes) if shapes else wrong.copy()
-    PW = 560
-    M = 24
-    ph = round(PW * wrong.height / wrong.width)
-    ph = min(ph, 1000)
+    sw = [s for s in shapes if s.get("side") != "fixed"]
+    sf = [s for s in shapes if s.get("side") == "fixed"]
+    annotated = draw_shapes(wrong, sw, RED) if sw else wrong.copy()
+    annotated_f = draw_shapes(fixed, sf, GREEN_DARK) if sf else fixed.copy()
+    nbox = region_norm(shapes)           # the place that matters: every mark on both sides
+    box_w = to_px(nbox, wrong.width, wrong.height) if nbox else None
+    box_f = to_px(nbox, fixed.width, fixed.height) if nbox else None
+    left_src, right_src = annotated, annotated_f
+    if nbox and not sw:                  # only the fixed frame was marked: show the same place, dashed, on the miss
+        left_src = annotated.copy()
+        _dashed_rect(ImageDraw.Draw(left_src), box_w, RED, _line_w(left_src))
+    if nbox and not sf:                  # only the miss was marked: the same place, dashed green, on the correct frame
+        right_src = annotated_f.copy()
+        _dashed_rect(ImageDraw.Draw(right_src), box_f, GREEN, _line_w(right_src))
+
+    PW, M = 560, 24
+    ph = min(round(PW * wrong.height / wrong.width), 1000)
     pw = round(ph * wrong.width / wrong.height) if ph == 1000 else PW
     pw = max(pw, 200)
-    fixed_p = fixed
-    nbox = region_norm(shapes)
-    box = to_px(nbox, wrong.width, wrong.height) if nbox else None
-    fbox = to_px(nbox, fixed.width, fixed.height) if nbox else None
-    if nbox:   # the same region, dashed green, on the correct frame: where to compare
-        fixed_p = fixed.copy()
-        _dashed_rect(ImageDraw.Draw(fixed_p), fbox, GREEN, _line_w(fixed_p))
-    left = annotated.resize((pw, ph), Image.LANCZOS)
-    right = fixed_p.resize((pw, ph), Image.LANCZOS)
+    left = left_src.resize((pw, ph), Image.LANCZOS)
+    right = right_src.resize((pw, round(pw * fixed.height / fixed.width)) if abs(fixed.width / fixed.height - wrong.width / wrong.height) > 0.02 else (pw, ph), Image.LANCZOS)
+    ph_r = right.height
     W = M * 3 + pw * 2
-    scratch = Image.new("RGB", (10, 10))
-    sd = ImageDraw.Draw(scratch)
-    f_txt, f_small = font(21), font(17)
-    cap_w = W - M * 2
-    blocks = []
-    if details.strip():
-        blocks.append(("WRONG HERE", RED, _wrap(sd, details.strip(), f_txt, cap_w)))
-    if correct_note.strip():
-        blocks.append(("CORRECT", GREEN, _wrap(sd, correct_note.strip(), f_txt, cap_w)))
-    foot_h = M + sum(24 + 27 * len(b[2]) + 10 for b in blocks)
-    zoom = None
-    zoom_h = 0
+
+    zoom, zoom_h = None, 0
     if include_zoom and nbox:
-        zh = 520
-        zw = pw
-        a = annotated.crop(box)
-        b = fixed.crop(fbox)
+        zh, zw = 520, pw
         zoom = Image.new("RGB", (M * 3 + zw * 2, zh + M), PAPER)
-        zoom.paste(_fit(a, zw, zh), (M, 0))
-        zoom.paste(_fit(b, zw, zh), (M * 2 + zw, 0))
+        zoom.paste(_fit(annotated.crop(box_w), zw, zh), (M, 0))
+        zoom.paste(_fit(annotated_f.crop(box_f), zw, zh), (M * 2 + zw, 0))
         zoom_h = zh + M
-    head_h = 112
+
+    # the burned caption (bottom centre): title, what is wrong here, what the correct version shows
+    scratch = ImageDraw.Draw(Image.new("RGB", (10, 10)))
+    cap_w = W - M * 4
+    f_title, f_txt, f_cap = font(30, True), font(25), font(23)
     title = (meta.get("title") or "").strip()
-    H = head_h + ph + M + zoom_h + foot_h + M
+    if title and details.strip().lower().startswith(title.lower().rstrip(". ")):
+        title = ""       # the title was cut from the explanation: say it once
+    cap = []     # (font, colour, lines)
+    if title:
+        cap.append((f_title, (255, 255, 255), _wrap(scratch, title, f_title, cap_w)))
+    if details.strip():
+        cap.append((f_txt, (255, 214, 214), _wrap(scratch, details.strip(), f_txt, cap_w)))
+    if correct_note.strip():
+        cap.append((f_cap, (150, 235, 185), _wrap(scratch, "Correct: " + correct_note.strip(), f_cap, cap_w)))
+    cap_h = 36 + sum(len(ls) * (f.size + 9) + 12 for f, _c, ls in cap) if cap else 0
+
+    head_h = 74
+    H = head_h + max(ph, ph_r) + M + zoom_h + cap_h
     img = Image.new("RGB", (W, H), PAPER)
     d = ImageDraw.Draw(img)
-    # header
-    d.text((M, 14), (title or "Generation miss")[:90], font=font(26, True), fill=INK)
-    sub = "  ·  ".join(x for x in (meta.get("model"), meta.get("run"), ("video " + str(meta.get("video"))) if meta.get("video") else "",
-                                    f"wrong @ {meta.get('t_wrong', 0):.2f}s", f"correct @ {meta.get('t_fixed', 0):.2f}s",
-                                    meta.get("sample")) if x)
-    d.text((M, 52), sub[:150], font=f_small, fill=MUTED)
+    sub = "  ·  ".join(x for x in (meta.get("model"), meta.get("run"), ("video " + str(meta.get("video"))) if meta.get("video") else "", meta.get("sample")) if x)
+    d.text((M, 10), sub[:150], font=font(16), fill=MUTED)
     y = head_h
-    d.rectangle([M, y - 32, M + 178, y - 6], fill=RED)
-    d.text((M + 10, y - 29), "MISS · as generated", font=font(17, True), fill=(255, 255, 255))
-    d.rectangle([M * 2 + pw, y - 32, M * 2 + pw + 158, y - 6], fill=GREEN)
-    d.text((M * 2 + pw + 10, y - 29), "CORRECT · fixed", font=font(17, True), fill=(255, 255, 255))
+    lw_ = f"WRONG · as generated · {_fmt_t(meta.get('t_wrong'))}"
+    lf_ = f"CORRECT · fixed · {_fmt_t(meta.get('t_fixed'))}"
+    fb = font(17, True)
+    d.rectangle([M, y - 32, M + d.textlength(lw_, font=fb) + 20, y - 6], fill=RED)
+    d.text((M + 10, y - 29), lw_, font=fb, fill=(255, 255, 255))
+    d.rectangle([M * 2 + pw, y - 32, M * 2 + pw + d.textlength(lf_, font=fb) + 20, y - 6], fill=GREEN_DARK)
+    d.text((M * 2 + pw + 10, y - 29), lf_, font=fb, fill=(255, 255, 255))
     img.paste(left, (M, y))
     img.paste(right, (M * 2 + pw, y))
-    y += ph + M
+    y += max(ph, ph_r) + M
     if zoom:
         img.paste(zoom, (0, y))
-        d.text((M + 6, y + 4), "zoom: marked region", font=font(15, True), fill=(255, 255, 255))
+        d.text((M + 6, y + 4), "zoom: marked place", font=font(15, True), fill=(255, 255, 255))
         y += zoom_h
-    for label, col, lines in blocks:
-        d.text((M, y), label, font=font(17, True), fill=col)
+    if cap:
+        d.rectangle([0, y, W, H], fill=(18, 18, 22))
         y += 24
-        for ln in lines:
-            d.text((M, y), ln, font=f_txt, fill=INK)
-            y += 27
-        y += 10
-    return img, zoom, annotated
+        for f, col, lines in cap:
+            for ln in lines:
+                d.text(((W - d.textlength(ln, font=f)) / 2, y), ln, font=f, fill=col)
+                y += f.size + 9
+            y += 12
+    return img, zoom, annotated, annotated_f

@@ -192,6 +192,23 @@ def main(with_keeper=False):
     check("the composite holds both frames (wide, tall) plus zoom and text", im.width > 1100 and im.height > 1500, str(im.size))
     px_left = Image.open(core.DATA / "samples" / "1" / "annotated.png").convert("RGB").getpixel((int(.38 * 720), int(.42 * 1280)))
     check("the annotation is drawn on the wrong frame (arrow tip is red/white)", px_left[0] > 200, str(px_left))
+    # the explanation is burned in the bottom centre, on a dark band
+    W_, H_ = im.size
+    rgb = im.convert("RGB")
+    band = rgb.crop((0, H_ - 150, W_, H_))
+    light = [(x, y) for y in range(0, band.height, 2) for x in range(0, band.width, 2) if sum(band.getpixel((x, y))) > 600]
+    check("the composite ends in a dark caption band", sum(rgb.getpixel((5, H_ - 3))) < 120, str(rgb.getpixel((5, H_ - 3))))
+    mean_x = sum(x for x, _ in light) / max(1, len(light))
+    check("the explanation is burned in and centred", len(light) > 80 and abs(mean_x - W_ / 2) < W_ * 0.12, f"{len(light)} light px, mean x {mean_x:.0f} of {W_}")
+    # marks on the fixed frame too (green), kept per side
+    shapes2 = [{"type": "circle", "side": "wrong", "cx": 0.4, "cy": 0.5, "rx": 0.1, "ry": 0.06}, {"type": "arrow", "side": "fixed", "x1": 0.2, "y1": 0.3, "x2": 0.5, "y2": 0.5}]
+    s, d, _ = req("POST", f"/api/misses/{mid}/moments", {"t_wrong": 2.0, "t_fixed": 2.0, "shapes": shapes2, "details": "Second moment: the pack changes size.", "correct_note": ""})
+    mo2 = d["moment"]
+    check("marks keep the side they were drawn on", s == 200 and [x["side"] for x in mo2["shapes"]] == ["wrong", "fixed"], str(d)[:200])
+    imf = Image.open(core.DATA / "samples" / str(mo2["moment_id"]) / "annotated_fixed.png").convert("RGB")
+    tx, ty = int(.5 * imf.width), int(.5 * imf.height)
+    check("the fixed frame carries its own green mark", any(g > 140 and r < 70 and b < 110 for r, g, b in (imf.getpixel((tx + dx, ty + dy)) for dx in range(-40, 1, 4) for dy in range(-40, 1, 4))))
+    s, d, _ = req("DELETE", f"/api/moments/{mo2['moment_id']}")
     s, b, h = req("GET", "/api/qc/samples/S1/image", key=kq, raw=True)
     check("QC reads the composite with its key", s == 200 and b[:4] == b"\x89PNG")
     s, d, _ = req("GET", "/api/qc/samples?model=wan3_0&kinds=continuity", key=kq)
