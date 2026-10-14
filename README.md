@@ -37,7 +37,7 @@ and uploads go to the audit log (Settings page); consults are logged on the Keep
 
 ## How agents reach it
 
-- **CLI (primary):** `atp.py caught-flag add|set|list|reconcile|open`, `atp.py qc-consult`, `atp.py qc-brief`, `atp.py loupe ensure|status|open`.
+- **CLI (primary):** `atp.py caught-flag add|set|list|reconcile|open`, `atp.py qc-consult`, `atp.py qc-brief`, `atp.py plan-hints`, `atp.py loupe ensure|status|open`.
 - **MCP (optional):** `mcp_server.py` offers `qc_search`, `qc_get_sample` (text + the image), `qc_brief`, `qc_consult`, `flags_search`.
   Register once with `claude mcp add --scope user loupe -- python C:/Users/Glaresquare1/.claude/loupe/mcp_server.py`
   (it reads `data/keys/qc.key`, or `LOUPE_API_KEY` if you pass `-e LOUPE_API_KEY=<key>`).
@@ -49,6 +49,15 @@ and uploads go to the audit log (Settings page); consults are logged on the Keep
 `--resume`), working in `data/keeper`, told the whole library digest. It can read the sample images and write nothing. After 30
 turns it is replaced by a fresh session rebuilt from the library (the library is the memory, so nothing is lost). If it cannot run,
 `qc-consult` falls back to the deterministic brief (`mode: fallback`). A consult costs about $0.001.
+
+## Planning hints (the keeper's second job)
+
+The first request of each video asks the keeper once, in text only, which past misses could matter for its plan (`atp.py plan-hints --beats …`).
+The keeper is told to be sparse: the default answer is no hints, a hint needs a beat of that plan that matches the sample's trigger and a
+compatible model, at most three, each a risk plus a positive lever (what the right version shows and which of the writer's own tools to use at
+that beat), never a wording to paste. Loupe enforces the same in code (real ids, high or medium confidence, model family must fit unless the
+miss is model-independent, three at most, short fields, no images, nothing at all when the keeper is unavailable). The writer's rules are in the
+`atp-write-request` skill: apply only to the matching beat, smallest change, positive wording, at most two per video, record the decisions.
 
 ## Hooks (in `~/.claude/settings.json`, scripts in `~/.claude/hooks/`)
 
