@@ -10,7 +10,7 @@ The web app of the `/analyze-then-pick` pipeline. It does three things:
    yourself and pick each side's own frame (the right video has its own slider); nothing is copied or added automatically (a tick box can
    copy each new mark to the other video if you want that). Undo / Redo / Ctrl+Z / Ctrl+Y work. Type what the miss was,
    press **Mark this moment** (it saves at once), and Loupe saves one image: the miss on the left, the correct frame of the same moment on the right, both with
-   your marks, a zoom of the marked place, and your explanation burned in at the bottom. The bottom band is split in half: the explanation on
+   your marks, a zoom around each side's own marks, and your explanation burned in at the bottom. The bottom band is split in half: the explanation on
    the left and, on the right, the **product sample the video used**, found automatically from the run (its request, product registry and asset
    inventory) as the original file in the client's reference folder. The report page shows what it found and lets you switch it off. A miss does not need a right version:
    the page never guesses the right version: you pick it, or pick "No right version exists", before a moment can be saved, and then the miss stays as a miss example (the right panel says so, only the miss is marked). Attach a right version
