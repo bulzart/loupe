@@ -112,13 +112,27 @@ def _sig() -> str:
     return f"{len(lib)}:{max([s['updated'] for s in lib] or [''])}"
 
 
-ROLE = ("You are the Loupe QC keeper of a video-generation pipeline. You hold a library of samples: each is a generation miss (a frame of a wrong "
-        "video with the admin's marks) next to the same moment of the corrected video, with the admin's own words. QC agents ask you which samples "
-        "apply to the video they are checking. Rules: you only READ; you never write, edit or create anything, and you never add to the library "
-        "(only the admin does, in the web app). Cite only sample ids that exist in your library; never invent a sample or a rule. If the question "
-        "has no match, say so. You may Read a sample's image (path given) to describe it, nothing else. Answer with ONE JSON object and no other "
-        'text: {"relevant":[{"id":"S12","why":"<why it applies>","check":"<what exactly to compare in the video under QC>","wrong_pattern":"<the miss in a phrase>"}],'
-        '"advice":"<at most 80 words>","not_covered":"<what in the question the library does not cover, or empty>"}')
+ROLE = ("You are the Loupe keeper of a video-generation pipeline. You hold a library of samples: each is a generation miss (a frame of a wrong "
+        "video with the admin's marks) next to the same moment of the right version, with the admin's own words. Rules for every question: you only "
+        "READ; you never write, edit or create anything, and you never add to the library (only the admin does, in the web app). Cite only sample ids "
+        "that exist in your library; never invent a sample or a rule; judge only from the samples and the admin's words, never from general knowledge "
+        "of video models. You may Read a sample's image (path given) to describe it, nothing else. "
+        "QC QUESTION (the video exists; an agent is checking it): answer ONE JSON object and no other text: "
+        '{"relevant":[{"id":"S12","why":"<why it applies>","check":"<what exactly to compare in the video under QC>","wrong_pattern":"<the miss in a phrase>"}],'
+        '"advice":"<at most 80 words>","not_covered":"<what in the question the library does not cover, or empty>"}. '
+        "PLANNING QUESTION (the video has NOT been generated; the prompt writer shows the beats of its plan and asks which past misses could matter): "
+        "the writer will act on what you say, and over-correcting from old misses distorts a good plan, so be sparse and exact. Your default answer is NO "
+        "hints. Give a hint only when a beat of THIS plan matches the sample's trigger AND the model, mode and product form are compatible; one sure "
+        "hint beats three guesses; at most 3, best first. Never transfer a sample to another kind of object or action unless the same mechanism is at "
+        "work (say why in caveat); set model_independent true only when the miss comes from physics or logic that any video model would show. A hint "
+        "is a risk plus a POSITIVE lever: right_outcome says what the right version shows, in positive words; lever names which of the writer's own tools "
+        "to use at that beat (restating a count or state after an event, the one targeted exclusion for the product's own use, the reference view, the "
+        "beat written as start state, operation, result, the anchor) and how. Never tell the writer to put the wrong behaviour into the prompt, to add a "
+        "list of negatives, to add elements or camera moves, to redesign the plan, or to touch the source's story or timing. caveat says when it does NOT "
+        "apply. Answer ONE JSON object and no other text: "
+        '{"hints":[{"id":"S12","trigger":"<the plan situation in which this miss arises>","right_outcome":"<what the right version shows, positive>",'
+        '"lever":"<which tool, at which beat, how>","caveat":"<when it does not apply>","confidence":"high|medium|low","model_independent":false}],'
+        '"none_reason":"<one phrase when hints is empty>"}')
 
 
 def _claude() -> str | None:
@@ -172,15 +186,47 @@ def _json_of(text: str):
     return None
 
 
-def consult(key_name: str, ctx: dict, question: str) -> dict:
+def plan_hints_from(parsed, ctx: dict, lib: dict, cap: int = 3) -> tuple[list[dict], int]:
+    """The keeper's planning answer, held to the rules in code too: only real ids, only high or medium confidence, only a compatible model
+    (unless the keeper says the miss is model-independent), a trigger and a lever present, three at most, short fields.  (hints, held_back)"""
+    out, held = [], 0
+    raw = (parsed or {}).get("hints") if isinstance(parsed, dict) else None
+    for r in (raw or [])[:8]:
+        if not isinstance(r, dict) or r.get("id") not in lib:
+            held += 1
+            continue
+        s = lib[r["id"]]
+        conf = str(r.get("confidence", "")).strip().lower()
+        sm, cm = (s.get("model") or "").lower(), (ctx.get("model") or "").lower()
+        indep = bool(r.get("model_independent"))
+        if conf not in ("high", "medium") or not str(r.get("trigger", "")).strip() or not str(r.get("lever", "")).strip() \
+                or (sm and cm and _family(sm) != _family(cm) and not indep):
+            held += 1
+            continue
+        out.append({"id": s["id"], "trigger": str(r["trigger"]).strip()[:220], "right_outcome": str(r.get("right_outcome", "")).strip()[:220],
+                    "lever": str(r["lever"]).strip()[:260], "caveat": str(r.get("caveat", "")).strip()[:180], "confidence": conf, "model_independent": indep})
+    out.sort(key=lambda h: 0 if h["confidence"] == "high" else 1)
+    held += max(0, len(out) - cap)
+    return out[:cap], held
+
+
+def consult(key_name: str, ctx: dict, question: str, purpose: str = "qc") -> dict:
+    """purpose 'qc': which samples apply to a video that exists (answer carries image paths).  purpose 'plan': which past misses could matter for the
+    plan of a video that has not been generated (answer: a few text-only hints, usually none).  The same keeper holds the library for both."""
     t0 = time.time()
+    plan = purpose == "plan"
+    lib_now = library()
     pre = search({**ctx, "q": question}, 12)
     fallback = brief({**ctx, "q": question})
     res = None
     err = ""
     cost = 0.0
+    if not lib_now:                      # nothing to hold: no keeper session is started for an empty library
+        res = {"mode": "empty", "purpose": purpose, "hints": [], "relevant": [], "samples": [], "library_size": 0, "text": "The library is empty."}
     with _keeper_lock:
         try:
+            if res is not None:
+                raise StopIteration
             core.ensure_dirs()
             model = core.setting_get("keeper_model", DEFAULT_MODEL)
             st = core.setting_get("keeper", {}) or {}
@@ -195,9 +241,14 @@ def consult(key_name: str, ctx: dict, question: str) -> dict:
             delta = ""
             if st.get("library_sig") != sig:
                 delta = "\nThe library changed since your last digest. Full current list again:\n" + _digest() + "\n"
-            prompt = (f"QC question for run {ctx.get('run') or '?'} video {ctx.get('video') or '?'} (model {ctx.get('model') or '?'}, mode {ctx.get('mode') or '?'}, "
-                      f"product {ctx.get('product') or '?'}):\n{question}\n\nContext: {json.dumps({k: ctx.get(k) for k in ('kinds', 'checkpoints', 'product_forms') if ctx.get(k)}, ensure_ascii=False)}\n"
-                      f"Server pre-ranking (ids, best first): {', '.join(s['id'] for s in pre) or 'none'}.{delta}\nAnswer with the JSON object only.")
+            who = (f"run {ctx.get('run') or '?'} video {ctx.get('video') or '?'} (model {ctx.get('model') or '?'}, mode {ctx.get('mode') or '?'}, "
+                   f"product {ctx.get('product') or '?'})")
+            if plan:
+                prompt = (f"PLANNING question for {who}. The video has not been generated. The writer's plan, one line per beat:\n{question}\n"
+                          f"{delta}\nAnswer with the PLANNING JSON object only (an empty hints list is the normal answer).")
+            else:
+                prompt = (f"QC question for {who}:\n{question}\n\nContext: {json.dumps({k: ctx.get(k) for k in ('kinds', 'checkpoints', 'product_forms') if ctx.get(k)}, ensure_ascii=False)}\n"
+                          f"Server pre-ranking (ids, best first): {', '.join(s['id'] for s in pre) or 'none'}.{delta}\nAnswer with the JSON object only.")
             d = _run_claude(prompt, st["session_id"], True, st["model"])
             cost += float(d.get("total_cost_usd") or 0)
             st["turns"] = st.get("turns", 0) + 1
@@ -206,25 +257,34 @@ def consult(key_name: str, ctx: dict, question: str) -> dict:
             core.setting_set("keeper", st)
             parsed = _json_of(d.get("result", ""))
             ids = {s["id"]: s for s in library()}
-            rel = []
-            for r in (parsed or {}).get("relevant", []) if isinstance(parsed, dict) else []:
-                if isinstance(r, dict) and r.get("id") in ids:      # only samples that exist
-                    s = ids[r["id"]]
-                    rel.append({"id": s["id"], "why": str(r.get("why", ""))[:400], "check": str(r.get("check", ""))[:400],
-                                "wrong_pattern": str(r.get("wrong_pattern", ""))[:200], "composite_path": s["composite_path"], "image_url": s["image_url"],
-                                "details": s["details"], "correct_note": s["correct_note"]})
-            res = {"mode": "keeper", "relevant": rel, "advice": str((parsed or {}).get("advice", ""))[:600] if isinstance(parsed, dict) else str(d.get("result", ""))[:600],
-                   "not_covered": str((parsed or {}).get("not_covered", ""))[:400] if isinstance(parsed, dict) else "", "library_size": len(ids)}
+            if plan:
+                hints, held = plan_hints_from(parsed, ctx, ids)
+                res = {"mode": "keeper", "purpose": "plan", "hints": hints, "held_back": held, "library_size": len(ids),
+                       "none_reason": str((parsed or {}).get("none_reason", ""))[:160] if isinstance(parsed, dict) and not hints else ""}
+            else:
+                rel = []
+                for r in (parsed or {}).get("relevant", []) if isinstance(parsed, dict) else []:
+                    if isinstance(r, dict) and r.get("id") in ids:      # only samples that exist
+                        s = ids[r["id"]]
+                        rel.append({"id": s["id"], "why": str(r.get("why", ""))[:400], "check": str(r.get("check", ""))[:400],
+                                    "wrong_pattern": str(r.get("wrong_pattern", ""))[:200], "composite_path": s["composite_path"], "image_url": s["image_url"],
+                                    "details": s["details"], "correct_note": s["correct_note"]})
+                res = {"mode": "keeper", "purpose": "qc", "relevant": rel, "advice": str((parsed or {}).get("advice", ""))[:600] if isinstance(parsed, dict) else str(d.get("result", ""))[:600],
+                       "not_covered": str((parsed or {}).get("not_covered", ""))[:400] if isinstance(parsed, dict) else "", "library_size": len(ids)}
+        except StopIteration:
+            pass
         except Exception as e:  # noqa: BLE001
             err = str(e)[:300]
     if res is None:
-        res = {**fallback, "mode": "fallback", "keeper_error": err}
+        # no keeper: QC still gets the plain best-match list; planning gets NOTHING (without the keeper's judgement a raw list would over-steer a plan)
+        res = ({"mode": "unavailable", "purpose": "plan", "hints": [], "library_size": len(lib_now), "keeper_error": err} if plan
+               else {**fallback, "mode": "fallback", "purpose": "qc", "keeper_error": err})
     ms = int((time.time() - t0) * 1000)
+    ids_used = ",".join(x["id"] for x in (res.get("hints") if plan else res.get("relevant", res.get("samples", []))) or [])
     con = core.db()
     try:
-        con.execute("INSERT INTO consults(ts,key_name,run,video,question,sample_ids,answer,ms,mode,cost) VALUES(?,?,?,?,?,?,?,?,?,?)",
-                    (core.now(), key_name, ctx.get("run") or "", ctx.get("video") or "", question[:1000],
-                     ",".join(s["id"] for s in res.get("relevant", res.get("samples", []))), core.jdump(res)[:6000], ms, res["mode"], cost))
+        con.execute("INSERT INTO consults(ts,key_name,run,video,question,sample_ids,answer,ms,mode,cost,purpose) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+                    (core.now(), key_name, ctx.get("run") or "", ctx.get("video") or "", question[:1000], ids_used, core.jdump(res)[:6000], ms, res["mode"], cost, purpose))
         con.commit()
     finally:
         con.close()

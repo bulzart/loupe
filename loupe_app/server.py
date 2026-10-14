@@ -620,14 +620,14 @@ def qc_consult(h):
     q = str(b.get("question") or "").strip()
     if not q:
         raise ValueError("a question is needed")
-    h.send_json({"ok": True, **qc.consult(h.pr.name, b, q)})
+    h.send_json({"ok": True, **qc.consult(h.pr.name, b, q, "plan" if b.get("purpose") == "plan" else "qc")})
 
 
 @route("GET", "/api/qc/keeper", scope="admin")
 def keeper_get(h):
     con = core.db()
     try:
-        cons = [dict(r) for r in con.execute("SELECT id,ts,key_name,run,video,question,sample_ids,ms,mode,cost FROM consults ORDER BY id DESC LIMIT 50")]
+        cons = [dict(r) for r in con.execute("SELECT id,ts,key_name,run,video,question,sample_ids,ms,mode,cost,purpose FROM consults ORDER BY id DESC LIMIT 50")]
     finally:
         con.close()
     h.send_json({"ok": True, "keeper": qc.keeper_status(), "consults": cons})

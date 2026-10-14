@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS moments(id INTEGER PRIMARY KEY AUTOINCREMENT, miss_id
   w INTEGER, h INTEGER);
 CREATE INDEX IF NOT EXISTS moments_miss ON moments(miss_id);
 CREATE TABLE IF NOT EXISTS consults(id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT, key_name TEXT, run TEXT, video TEXT,
-  question TEXT, sample_ids TEXT, answer TEXT, ms INTEGER, mode TEXT, cost REAL);
+  question TEXT, sample_ids TEXT, answer TEXT, ms INTEGER, mode TEXT, cost REAL, purpose TEXT DEFAULT 'qc');
 CREATE TABLE IF NOT EXISTS captures(id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT, tool TEXT, run TEXT, agent TEXT,
   job TEXT, summary TEXT, file TEXT, claimed_by TEXT, dismissed INTEGER DEFAULT 0);
 CREATE TABLE IF NOT EXISTS audit(id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT, actor TEXT, action TEXT, target TEXT, detail TEXT);
@@ -86,6 +86,8 @@ def db() -> sqlite3.Connection:
             if not _inited:
                 con.execute("PRAGMA journal_mode=WAL")
                 con.executescript(SCHEMA)
+                if "purpose" not in [r[1] for r in con.execute("PRAGMA table_info(consults)")]:      # a database made before planning hints existed
+                    con.execute("ALTER TABLE consults ADD COLUMN purpose TEXT DEFAULT 'qc'")
                 con.commit()
                 _inited = True
     con.execute("PRAGMA busy_timeout=30000")

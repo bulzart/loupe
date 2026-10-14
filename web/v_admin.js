@@ -51,8 +51,8 @@ export async function keeper() {
         h('div', { style: 'margin-top:12px' }, h('button', { class: 'btn danger', onclick: async () => { await api('POST', '/api/qc/keeper/reset', {}); toast('Keeper reset'); keeper().then((n) => document.querySelector('.main').replaceChildren(n)); } }, 'Reset the session'))),
       h('div', { class: 'card' }, h('h2', {}, 'Ask it'), ask, h('div', { style: 'margin-top:8px' }, h('button', { class: 'btn primary', onclick: run }, 'Ask')), out)),
     h('div', { class: 'card', style: 'margin-top:14px' }, h('h2', {}, 'Consultations'),
-      d.consults.length ? h('table', {}, h('thead', {}, h('tr', {}, ['When', 'Key', 'Run / video', 'Question', 'Samples', 'Mode', 'ms'].map((x) => h('th', {}, x)))),
-        h('tbody', {}, d.consults.map((c) => h('tr', {}, h('td', {}, fmtDate(c.ts)), h('td', {}, c.key_name), h('td', { class: 'mono' }, `${c.run || ''} ${c.video || ''}`), h('td', {}, c.question.slice(0, 140)),
+      d.consults.length ? h('table', {}, h('thead', {}, h('tr', {}, ['When', 'Key', 'Run / video', 'Asked for', 'Question', 'Samples', 'Mode', 'ms'].map((x) => h('th', {}, x)))),
+        h('tbody', {}, d.consults.map((c) => h('tr', {}, h('td', {}, fmtDate(c.ts)), h('td', {}, c.key_name), h('td', { class: 'mono' }, `${c.run || ''} ${c.video || ''}`), h('td', {}, c.purpose === 'plan' ? 'planning hints' : 'QC'), h('td', {}, c.question.slice(0, 140)),
           h('td', { class: 'mono' }, c.sample_ids), h('td', {}, c.mode), h('td', {}, c.ms))))) : h('div', { class: 'empty' }, 'No consultation yet.')));
 }
 
