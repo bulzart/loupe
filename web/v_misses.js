@@ -227,14 +227,14 @@ export async function work(qs) {
 
   // ---- saving a moment: one image, nothing else to confirm
   const result = h('div');
-  const saveBtn = h('button', { class: 'btn primary big', onclick: () => saveMoment() }, 'Save moment');
+  const saveBtn = h('button', { class: 'btn primary big', onclick: () => saveMoment() }, 'Mark this moment');
   const cancelEdit = h('button', { class: 'btn', style: 'display:none', onclick: () => leaveEdit() }, 'Cancel edit');
-  const leaveEdit = () => { ws.editing = null; saveBtn.textContent = 'Save moment'; cancelEdit.style.display = 'none'; };
+  const leaveEdit = () => { ws.editing = null; saveBtn.textContent = 'Mark this moment'; cancelEdit.style.display = 'none'; };
   async function saveMoment() {
     pauseBoth();
     const text = details.value.trim();
-    if (!text && !title.value.trim()) { toast('Write what the miss is first: the explanation is burned into the image', true); details.focus(); return; }
-    if (!title.value.trim()) title.value = text.split(/(?<=[.!?])\s/)[0].slice(0, 90);
+    // never blocks: with no title it is cut from the explanation, and with neither it is named by the video and the second
+    if (!title.value.trim()) title.value = text ? text.split(/(?<=[.!?])\s/)[0].slice(0, 90) : `Video ${qs.video || ''} at ${fmtT(vW.currentTime)}`;
     saveBtn.disabled = true; saveBtn.textContent = 'Building the image…';
     try {
       if (!(await saveReport())) return;
@@ -248,7 +248,7 @@ export async function work(qs) {
         h('img', { src, style: 'max-width:100%;max-height:78vh;display:block;margin:10px auto 0;border-radius:10px;border:1px solid var(--line);cursor:zoom-in', onclick: () => lightbox(src) })));
       ws.shapes = []; details.value = ''; correct.value = ''; leaveEdit(); redrawAll();     // ready for the next moment; the title and kinds stay
       result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    } catch (_) { /* toasted */ } finally { saveBtn.disabled = false; saveBtn.textContent = ws.editing ? 'Update moment' : 'Save moment'; }
+    } catch (_) { /* toasted */ } finally { saveBtn.disabled = false; saveBtn.textContent = ws.editing ? 'Update moment' : 'Mark this moment'; }
   }
 
   // ---- the moments saved so far
@@ -264,7 +264,7 @@ export async function work(qs) {
       h('img', { src: m.image_url + '&v=' + encodeURIComponent(m.updated), style: 'width:100%;height:240px;object-fit:cover;object-position:top;border-radius:8px;cursor:zoom-in', onclick: () => lightbox(m.image_url + '&v=' + encodeURIComponent(m.updated)) }),
       h('div', { class: 'small', style: 'margin-top:6px' }, h('b', {}, m.id), ` · wrong @ ${fmtT(m.t_wrong)} · fixed @ ${fmtT(m.t_fixed)}`), h('div', { class: 'small' }, m.details),
       h('div', { class: 'row', style: 'margin-top:6px' }, h('button', { class: 'btn sm', onclick: () => loadMoment(m) }, 'Edit'),
-        h('button', { class: 'btn sm danger', onclick: async () => { if (confirmBox('Delete this sample?')) { await api('DELETE', '/api/moments/' + m.moment_id); await refreshMiss(); } } }, 'Delete'))))) : h('div', { class: 'muted' }, 'No moment saved yet. Pause on the place where the miss shows, draw on the videos, explain it, and press “Save moment”.'));
+        h('button', { class: 'btn sm danger', onclick: async () => { if (confirmBox('Delete this sample?')) { await api('DELETE', '/api/moments/' + m.moment_id); await refreshMiss(); } } }, 'Delete'))))) : h('div', { class: 'muted' }, 'No moment saved yet. Pause on the place where the miss shows, draw on the videos, explain it, and press “Mark this moment”.'));
   };
   drawMoments();
 
