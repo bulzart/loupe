@@ -62,7 +62,7 @@ def clean_shapes(shapes) -> list[dict]:
 
 
 def _line_w(img) -> int:
-    return max(4, round(img.height / 190))
+    return max(3, round(img.height / 340))       # thin: the marks point, they do not shout
 
 
 def draw_shapes(img: Image.Image, shapes: list[dict], color=RED) -> Image.Image:
@@ -80,12 +80,12 @@ def draw_shapes(img: Image.Image, shapes: list[dict], color=RED) -> Image.Image:
         if t == "arrow":
             (x1, y1), (x2, y2) = px(s["x1"], s["y1"]), px(s["x2"], s["y2"])
             ang = math.atan2(y2 - y1, x2 - x1)
-            hl = lw * 5.5
+            hl = max(lw * 7.0, H / 45)
             hw = math.pi / 7
             pts = [(x2, y2), (x2 - hl * math.cos(ang - hw), y2 - hl * math.sin(ang - hw)),
                    (x2 - hl * math.cos(ang + hw), y2 - hl * math.sin(ang + hw))]
             # white halo first so the mark reads on any picture, then red
-            d.line([(x1, y1), (x2, y2)], fill=(255, 255, 255), width=lw + 5)
+            d.line([(x1, y1), (x2, y2)], fill=(255, 255, 255), width=lw + 3)
             d.polygon(pts, fill=(255, 255, 255), outline=(255, 255, 255))
             d.line([(x1, y1), (x2 - hl * 0.6 * math.cos(ang), y2 - hl * 0.6 * math.sin(ang))], fill=color, width=lw)
             d.polygon(pts, fill=color)
@@ -93,12 +93,12 @@ def draw_shapes(img: Image.Image, shapes: list[dict], color=RED) -> Image.Image:
             cx, cy = px(s["cx"], s["cy"])
             rx, ry = abs(s["rx"]) * W, abs(s["ry"]) * H
             box = [cx - rx, cy - ry, cx + rx, cy + ry]
-            d.ellipse(box, outline=(255, 255, 255), width=lw + 5)
+            d.ellipse(box, outline=(255, 255, 255), width=lw + 3)
             d.ellipse(box, outline=color, width=lw)
         elif t == "rect":
             (x1, y1), (x2, y2) = px(s["x1"], s["y1"]), px(s["x2"], s["y2"])
             box = [min(x1, x2), min(y1, y2), max(x1, x2), max(y1, y2)]
-            d.rectangle(box, outline=(255, 255, 255), width=lw + 5)
+            d.rectangle(box, outline=(255, 255, 255), width=lw + 3)
             d.rectangle(box, outline=color, width=lw)
         elif t == "text":
             x, y = px(s["x"], s["y"])
