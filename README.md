@@ -61,6 +61,11 @@ that beat), never a wording to paste. Loupe enforces the same in code (real ids,
 miss is model-independent, three at most, short fields, no images, nothing at all when the keeper is unavailable). The writer's rules are in the
 `atp-write-request` skill: apply only to the matching beat, smallest change, positive wording, at most two per video, record the decisions.
 
+The keeper matches by mechanism: both consult kinds carry the product's details (shape, size, opening, natural posture, from its registry row,
+`--product-details`), a sample is relevant when it and the video share a product detail and a scene mechanism, and its answers are conditions
+for this video, never "never/always" commands (Loupe also holds back a hint worded that way). Fill the report form's product field with the
+product's details, not only its name, so samples can be matched this way.
+
 ## Hooks (in `~/.claude/settings.json`, scripts in `~/.claude/hooks/`)
 
 - `atp_flag_watch.py` — PostToolUse and PostToolUseFailure of the Higgsfield generation tools: a flag-like answer is saved to Loupe as a
