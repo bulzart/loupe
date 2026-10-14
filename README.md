@@ -5,8 +5,9 @@ The web app of the `/analyze-then-pick` pipeline. It does three things:
 1. **Flag record.** Every prompt and video Higgsfield flagged, refused, withheld or rerouted, with the evidence the pipeline could
    gather (the request, each input with its file, thumbnail and file facts, the same file in earlier runs, the raw answer the
    hook saved). It replaces the old `caught_flags.html` page.
-2. **Generation misses.** One page, no second step: you pick a run and a video, the wrong and the fixed video play side by side, and you
-   draw an arrow, circle, box or note straight on either of them (red on the wrong one, green on the fixed one). Type what the miss was,
+2. **Generation misses.** One page, no second step: you pick a run and a video, the wrong and the right video play side by side, and you
+   draw an arrow, circle, box or note straight on either of them (red on the wrong one, green on the right one; the same mark
+   appears on both with the same place and size, and Undo / Redo / Ctrl+Z / Ctrl+Y work). Type what the miss was,
    press **Mark this moment** (it saves at once), and Loupe saves one image: the miss on the left, the correct frame of the same moment on the right, both with
    your marks, a zoom of the marked place, and your explanation burned in at the bottom centre.
 3. **QC samples.** The QC phase of a run (and only that phase) reads those images. A separate read-only Claude session, the *keeper*,

@@ -9,7 +9,7 @@ export async function reports() {
   const d = await api('GET', '/api/misses');
   const reload = () => reports().then((n) => document.querySelector('.main').replaceChildren(n));
   return h('div', {},
-    head('Generation misses', 'Pick a run, open a video, say what went wrong, mark the moment. The corrected version is found at the same moment and both go into one sample image for the QC phase.',
+    head('Generation misses', 'Pick a run, open a video, say what went wrong, mark the moment. The right version is shown at the same moment and both go into one sample image for the QC phase.',
       h('a', { class: 'btn primary', href: '#/misses/new' }, 'New report')),
     d.misses.length ? d.misses.map((m) => h('div', { class: 'card' },
       h('div', { class: 'row', style: 'justify-content:space-between' },
@@ -42,8 +42,8 @@ export async function pick() {
 }
 
 // ------------------------------------------------------------------------------------------ the workspace
-// One page, one step: the wrong and the fixed video side by side, marks drawn straight on either of them, and one button that saves
-// the moment as a single image (wrong | correct, the marks, a zoom, and the explanation burned in the bottom centre).
+// One page, one step: the wrong and the right video side by side, marks drawn straight on either of them, and one button that saves
+// the moment as a single image (wrong | right, the marks, a zoom, and the explanation burned in the bottom centre).
 function guessVersions(versions) {
   const attempts = versions.filter((v) => v.kind === 'attempt');
   const clean = (v) => /with-original-audio\.mp4$|clean\.mp4$|trimmed\.mp4$/.test(v.label);
@@ -94,7 +94,13 @@ export async function work(qs) {
   const state = { wrong: miss ? miss.wrong_path : (g.wrong ? g.wrong.path : ''), fixed: miss ? miss.fixed_path : (g.fixed ? g.fixed.path : '') };
   const addVersion = (v) => { if (!versions.some((x) => x.path === v.path)) versions.push(v); };
   if (miss) { addVersion({ path: miss.wrong_path, label: miss.wrong_label || miss.wrong_path.split(/[\\/]/).slice(-2).join('/') }); addVersion({ path: miss.fixed_path, label: miss.fixed_label || miss.fixed_path.split(/[\\/]/).slice(-2).join('/') }); }
-  const ws = { shapes: [], tool: 'arrow', editing: null, draft: null };
+  const ws = { shapes: [], tool: 'arrow', editing: null, draft: null, past: [], future: [], mirror: true };
+  const addMark = (shape) => setMarks([...ws.shapes, shape, ...(ws.mirror ? [{ ...shape, side: shape.side === 'wrong' ? 'fixed' : 'wrong' }] : [])]);
+  const syncHist = () => { undoBtn.disabled = !ws.past.length; redoBtn.disabled = !ws.future.length; };
+  const setMarks = (next) => { ws.past.push(ws.shapes); if (ws.past.length > 200) ws.past.shift(); ws.shapes = next; ws.future = []; redrawAll(); syncHist(); };   // a new mark or a clear: one undoable step
+  const resetMarks = (next) => { ws.shapes = next; ws.past = []; ws.future = []; redrawAll(); syncHist(); };                                                          // a fresh start (after a save, or an edit loaded)
+  const undo = () => { if (!ws.past.length) return; ws.future.push(ws.shapes); ws.shapes = ws.past.pop(); redrawAll(); syncHist(); };
+  const redo = () => { if (!ws.future.length) return; ws.past.push(ws.shapes); ws.shapes = ws.future.pop(); redrawAll(); syncHist(); };
 
   // ---- the two versions
   const label = (v) => v.label + (v.kind === 'fixed-lib' ? '  (client fix)' : '');
@@ -122,14 +128,14 @@ export async function work(qs) {
   // ---- the report fields (the title and the explanation are burned into the saved image)
   const title = h('input', { value: miss ? miss.title : '', placeholder: 'One line: what went wrong (e.g. “the third capsule disappears after the hand leaves”)', style: 'width:100%' });
   const details = h('textarea', { placeholder: 'Explain this miss: what is wrong at the marked place and why. This text is burned into the bottom centre of the image, and the QC phase reads it.' });
-  const correct = h('textarea', { placeholder: 'What the fixed version shows here (optional, burned in under the explanation)', style: 'min-height:48px' });
+  const correct = h('textarea', { placeholder: 'What the right version shows here (optional, burned in under the explanation)', style: 'min-height:48px' });
   const kinds = chipPicker(settings.kinds, miss ? miss.kinds : []);
   const model = h('input', { value: miss ? miss.model : (runInfo ? runInfo.model || '' : ''), size: 18 });
   const mode = h('input', { value: miss ? miss.mode : (runInfo ? [runInfo.mode, runInfo.submode].filter(Boolean).join('-') : ''), size: 18 });
   const product = h('input', { value: miss ? miss.product : ((runInfo && runInfo.products && runInfo.products[0]) || ''), size: 22, placeholder: 'product / form, free text' });
 
   async function saveReport() {
-    if (!state.wrong || !state.fixed) { toast('Choose both the wrong and the fixed version', true); return null; }
+    if (!state.wrong || !state.fixed) { toast('Choose both the wrong and the right version', true); return null; }
     const body = { run: qs.run || '', video: qs.video || '', title: title.value, explanation: miss ? miss.explanation : details.value, kinds: kinds.get(), model: model.value, mode: mode.value, product: product.value,
       wrong_path: state.wrong, fixed_path: state.fixed, wrong_label: (versions.find((v) => v.path === state.wrong) || {}).label || '', fixed_label: (versions.find((v) => v.path === state.fixed) || {}).label || '' };
     miss = miss ? (await api('PATCH', '/api/misses/' + miss.id, body)).miss : (await api('POST', '/api/misses', body)).miss;
@@ -141,13 +147,13 @@ export async function work(qs) {
   const mkPlayer = (side, text) => {
     const video = h('video', { preload: 'auto', playsinline: true });
     video.muted = true;
-    const cv = h('canvas', { class: 'pc', title: 'Draw here: ' + (side === 'wrong' ? 'red marks on the wrong video' : 'green marks on the fixed video') });
+    const cv = h('canvas', { class: 'pc', title: 'Draw here: ' + (side === 'wrong' ? 'red marks on the wrong video' : 'green marks on the right video') });
     const wrap = h('div', { class: 'vwrap' }, video, cv);
     const snd = h('button', { class: 'btn sm', onclick: () => { video.muted = !video.muted; snd.textContent = video.muted ? 'Sound off' : 'Sound on'; } }, 'Sound off');
     const el = h('div', { class: 'player' }, h('div', { class: 'row', style: 'justify-content:space-between' }, h('div', { class: 'lab ' + (side === 'wrong' ? 'wrong' : 'right') }, text), snd), wrap);
     return { side, video, cv, wrap, el };
   };
-  const P = { wrong: mkPlayer('wrong', 'WRONG'), fixed: mkPlayer('fixed', 'FIXED') };
+  const P = { wrong: mkPlayer('wrong', 'WRONG'), fixed: mkPlayer('fixed', 'RIGHT') };
   const vW = P.wrong.video, vF = P.fixed.video;
   const pic = (p) => {                       // where the picture really is inside the (letterboxed) video element
     const cw = p.cv.clientWidth, ch = p.cv.clientHeight, vw = p.video.videoWidth, vh = p.video.videoHeight;
@@ -180,7 +186,7 @@ export async function work(qs) {
       if (ws.tool === 'text') {
         const r = pic(p), inp = h('input', { class: 'textin', placeholder: 'label…', style: `left:${r.x + x * r.w}px;top:${r.y + y * r.h}px;` });
         let done = false;
-        const commit = () => { if (done) return; done = true; const v = inp.value.trim(); inp.remove(); if (v) { ws.shapes.push({ side: p.side, type: 'text', x, y, text: v }); redrawAll(); } };
+        const commit = () => { if (done) return; done = true; const v = inp.value.trim(); inp.remove(); if (v) addMark({ side: p.side, type: 'text', x, y, text: v }); };
         inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') { done = true; inp.remove(); } });
         inp.addEventListener('blur', commit);
         p.wrap.append(inp); setTimeout(() => inp.focus(), 0); return;
@@ -198,7 +204,7 @@ export async function work(qs) {
       const d = ws.draft;
       if (start && d) {
         const big = d.type === 'circle' ? (d.rx > 0.01 || d.ry > 0.01) : Math.hypot(d.x2 - d.x1, d.y2 - d.y1) > 0.015;
-        if (big) ws.shapes.push(d);
+        if (big) { ws.draft = null; addMark(d); }
       }
       start = null; ws.draft = null; redrawAll();
     };
@@ -210,8 +216,8 @@ export async function work(qs) {
   const tl = h('span', { class: 'mono' }, '0:00.00');
   const offset = h('input', { type: 'number', step: 1 / FPS, value: 0, style: 'width:84px' });
   const setSources = () => { if (state.wrong) vW.src = videoUrl(state.wrong); if (state.fixed) vF.src = videoUrl(state.fixed); };
-  const showTime = () => { tl.textContent = fmtT(vW.currentTime) + '  ·  fixed ' + fmtT(vF.currentTime); };
-  const seek = (t) => { t = Math.max(0, +t || 0); vW.currentTime = t; vF.currentTime = Math.max(0, t + (+offset.value || 0)); range.value = t; tl.textContent = fmtT(t) + '  ·  fixed ' + fmtT(Math.max(0, t + (+offset.value || 0))); };
+  const showTime = () => { tl.textContent = fmtT(vW.currentTime) + '  ·  right ' + fmtT(vF.currentTime); };
+  const seek = (t) => { t = Math.max(0, +t || 0); vW.currentTime = t; vF.currentTime = Math.max(0, t + (+offset.value || 0)); range.value = t; tl.textContent = fmtT(t) + '  ·  right ' + fmtT(Math.max(0, t + (+offset.value || 0))); };
   vW.addEventListener('timeupdate', () => { if (!vW.paused) { range.value = vW.currentTime; showTime(); } });
   range.addEventListener('input', () => seek(range.value));
   offset.addEventListener('change', () => seek(vW.currentTime));
@@ -222,6 +228,7 @@ export async function work(qs) {
   setSources();
 
   // ---- tools
+  const undoBtn = h('button', { class: 'btn sm', title: 'Ctrl+Z', disabled: true, onclick: undo }, 'Undo'), redoBtn = h('button', { class: 'btn sm', title: 'Ctrl+Y or Ctrl+Shift+Z', disabled: true, onclick: redo }, 'Redo');
   const toolBtns = {};
   const tb = (id, text) => (toolBtns[id] = h('button', { class: 'btn sm tool' + (ws.tool === id ? ' on' : ''), onclick: () => { ws.tool = id; Object.entries(toolBtns).forEach(([k, b]) => b.classList.toggle('on', k === id)); } }, text));
 
@@ -246,7 +253,7 @@ export async function work(qs) {
         h('div', {}, h('b', {}, `${r.moment.id} saved`), h('span', { class: 'muted small' }, '  this is the one image the QC phase will see')),
         h('button', { class: 'btn sm', onclick: () => result.replaceChildren() }, 'Close')),
         h('img', { src, style: 'max-width:100%;max-height:78vh;display:block;margin:10px auto 0;border-radius:10px;border:1px solid var(--line);cursor:zoom-in', onclick: () => lightbox(src) })));
-      ws.shapes = []; details.value = ''; correct.value = ''; leaveEdit(); redrawAll();     // ready for the next moment; the title and kinds stay
+      resetMarks([]); details.value = ''; correct.value = ''; leaveEdit();     // ready for the next moment; the title and kinds stay
       result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     } catch (_) { /* toasted */ } finally { saveBtn.disabled = false; saveBtn.textContent = ws.editing ? 'Update moment' : 'Mark this moment'; }
   }
@@ -255,48 +262,60 @@ export async function work(qs) {
   const moments = h('div');
   const refreshMiss = async () => { miss = (await api('GET', '/api/misses/' + miss.id)).miss; drawMoments(); };
   const loadMoment = (m) => {              // an existing moment comes back into the same workspace
-    pauseBoth(); ws.editing = m; ws.shapes = JSON.parse(JSON.stringify(m.shapes)).map((s) => ({ side: 'wrong', ...s }));
+    pauseBoth(); ws.editing = m; resetMarks(JSON.parse(JSON.stringify(m.shapes)).map((s) => ({ side: 'wrong', ...s })));
     offset.value = (m.t_fixed - m.t_wrong).toFixed(3); seek(m.t_wrong); details.value = m.details || ''; correct.value = m.correct_note || '';
     saveBtn.textContent = 'Update moment'; cancelEdit.style.display = ''; setTimeout(redrawAll, 250); window.scrollTo({ top: 0, behavior: 'smooth' });
   };
   const drawMoments = () => {
     moments.replaceChildren(miss && miss.moments.length ? h('div', { class: 'grid g3' }, miss.moments.map((m) => h('div', { class: 'card' },
       h('img', { src: m.image_url + '&v=' + encodeURIComponent(m.updated), style: 'width:100%;height:240px;object-fit:cover;object-position:top;border-radius:8px;cursor:zoom-in', onclick: () => lightbox(m.image_url + '&v=' + encodeURIComponent(m.updated)) }),
-      h('div', { class: 'small', style: 'margin-top:6px' }, h('b', {}, m.id), ` · wrong @ ${fmtT(m.t_wrong)} · fixed @ ${fmtT(m.t_fixed)}`), h('div', { class: 'small' }, m.details),
+      h('div', { class: 'small', style: 'margin-top:6px' }, h('b', {}, m.id), ` · wrong @ ${fmtT(m.t_wrong)} · right @ ${fmtT(m.t_fixed)}`), h('div', { class: 'small' }, m.details),
       h('div', { class: 'row', style: 'margin-top:6px' }, h('button', { class: 'btn sm', onclick: () => loadMoment(m) }, 'Edit'),
         h('button', { class: 'btn sm danger', onclick: async () => { if (confirmBox('Delete this sample?')) { await api('DELETE', '/api/moments/' + m.moment_id); await refreshMiss(); } } }, 'Delete'))))) : h('div', { class: 'muted' }, 'No moment saved yet. Pause on the place where the miss shows, draw on the videos, explain it, and press “Mark this moment”.'));
   };
   drawMoments();
 
-  return h('div', {},
+  const onKey = (e) => {       // Ctrl+Z undoes, Ctrl+Y or Ctrl+Shift+Z redoes, unless the cursor is in a text field
+    if (!root.isConnected) { window.removeEventListener('keydown', onKey); return; }
+    if (e.target && e.target.closest && e.target.closest('input,textarea,select')) return;
+    if ((e.ctrlKey || e.metaKey) && !e.altKey) {
+      const k = e.key.toLowerCase();
+      if (k === 'z' && !e.shiftKey) { e.preventDefault(); undo(); } else if (k === 'y' || (k === 'z' && e.shiftKey)) { e.preventDefault(); redo(); }
+    }
+  };
+  window.addEventListener('keydown', onKey);
+  const root = h('div', {},
     h('div', { class: 'head' }, h('div', {}, h('h1', {}, miss ? `Report: ${miss.title}` : 'New report'),
       h('div', { class: 'muted' }, `${qs.run || ''} · video ${qs.video || ''}${runInfo ? ` · ${runInfo.model || ''} · ${runInfo.mode || ''}${runInfo.submode ? '/' + runInfo.submode : ''}` : ''}`)),
       h('a', { class: 'btn', href: '#/misses' }, '← Reports')),
     h('div', { class: 'card' },
       h('div', { class: 'grid g2' },
         h('div', {}, h('label', { class: 'f', style: 'margin-top:0' }, 'Wrong version (as generated)'), wrongSel),
-        h('div', {}, h('label', { class: 'f', style: 'margin-top:0' }, 'Fixed version (QC fix, your feedback, or the client’s update)'), fixedSel,
-          h('div', { class: 'row', style: 'margin-top:6px' }, h('button', { class: 'btn sm', onclick: () => fileIn.click() }, 'Upload a fixed file…'), fileIn, prog, pathIn, addPath)))),
+        h('div', {}, h('label', { class: 'f', style: 'margin-top:0' }, 'Right version (the corrected take: QC fix, your feedback, or the client’s update)'), fixedSel,
+          h('div', { class: 'row', style: 'margin-top:6px' }, h('button', { class: 'btn sm', onclick: () => fileIn.click() }, 'Upload the right video…'), fileIn, prog, pathIn, addPath)))),
     h('div', { class: 'card' },
       h('div', { class: 'tools' }, tb('arrow', 'Arrow'), tb('circle', 'Circle'), tb('rect', 'Box'), tb('text', 'Text'),
-        h('button', { class: 'btn sm', onclick: () => { ws.shapes.pop(); redrawAll(); } }, 'Undo'), h('button', { class: 'btn sm', onclick: () => { ws.shapes = []; redrawAll(); } }, 'Clear marks'),
-        h('span', { class: 'muted small', style: 'margin-left:10px' }, 'Pause on the frame, then draw straight on either video: red on the wrong one, green on the fixed one. Mark where it is wrong, or where it is right.')),
+        undoBtn, redoBtn, h('label', { class: 'small', style: 'display:inline-flex;gap:4px;align-items:center;margin-left:6px' },
+          h('input', { type: 'checkbox', checked: true, onchange: (e) => { ws.mirror = e.target.checked; } }), 'same mark on both videos'),
+        h('button', { class: 'btn sm', onclick: () => { if (ws.shapes.length) setMarks([]); } }, 'Clear marks'),
+        h('span', { class: 'muted small', style: 'margin-left:10px' }, 'Pause on the frame, then draw straight on either video: red on the wrong one, green on the right one; the same mark appears on both so the place and size match. Untick “same mark on both videos” to mark one side only.')),
       h('div', { class: 'players' }, P.wrong.el, P.fixed.el),
       h('div', { class: 'scrub' }, playBoth, h('button', { class: 'btn sm', onclick: () => step(-1 / FPS) }, '◀ frame'), range, h('button', { class: 'btn sm', onclick: () => step(1 / FPS) }, 'frame ▶'), tl),
-      h('div', { class: 'row' }, h('span', { class: 'muted small' }, 'Fixed video is shifted by (s)'), offset,
-        h('button', { class: 'btn sm', onclick: () => nudgeFixed(-1 / FPS) }, 'fixed ◀ 1f'), h('button', { class: 'btn sm', onclick: () => nudgeFixed(1 / FPS) }, 'fixed 1f ▶'),
-        h('span', { class: 'muted small' }, 'use it when the fixed take is a little ahead or behind, so both show the same moment'))),
+      h('div', { class: 'row' }, h('span', { class: 'muted small' }, 'Right video is shifted by (s)'), offset,
+        h('button', { class: 'btn sm', onclick: () => nudgeFixed(-1 / FPS) }, 'right ◀ 1f'), h('button', { class: 'btn sm', onclick: () => nudgeFixed(1 / FPS) }, 'right 1f ▶'),
+        h('span', { class: 'muted small' }, 'use it when the right take is a little ahead or behind, so both show the same moment'))),
     h('div', { class: 'card' },
       h('label', { class: 'f', style: 'margin-top:0' }, 'What was the miss?'), title,
       h('label', { class: 'f' }, 'Explain it (burned into the bottom centre of the image)'), details,
-      h('label', { class: 'f' }, 'What the fixed version shows (optional)'), correct,
+      h('label', { class: 'f' }, 'What the right version shows (optional)'), correct,
       h('label', { class: 'f' }, 'Kinds (for the QC search)'), kinds.el,
       h('details', { style: 'margin-top:8px' }, h('summary', { class: 'muted small', style: 'cursor:pointer' }, 'Model, mode, product'),
         h('div', { class: 'row', style: 'margin-top:6px' }, h('span', { class: 'muted small' }, 'model'), model, h('span', { class: 'muted small' }, 'mode'), mode, h('span', { class: 'muted small' }, 'product'), product)),
       h('div', { class: 'row', style: 'margin-top:14px' }, saveBtn, cancelEdit,
-        h('span', { class: 'muted small' }, 'One click: saves the report, cuts both frames at these seconds, and builds one image: wrong with your marks | correct, a zoom, and this text.'))),
+        h('span', { class: 'muted small' }, 'One click: saves the report, cuts both frames at these seconds, and builds one image: wrong | right with your marks, a zoom, and this text.'))),
     result,
     h('div', { class: 'card' }, h('h2', {}, 'Saved moments'), moments));
+  return root;
 }
 
 function lightbox(src) {

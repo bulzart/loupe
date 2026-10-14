@@ -27,7 +27,7 @@ export async function gallery() {
           h('button', { class: 'btn', onclick: () => ov.remove() }, 'Close'))),
       h('div', { class: 'split' }, h('img', { src: s.image_url + '&v=' + encodeURIComponent(s.updated), style: 'width:100%;border-radius:10px;border:1px solid var(--line)' }),
         h('div', {}, s.explanation ? h('p', {}, h('b', {}, 'The miss: '), s.explanation) : null,
-          h('label', { class: 'f' }, 'What is wrong here'), details, h('label', { class: 'f' }, 'What the correct version shows'), correct, h('label', { class: 'f' }, 'Kinds'), kp.el,
+          h('label', { class: 'f' }, 'What is wrong here'), details, h('label', { class: 'f' }, 'What the right version shows'), correct, h('label', { class: 'f' }, 'Kinds'), kp.el,
           h('div', { class: 'row', style: 'margin-top:12px' },
             h('button', { class: 'btn primary', onclick: async () => { await api('PATCH', '/api/moments/' + s.moment_id, { details: details.value, correct_note: correct.value, kinds: kp.get() }); toast('Saved and the image was rebuilt'); ov.remove(); reload(); } }, 'Save'),
             h('button', { class: 'btn', onclick: async () => { await api('PATCH', '/api/moments/' + s.moment_id, { status: s.status === 'active' ? 'archived' : 'active' }); ov.remove(); reload(); } }, s.status === 'active' ? 'Archive (hide from QC)' : 'Restore'),

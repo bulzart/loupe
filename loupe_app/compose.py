@@ -181,7 +181,7 @@ def build(wrong: Image.Image, fixed: Image.Image, shapes: list[dict], meta: dict
           include_zoom: bool = True):
     """(composite, zoom_or_None, annotated_wrong, annotated_fixed).
 
-    One image: the miss on the left with the admin's red marks, the same moment corrected on the right with his green marks, a zoom of the marked
+    One image: the miss (WRONG) on the left with the admin's red marks, the same moment in the right version (RIGHT) on the right with the same marks in green, a zoom of the marked
     place under them, and the explanation burned in the bottom centre (title, what is wrong, what the correct version shows).
     A side with no marks of its own gets a dashed box at the place that was marked on the other side, so there is always a place to compare."""
     wrong = wrong.convert("RGB")
@@ -231,7 +231,7 @@ def build(wrong: Image.Image, fixed: Image.Image, shapes: list[dict], meta: dict
     if details.strip():
         cap.append((f_txt, (255, 214, 214), _wrap(scratch, details.strip(), f_txt, cap_w)))
     if correct_note.strip():
-        cap.append((f_cap, (150, 235, 185), _wrap(scratch, "Correct: " + correct_note.strip(), f_cap, cap_w)))
+        cap.append((f_cap, (150, 235, 185), _wrap(scratch, "Right: " + correct_note.strip(), f_cap, cap_w)))
     cap_h = 36 + sum(len(ls) * (f.size + 9) + 12 for f, _c, ls in cap) if cap else 0
 
     head_h = 74
@@ -242,7 +242,7 @@ def build(wrong: Image.Image, fixed: Image.Image, shapes: list[dict], meta: dict
     d.text((M, 10), sub[:150], font=font(16), fill=MUTED)
     y = head_h
     lw_ = f"WRONG · as generated · {_fmt_t(meta.get('t_wrong'))}"
-    lf_ = f"CORRECT · fixed · {_fmt_t(meta.get('t_fixed'))}"
+    lf_ = f"RIGHT · {_fmt_t(meta.get('t_fixed'))}"
     fb = font(17, True)
     d.rectangle([M, y - 32, M + d.textlength(lw_, font=fb) + 20, y - 6], fill=RED)
     d.text((M + 10, y - 29), lw_, font=fb, fill=(255, 255, 255))
