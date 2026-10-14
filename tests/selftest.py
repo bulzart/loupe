@@ -218,6 +218,17 @@ def main(with_keeper=False):
     s, d, _ = req("PATCH", f"/api/moments/1", {"details": "Changed words", "status": "archived"})
     s, d, _ = req("GET", "/api/qc/samples", key=kq)
     check("an archived sample leaves the QC library", d["library_size"] == 0)
+    s, d, _ = req("POST", "/api/qc/consult", {"purpose": "plan", "model": "wan3_0_prime", "question": "Beat 1: he lifts the can."}, key=kq)
+    check("planning with an empty library answers at once, no keeper session", s == 200 and d.get("mode") == "empty" and d.get("hints") == [])
+    # the rules held in code: only real ids, only high or medium, only a compatible model (unless model-independent), at most three, short text
+    from loupe_app import qc as _qc
+    lib = {f"S{i}": {"id": f"S{i}", "model": m} for i, m in ((1, "wan3_0_prime"), (2, "seedance_2_5"), (3, ""), (4, "wan3_0"), (5, "wan3_0_prime"), (6, "wan3_0_prime"))}
+    mk = lambda i, conf="high", indep=False: {"id": f"S{i}", "trigger": "t" * 400, "right_outcome": "o", "lever": "l", "caveat": "c", "confidence": conf, "model_independent": indep}
+    hints, held = _qc.plan_hints_from({"hints": [mk(1), mk(2), mk(3, "low"), mk(9), mk(4, "medium"), mk(5), mk(6)]}, {"model": "wan3_0_prime"}, lib)
+    check("planning hints drop a low confidence one, an unknown id and a model that does not fit, and stop at three", [h["id"] for h in hints] == ["S1", "S5", "S6"] and held == 4, f"{[h['id'] for h in hints]} held {held}")
+    hints, _h = _qc.plan_hints_from({"hints": [mk(2, "high", True)]}, {"model": "wan3_0_prime"}, lib)
+    check("a model-independent miss crosses models", [h["id"] for h in hints] == ["S2"])
+    check("hint text is shortened and carries no image path", all(len(h["trigger"]) <= 220 and "composite_path" not in h for h in hints))
     s, d, _ = req("PATCH", f"/api/moments/1", {"status": "active"})
     if with_keeper:
         print("\n[keeper] (a real headless session)")
@@ -225,8 +236,12 @@ def main(with_keeper=False):
         check("the keeper answers from its library", s == 200 and d.get("mode") == "keeper" and any(r["id"] == "S1" for r in d.get("relevant", [])), str(d)[:400])
         s, d, _ = req("POST", "/api/qc/consult", {"run": "r", "video": "03", "question": "Same question again, brief."}, key=kq)
         check("a second consult resumes the same session", s == 200 and d.get("mode") == "keeper")
+        s, d, _ = req("POST", "/api/qc/consult", {"purpose": "plan", "run": "r", "video": "04", "model": "wan3_0_prime", "question": "Beat 1: a red pack on a desk, hard cut to a close-up of the same pack.\nBeat 2: he picks it up."}, key=kq)
+        check("a planning question gets text-only hints with real ids (or none)", s == 200 and d.get("mode") == "keeper" and d.get("purpose") == "plan"
+              and all(h["id"] == "S1" and "composite_path" not in h and h["confidence"] in ("high", "medium") for h in d.get("hints", [])), str(d)[:400])
         s, d, _ = req("GET", "/api/qc/keeper")
         check("the keeper session is recorded and read-only", d["keeper"].get("session_id") and d["keeper"]["turns"] >= 3)
+        check("the consult log says what each consult was for", {c["purpose"] for c in d["consults"]} >= {"qc", "plan"})
     print("\n[cleanup]")
     httpd.shutdown()
     shutil.rmtree(TMP, ignore_errors=True)
