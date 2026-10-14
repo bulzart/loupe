@@ -44,14 +44,11 @@ export async function pick() {
 // ------------------------------------------------------------------------------------------ the workspace
 // One page, one step: the wrong and the right video side by side, marks drawn straight on either of them, and one button that saves
 // the moment as a single image (wrong | right, the marks, a zoom, and the explanation burned in the bottom centre).
-function guessVersions(versions) {
+function guessVersions(versions) {       // only the wrong version is guessed (the first attempt); the right one is always the user's choice
   const attempts = versions.filter((v) => v.kind === 'attempt');
   const clean = (v) => /with-original-audio\.mp4$|clean\.mp4$|trimmed\.mp4$/.test(v.label);
   const firstA = attempts.find((v) => /^a1 ·/.test(v.label) && clean(v)) || attempts.find((v) => /^a1 ·/.test(v.label)) || versions[0];
-  const lib = versions.filter((v) => v.kind === 'fixed-lib').slice(-1)[0];
-  const deliv = versions.filter((v) => v.kind === 'deliverable' && /clean/.test(v.label)).slice(-1)[0];
-  const lastA = attempts.filter(clean).slice(-1)[0] || attempts.slice(-1)[0];
-  return { wrong: firstA, fixed: lib || deliv || (lastA && lastA !== firstA ? lastA : null) };
+  return { wrong: firstA };
 }
 
 const COLORS = { wrong: '#ff2d2d', fixed: '#16a34a' };
@@ -91,7 +88,7 @@ export async function work(qs) {
   const vinfo = runInfo ? (runInfo.videos.find((v) => v.video === (qs.video || '')) || { versions: [] }) : { versions: [] };
   const versions = [...vinfo.versions];
   const g = guessVersions(versions);
-  const state = { wrong: miss ? miss.wrong_path : (g.wrong ? g.wrong.path : ''), fixed: miss ? miss.fixed_path : (g.fixed ? g.fixed.path : '') };
+  const state = { wrong: miss ? miss.wrong_path : (g.wrong ? g.wrong.path : ''), fixed: miss ? miss.fixed_path : null };     // fixed: null = not chosen yet, '' = there is none, else its path
   const addVersion = (v) => { if (!versions.some((x) => x.path === v.path)) versions.push(v); };
   if (miss) { addVersion({ path: miss.wrong_path, label: miss.wrong_label || miss.wrong_path.split(/[\\/]/).slice(-2).join('/') }); if (miss.fixed_path) addVersion({ path: miss.fixed_path, label: miss.fixed_label || miss.fixed_path.split(/[\\/]/).slice(-2).join('/') }); }
   const ws = { shapes: [], tool: 'arrow', editing: null, draft: null, past: [], future: [], mirror: true };
@@ -106,9 +103,12 @@ export async function work(qs) {
   const label = (v) => v.label + (v.kind === 'fixed-lib' ? '  (client fix)' : '');
   const mkSel = (key) => {
     const opts = versions.map((v) => h('option', { value: v.path, selected: v.path === state[key] }, label(v)));
-    if (key === 'fixed') opts.unshift(h('option', { value: '', selected: !state.fixed }, 'No right version: keep this miss as an example'));
-    const s = h('select', { style: 'max-width:100%' }, opts);
-    s.addEventListener('change', () => { state[key] = s.value; setSources(); });
+    if (key === 'fixed') {
+      opts.unshift(h('option', { value: '__choose__', selected: state.fixed === null }, 'Choose the right version…'));
+      opts.push(h('option', { value: '', selected: state.fixed === '' }, 'No right version exists: save this miss as an example'));
+    }
+    const s = h('select', { style: 'max-width:100%', class: key === 'fixed' && state.fixed === null ? 'need' : '' }, opts);
+    s.addEventListener('change', () => { state[key] = key === 'fixed' && s.value === '__choose__' ? null : s.value; s.classList.toggle('need', key === 'fixed' && state.fixed === null); setSources(); });
     return s;
   };
   let wrongSel = mkSel('wrong'), fixedSel = mkSel('fixed');
@@ -138,6 +138,7 @@ export async function work(qs) {
 
   async function saveReport() {
     if (!state.wrong) { toast('Choose the wrong version', true); return null; }
+    if (state.fixed === null) { toast('Choose the right version first, or say that there is none', true); fixedSel.focus(); return null; }
     const body = { run: qs.run || '', video: qs.video || '', title: title.value, explanation: miss ? miss.explanation : details.value, kinds: kinds.get(), model: model.value, mode: mode.value, product: product.value,
       wrong_path: state.wrong, fixed_path: state.fixed, wrong_label: (versions.find((v) => v.path === state.wrong) || {}).label || '', fixed_label: (versions.find((v) => v.path === state.fixed) || {}).label || '' };
     const wasNoRight = !!miss && !miss.fixed_path, nSaved = miss ? miss.moments.length : 0;
@@ -260,7 +261,7 @@ export async function work(qs) {
         h('img', { src, style: 'max-width:100%;max-height:78vh;display:block;margin:10px auto 0;border-radius:10px;border:1px solid var(--line);cursor:zoom-in', onclick: () => lightbox(src) })));
       resetMarks([]); details.value = ''; correct.value = ''; leaveEdit();     // ready for the next moment; the title and kinds stay
       result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    } catch (_) { /* toasted */ } finally { saveBtn.disabled = false; saveBtn.textContent = ws.editing ? 'Update moment' : 'Mark this moment'; }
+    } catch (_) { /* toasted */ } finally { saveBtn.disabled = state.fixed === null; saveBtn.textContent = ws.editing ? 'Update moment' : 'Mark this moment'; }
   }
 
   // ---- the moments saved so far
@@ -286,11 +287,15 @@ export async function work(qs) {
     h('button', { class: 'btn sm', onclick: () => nudgeFixed(-1 / FPS) }, 'right ◀ 1f'), h('button', { class: 'btn sm', onclick: () => nudgeFixed(1 / FPS) }, 'right 1f ▶'),
     h('span', { class: 'muted small' }, 'use it when the right take is a little ahead or behind, so both show the same moment'));
   const correctLbl = h('label', { class: 'f' }, 'What the right version shows (optional)');
-  const noRightBox = h('div', { class: 'player', style: 'display:none;align-items:center;justify-content:center;text-align:center;min-height:220px' },
-    h('div', {}, h('b', {}, 'No right version'), h('div', { style: 'margin-top:6px;color:#aab;font-size:13px;max-width:320px' },
-      'This miss stays as an example of what goes wrong. Mark it on the left. If a right version exists later, pick it above and the saved moments are rebuilt with it.')));
-  syncRight = () => {       // what needs a right version is shown only when one is chosen
-    const on = !!state.fixed;
+  const noRightTitle = h('b', {}), noRightText = h('div', { style: 'margin-top:6px;color:#aab;font-size:13px;max-width:320px' });
+  const noRightBox = h('div', { class: 'player', style: 'display:none;align-items:center;justify-content:center;text-align:center;min-height:220px' }, h('div', {}, noRightTitle, noRightText));
+  const saveNote = h('span', { class: 'small', style: 'color:var(--accent);font-weight:600' });
+  syncRight = () => {       // what needs a right version is shown only when one is chosen; nothing is saved before the user has chosen (a version, or none)
+    const decided = state.fixed !== null, on = !!state.fixed;
+    noRightTitle.textContent = decided ? 'No right version' : 'Right version not chosen yet';
+    noRightText.textContent = decided ? 'This miss stays as an example of what goes wrong. Mark it on the left. If a right version exists later, pick it above and the saved moments are rebuilt with it.'
+      : 'Pick the right version above, or say that none exists. The moment cannot be saved before you choose.';
+    saveBtn.disabled = !decided; saveNote.textContent = decided ? '' : 'Choose the right version above first (or say there is none).';
     P.fixed.el.style.display = on ? '' : 'none'; noRightBox.style.display = on ? 'none' : 'flex';
     mirrorLbl.style.display = on ? 'inline-flex' : 'none'; offsetRow.style.display = on ? '' : 'none';
     correctLbl.style.display = on ? '' : 'none'; correct.style.display = on ? '' : 'none';
@@ -330,7 +335,7 @@ export async function work(qs) {
       h('label', { class: 'f' }, 'Kinds (for the QC search)'), kinds.el,
       h('details', { style: 'margin-top:8px' }, h('summary', { class: 'muted small', style: 'cursor:pointer' }, 'Model, mode, product'),
         h('div', { class: 'row', style: 'margin-top:6px' }, h('span', { class: 'muted small' }, 'model'), model, h('span', { class: 'muted small' }, 'mode'), mode, h('span', { class: 'muted small' }, 'product'), product)),
-      h('div', { class: 'row', style: 'margin-top:14px' }, saveBtn, cancelEdit,
+      h('div', { class: 'row', style: 'margin-top:14px' }, saveBtn, cancelEdit, saveNote,
         h('span', { class: 'muted small' }, 'One click: saves the report, cuts both frames at these seconds, and builds one image: wrong | right with your marks, a zoom, and this text.'))),
     result,
     h('div', { class: 'card' }, h('h2', {}, 'Saved moments'), moments));

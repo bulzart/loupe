@@ -68,6 +68,7 @@ mark { background: #ffe58a; color: #1b1b1b; border-radius: 3px; padding: 0 2px; 
 .vwrap .textin { background: #fff; color: #111; }
 .player .btn { background: #1b1d24; color: #ddd; border-color: #333743; }
 .btn.big { padding: 10px 26px; font-size: 15px; }
+select.need { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(229, 72, 77, .22); }
 .player .lab { font-size: 12px; font-weight: 700; letter-spacing: .04em; margin-bottom: 6px; } .lab.wrong { color: #ff8a8a; } .lab.right { color: #7be0a4; }
 .scrub { display: flex; gap: 8px; align-items: center; margin: 10px 0; } .scrub input[type=range] { flex: 1; }
 .overlay { position: fixed; inset: 0; background: rgba(8,9,12,.72); z-index: 50; display: flex; align-items: flex-start; justify-content: center; overflow: auto; padding: 18px; }
