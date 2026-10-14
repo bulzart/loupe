@@ -1,6 +1,7 @@
 """Loupe HTTP server (standard library).  Localhost only; admin = passphrase session cookie, agents = Bearer API keys with scopes."""
 from __future__ import annotations
 
+import hashlib
 import hmac
 import json
 import mimetypes
@@ -13,9 +14,9 @@ import traceback
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, unquote, urlparse
+from urllib.parse import parse_qs, quote, unquote, urlparse
 
-from . import core, flags, media, misses, qc, runs
+from . import compose, core, flags, media, misses, qc, runs
 
 WEB = core.HOME / "web"
 VERSION = "1.0"
@@ -385,6 +386,33 @@ def upload(h):
 
 
 # ======================================================================= flags
+def _product_thumb(path: Path) -> Path:
+    stt = path.stat()
+    key = hashlib.sha1(f"{path}|{stt.st_mtime_ns}|{stt.st_size}".encode("utf-8")).hexdigest()[:16]
+    out = core.DATA / "cache" / "product" / f"{key}.png"
+    if not out.is_file():
+        out.parent.mkdir(parents=True, exist_ok=True)
+        compose.load_product(path, 520).save(out, optimize=True)
+    return out
+
+
+@route("GET", "/api/product-sample", scope="runs:read")
+def product_sample(h):
+    run, video, wrong = h.q.get("run", ""), h.q.get("video", ""), h.q.get("wrong", "")
+    qs = "run=%s&video=%s&wrong=%s" % (quote(run), quote(video), quote(wrong))
+    h.send_json({"ok": True, "samples": [{"asset_id": p["asset_id"], "label": p["label"], "name": p["name"], "image_url": f"/api/product-sample/image?{qs}&i={i}"}
+                                          for i, p in enumerate(runs.product_samples(run, video, wrong))]})
+
+
+@route("GET", "/api/product-sample/image", scope="runs:read")
+def product_sample_image(h):
+    ps = runs.product_samples(h.q.get("run", ""), h.q.get("video", ""), h.q.get("wrong", ""))
+    i = int(h.q.get("i") or 0)
+    if not 0 <= i < len(ps):
+        raise LookupError("no such product sample")
+    h.serve_file(_product_thumb(ps[i]["path"]), "image/png", cache="private, max-age=300")
+
+
 @route("GET", "/api/flags", scope="flags:read")
 def flags_list(h):
     total, rows = flags.search(h.q.get("q", ""), h.q.get("status", ""), int(h.q.get("limit") or 500), int(h.q.get("offset") or 0))

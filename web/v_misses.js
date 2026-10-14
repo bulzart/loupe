@@ -136,10 +136,25 @@ export async function work(qs) {
   const mode = h('input', { value: miss ? miss.mode : (runInfo ? [runInfo.mode, runInfo.submode].filter(Boolean).join('-') : ''), size: 18 });
   const product = h('input', { value: miss ? miss.product : ((runInfo && runInfo.products && runInfo.products[0]) || ''), size: 22, placeholder: 'the product and its details: form, size, opening, natural posture' });
 
+  const useSample = h('input', { type: 'checkbox', checked: miss ? miss.product_sample !== false : true });
+  const sampleBox = h('div', { class: 'small', style: 'margin-top:12px' });
+  const loadSample = async () => {      // the product image(s) this video's request used, straight from the reference folder
+    if (!qs.run || !qs.video) { sampleBox.replaceChildren(); return; }
+    const wl = (versions.find((v) => v.path === state.wrong) || {}).label || state.wrong || '';
+    try {
+      const d = await api('GET', `/api/product-sample?run=${encodeURIComponent(qs.run)}&video=${encodeURIComponent(qs.video)}&wrong=${encodeURIComponent(wl)}`, undefined, true);
+      sampleBox.replaceChildren(...(d.samples.length ? [h('div', { class: 'row', style: 'gap:12px;align-items:center' },
+        ...d.samples.map((x) => h('img', { src: x.image_url, alt: x.label, style: 'height:92px;border-radius:6px;border:1px solid var(--line);background:#cdd0d6' })),
+        h('div', {}, h('label', { class: 'small' }, useSample, ' Show the product sample in the saved image (right half of the bottom band)'),
+          h('div', { class: 'muted small' }, 'Used in this video, taken from the reference folder: ' + d.samples.map((x) => `${x.label} (${x.asset_id}, ${x.name})`).join(' · '))))]
+        : [h('span', { class: 'muted' }, 'No product sample was found for this video in its run, so the description takes the full width of the bottom band.')]));
+    } catch (_) { sampleBox.replaceChildren(); }
+  };
+
   async function saveReport() {
     if (!state.wrong) { toast('Choose the wrong version', true); return null; }
     if (state.fixed === null) { toast('Choose the right version first, or say that there is none', true); fixedSel.focus(); return null; }
-    const body = { run: qs.run || '', video: qs.video || '', title: title.value, explanation: miss ? miss.explanation : details.value, kinds: kinds.get(), model: model.value, mode: mode.value, product: product.value,
+    const body = { run: qs.run || '', video: qs.video || '', title: title.value, explanation: miss ? miss.explanation : details.value, kinds: kinds.get(), model: model.value, mode: mode.value, product: product.value, product_sample: useSample.checked,
       wrong_path: state.wrong, fixed_path: state.fixed, wrong_label: (versions.find((v) => v.path === state.wrong) || {}).label || '', fixed_label: (versions.find((v) => v.path === state.fixed) || {}).label || '' };
     const wasNoRight = !!miss && !miss.fixed_path, nSaved = miss ? miss.moments.length : 0;
     miss = miss ? (await api('PATCH', '/api/misses/' + miss.id, body)).miss : (await api('POST', '/api/misses', body)).miss;
@@ -221,7 +236,7 @@ export async function work(qs) {
   const tl = h('span', { class: 'mono' }, '0:00.00');
   const offset = h('input', { type: 'number', step: 1 / FPS, value: 0, style: 'width:84px' });
   let syncRight = () => {};
-  const setSources = () => { if (state.wrong) vW.src = videoUrl(state.wrong); if (state.fixed) vF.src = videoUrl(state.fixed); else vF.removeAttribute('src'); syncRight(); };
+  const setSources = () => { if (state.wrong) vW.src = videoUrl(state.wrong); if (state.fixed) vF.src = videoUrl(state.fixed); else vF.removeAttribute('src'); syncRight(); loadSample(); };
   const showTime = () => { tl.textContent = fmtT(vW.currentTime) + '  ·  right ' + fmtT(vF.currentTime); };
   const seek = (t) => { t = Math.max(0, +t || 0); vW.currentTime = t; vF.currentTime = Math.max(0, t + (+offset.value || 0)); range.value = t; tl.textContent = fmtT(t) + '  ·  right ' + fmtT(Math.max(0, t + (+offset.value || 0))); };
   vW.addEventListener('timeupdate', () => { if (!vW.paused) { range.value = vW.currentTime; showTime(); } });
@@ -331,7 +346,7 @@ export async function work(qs) {
     h('div', { class: 'card' },
       h('label', { class: 'f', style: 'margin-top:0' }, 'What was the miss?'), title,
       h('label', { class: 'f' }, 'Explain it (burned into the bottom centre of the image)'), details,
-      correctLbl, correct,
+      correctLbl, correct, sampleBox,
       h('label', { class: 'f' }, 'Kinds (for the QC search)'), kinds.el,
       h('details', { style: 'margin-top:8px' }, h('summary', { class: 'muted small', style: 'cursor:pointer' }, 'Model, mode, product'),
         h('div', { class: 'row', style: 'margin-top:6px' }, h('span', { class: 'muted small' }, 'model'), model, h('span', { class: 'muted small' }, 'mode'), mode, h('span', { class: 'muted small' }, 'product'), product)),

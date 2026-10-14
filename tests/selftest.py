@@ -41,10 +41,18 @@ def build_fake_atp():
     (run / "30-assets" / "stage" / "pack.png").write_bytes(b"\x89PNG\r\n\x1a\n" + b"0" * 64)
     (run / "30-assets" / "uploads.json").write_text(json.dumps({"pack.png": {"media_id": "m1", "content_type": "image/png"}}))
     (run / "50-requests").mkdir()
+    ref = TMP / "reference-folder"
+    ref.mkdir()
+    from PIL import Image as _I
+    _I.new("RGBA", (400, 1000), (0, 0, 255, 255)).save(ref / "product-front.png")
+    (run / "30-assets" / "project").mkdir(parents=True)
+    (run / "30-assets" / "project" / "asset-inventory.json").write_text(json.dumps({"items": [{"id": "A14", "path": str(ref / "product-front.png"), "rel": "product-front.png"},
+                                                                                           {"id": "A28", "path": str(ref / "person.png"), "rel": "person.png"}]}))
     req = {"params": {"model": "wan3_0_prime", "prompt": "Show the can. Holding the glass of red wine near a celebrity banner. Keep the camera still.",
-                      "medias": [{"role": "image_references", "value": "m1"}]}, "medias_meaning": {"Image 1": "pack.png"}}
+                      "medias": [{"role": "image_references", "value": "m1"}]}, "medias_meaning": {"Image 1": "pack.png", "Image 2": "Test can, sealed: A14", "Image 3": "CH-M01 identity: A28 cropped above the collar"}}
     (run / "50-requests" / "video-03-request.json").write_text(json.dumps(req))
     (run / "state.json").write_text(json.dumps({"run_id": run.name, "mode": "analyze", "analyze_submode": "recreate", "model": "wan3_0_prime", "stage": "production",
+        "assets_paths": [str(ref)], "assets": {"products": {"P1": {"canonical": "A14", "files": ["A14"]}, "P2": {"canonical": "A99", "unused": True}}},
         "videos": [{"video": "03", "status": "done", "qc": "regenerated once"}],
         "submissions": [{"video": "03", "lane": "03", "attempt": 1, "fingerprint": "fp1", "status": "failed", "flagged": True, "job_id": "job-111",
                          "request_file": str(run / "50-requests" / "video-03-request.json"),
@@ -195,11 +203,14 @@ def main(with_keeper=False):
     # the explanation is burned in the bottom centre, on a dark band
     W_, H_ = im.size
     rgb = im.convert("RGB")
-    band = rgb.crop((0, H_ - 150, W_, H_))
+    band = rgb.crop((0, H_ - 150, W_ // 2 - 10, H_))       # the left half: the explanation shares the band with the product sample
     light = [(x, y) for y in range(0, band.height, 2) for x in range(0, band.width, 2) if sum(band.getpixel((x, y))) > 600]
     check("the composite ends in a dark caption band", sum(rgb.getpixel((5, H_ - 3))) < 120, str(rgb.getpixel((5, H_ - 3))))
     mean_x = sum(x for x, _ in light) / max(1, len(light))
-    check("the explanation is burned in and centred", len(light) > 80 and abs(mean_x - W_ / 2) < W_ * 0.12, f"{len(light)} light px, mean x {mean_x:.0f} of {W_}")
+    check("the explanation is burned in the left half of the band and centred there", len(light) > 80 and abs(mean_x - W_ / 4) < W_ * 0.1, f"{len(light)} light px, mean x {mean_x:.0f} of {W_}")
+    pr = rgb.getpixel((W_ * 3 // 4, H_ - 150))
+    check("the product sample the video used fills the right half of the band", pr[2] > 200 and pr[0] < 80 and pr[1] < 80, str(pr))
+    check("the right half sits on a quiet ground", rgb.getpixel((W_ // 2 + 40, H_ - 280)) == (206, 209, 215) or rgb.getpixel((W_ // 2 + 40, H_ - 40)) == (206, 209, 215), str(rgb.getpixel((W_ // 2 + 40, H_ - 280))))
     # marks on the fixed frame too (green), kept per side
     shapes2 = [{"type": "circle", "side": "wrong", "cx": 0.4, "cy": 0.5, "rx": 0.1, "ry": 0.06}, {"type": "arrow", "side": "fixed", "x1": 0.2, "y1": 0.3, "x2": 0.5, "y2": 0.5}]
     s, d, _ = req("POST", f"/api/misses/{mid}/moments", {"t_wrong": 2.0, "t_fixed": 2.0, "shapes": shapes2, "details": "Second moment: the pack changes size.", "correct_note": ""})
@@ -209,6 +220,19 @@ def main(with_keeper=False):
     tx, ty = int(.5 * imf.width), int(.5 * imf.height)
     check("the fixed frame carries its own green mark", any(g > 140 and r < 70 and b < 110 for r, g, b in (imf.getpixel((tx + dx, ty + dy)) for dx in range(-40, 1, 4) for dy in range(-40, 1, 4))))
     s, d, _ = req("DELETE", f"/api/moments/{mo2['moment_id']}")
+    s, d, _ = req("GET", "/api/product-sample?run=20261001-000000-07&video=03&wrong=" + quote("a1 · raw.mp4"))
+    check("the product the video used is found from its request, the registry and the inventory", s == 200 and [x["asset_id"] for x in d["samples"]] == ["A14"] and "Test can" in d["samples"][0]["label"], str(d)[:300])
+    s, b, h = req("GET", d["samples"][0]["image_url"], raw=True)
+    check("its preview is served as a PNG", s == 200 and b[:4] == b"\x89PNG")
+    s, d, _ = req("GET", "/api/product-sample?run=20261001-000000-07&video=09&wrong=a1")
+    check("a video whose request names no product gets no sample", s == 200 and d["samples"] == [])
+    s, d, _ = req("PATCH", "/api/misses/1", {"product_sample": False})
+    im_off = Image.open(core.DATA / "samples" / "1" / "composite.png").convert("RGB")
+    light_off = [(x, y) for y in range(0, 150, 2) for x in range(0, im_off.width, 2) if sum(im_off.getpixel((x, im_off.height - 150 + y))) > 600]
+    mean_off = sum(x for x, _ in light_off) / max(1, len(light_off))
+    check("with the sample switched off the description takes the full width again", s == 200 and d["miss"]["product_sample"] is False and abs(mean_off - im_off.width / 2) < im_off.width * 0.12 and im_off.getpixel((im_off.width * 3 // 4, im_off.height - 150))[2] < 100, f"mean x {mean_off:.0f} of {im_off.width}")
+    s, d, _ = req("PATCH", "/api/misses/1", {"product_sample": True})
+    check("and back on", s == 200 and d["miss"]["product_sample"] is True)
     s, b, h = req("GET", "/api/qc/samples/S1/image", key=kq, raw=True)
     check("QC reads the composite with its key", s == 200 and b[:4] == b"\x89PNG")
     s, d, _ = req("GET", "/api/qc/samples?model=wan3_0&kinds=continuity", key=kq)

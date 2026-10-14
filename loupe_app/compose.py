@@ -190,6 +190,16 @@ def _fit(im: Image.Image, w: int, h: int, bg=(18, 18, 22)) -> Image.Image:
     return canvas
 
 
+PRODUCT_BG = (206, 209, 215)
+
+
+def load_product(path, max_side: int = 1400) -> Image.Image:
+    """A product photo from the reference folder on a quiet neutral ground (transparent backgrounds become the ground), at a manageable size."""
+    im = Image.open(path).convert("RGBA")
+    im.thumbnail((max_side, max_side), Image.LANCZOS)
+    return Image.alpha_composite(Image.new("RGBA", im.size, PRODUCT_BG + (255,)), im).convert("RGB")
+
+
 def _fmt_t(t) -> str:
     t = max(0.0, float(t or 0))
     m = int(t // 60)
@@ -212,7 +222,7 @@ def _placeholder(w: int, h: int, lines: list[str]) -> Image.Image:
 
 
 def build(wrong: Image.Image, fixed: Image.Image | None, shapes: list[dict], meta: dict, details: str, correct_note: str,
-          include_zoom: bool = True):
+          include_zoom: bool = True, product_samples: list | None = None):
     """(composite, zoom_or_None, annotated_wrong, annotated_right_or_None).
 
     One image: the miss (WRONG) on the left with the admin's red marks, the same moment in the right version (RIGHT) on the right with the same marks in
@@ -275,7 +285,9 @@ def build(wrong: Image.Image, fixed: Image.Image | None, shapes: list[dict], met
 
     # the burned caption (bottom centre): title, what is wrong here, what the right version shows
     scratch = ImageDraw.Draw(Image.new("RGB", (10, 10)))
-    cap_w = W - M * 4
+    ps = list(product_samples or [])       # [(image, label)]: the bottom band is then split, the description on the left half, the product sample on the right
+    colw = W // 2
+    cap_w = (colw - M * 3) if ps else (W - M * 4)
     f_title, f_txt, f_cap = font(30, True), font(25), font(23)
     title = (meta.get("title") or "").strip()
     if title and details.strip().lower().startswith(title.lower().rstrip(". ")):
@@ -287,7 +299,8 @@ def build(wrong: Image.Image, fixed: Image.Image | None, shapes: list[dict], met
         cap.append((f_txt, (255, 214, 214), _wrap(scratch, details.strip(), f_txt, cap_w)))
     if correct_note.strip() and has_right:
         cap.append((f_cap, (150, 235, 185), _wrap(scratch, "Right: " + correct_note.strip(), f_cap, cap_w)))
-    cap_h = 36 + sum(len(ls) * (f.size + 9) + 12 for f, _c, ls in cap) if cap else 0
+    text_h = 36 + sum(len(ls) * (f.size + 9) + 12 for f, _c, ls in cap) if cap else 0
+    cap_h = max(text_h, 300) if ps else text_h        # the product needs some height to be recognised
 
     head_h = 74
     H = head_h + max(ph, ph_r) + M + zoom_h + cap_h
@@ -310,12 +323,29 @@ def build(wrong: Image.Image, fixed: Image.Image | None, shapes: list[dict], met
         img.paste(zoom, (0, y))
         d.text((M + 6, y + 4), "zoom: marked place", font=font(15, True), fill=(255, 255, 255))
         y += zoom_h
-    if cap:
+    if cap or ps:
         d.rectangle([0, y, W, H], fill=(18, 18, 22))
-        y += 24
+        band_top, mid = y, (colw if ps else W)
+        y += 24 + max(0, (cap_h - text_h) // 2)
         for f, col, lines in cap:
             for ln in lines:
-                d.text(((W - d.textlength(ln, font=f)) / 2, y), ln, font=f, fill=col)
+                d.text(((mid - d.textlength(ln, font=f)) / 2, y), ln, font=f, fill=col)
                 y += f.size + 9
             y += 12
+        if ps:
+            d.line([(colw, band_top + 16), (colw, H - 16)], fill=(58, 60, 70), width=1)
+            x0, y0, x1, y1 = colw + M, band_top + 16, W - M, H - 16
+            d.rectangle([x0, y0, x1, y1], fill=PRODUCT_BG)
+            lab_h = 30
+            iw_all, ih_all = x1 - x0 - 24, y1 - y0 - 24 - lab_h
+            cell = iw_all // len(ps)
+            for i, (pim, _lab) in enumerate(ps):
+                sc = min(cell / pim.width, ih_all / pim.height)
+                nw, nh = max(1, round(pim.width * sc)), max(1, round(pim.height * sc))
+                img.paste(pim.resize((nw, nh), Image.LANCZOS), (x0 + 12 + i * cell + (cell - nw) // 2, y0 + 12 + (ih_all - nh) // 2))
+            lab = "PRODUCT SAMPLE · " + " / ".join(l for _i, l in ps)
+            fl = font(15, True)
+            while d.textlength(lab, font=fl) > x1 - x0 - 24 and len(lab) > 24:
+                lab = lab[:-4].rstrip() + "…"
+            d.text((x0 + 12, y1 - lab_h + 6), lab, font=fl, fill=(40, 42, 50))
     return img, zoom, annotated, annotated_f

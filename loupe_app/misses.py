@@ -7,7 +7,7 @@ from pathlib import Path
 
 from PIL import Image
 
-from . import compose, core, media
+from . import compose, core, media, runs
 
 KINDS = ["counts", "openings-use", "preparation", "persistent-state", "permanence", "liquids", "scale-size", "body-mechanics", "label-orientation",
          "hand-off", "environment", "timing", "stylised", "solidity", "blend-paste", "posture-place", "identity", "text-on-screen", "audio-sync",
@@ -40,11 +40,11 @@ def create(data: dict, actor: str) -> dict:
     con = core.db()
     try:
         cur = con.execute("""INSERT INTO misses(created,updated,run,video,title,explanation,kinds,model,mode,product,status,wrong_path,wrong_label,
-                             fixed_path,fixed_label) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                             fixed_path,fixed_label,sample_on) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                           (core.now(), core.now(), str(data.get("run") or ""), core.nn(data.get("video")), str(data["title"]).strip()[:200],
                            str(data.get("explanation") or "").strip(), _kinds(data.get("kinds")), str(data.get("model") or ""),
                            str(data.get("mode") or ""), str(data.get("product") or ""), "active", wrong, str(data.get("wrong_label") or ""),
-                           fixed, str(data.get("fixed_label") or "")))
+                           fixed, str(data.get("fixed_label") or ""), 0 if data.get("product_sample") is False else 1))
         con.commit()
         mid = cur.lastrowid
     finally:
@@ -56,6 +56,7 @@ def create(data: dict, actor: str) -> dict:
 def _miss_row(r) -> dict:
     d = dict(r)
     d["kinds"] = [k for k in (d.get("kinds") or "").split(",") if k]
+    d["product_sample"] = d.get("sample_on") != 0       # the product sample is shown in the saved image unless the admin turned it off
     return d
 
 
@@ -104,6 +105,8 @@ def update(mid: int, patch: dict, actor: str) -> dict | None:
             cols[k] = str(patch[k] or "")
     if "video" in patch:
         cols["video"] = core.nn(patch["video"])
+    if "product_sample" in patch:
+        cols["sample_on"] = 0 if patch["product_sample"] in (False, 0, "0", "false") else 1
     if "kinds" in patch:
         cols["kinds"] = _kinds(patch["kinds"])
     for k in ("wrong_path", "fixed_path"):
@@ -121,7 +124,7 @@ def update(mid: int, patch: dict, actor: str) -> dict | None:
         finally:
             con.close()
         core.audit(actor, "miss.update", f"miss {mid}", ",".join(cols))
-        if any(k in cols for k in ("title", "explanation", "wrong_path", "fixed_path", "model", "run", "video")):
+        if any(k in cols for k in ("title", "explanation", "wrong_path", "fixed_path", "model", "run", "video", "sample_on", "wrong_label")):
             for m in cur["moments"]:       # the sample image carries the title, the caption and the source of both frames
                 regenerate(m["moment_id"])
     return get(mid)
@@ -229,7 +232,16 @@ def regenerate(mid: int):
     shapes = compose.clean_shapes(json.loads(mr["shapes"] or "[]"))
     meta = {"title": miss["title"], "model": miss["model"], "run": miss["run"], "video": miss["video"], "t_wrong": mr["t_wrong"],
             "t_fixed": mr["t_fixed"], "sample": f"S{mid}"}
-    comp, zoom, ann, ann_f = compose.build(wrong, fixed, shapes, meta, mr["details"] or miss["explanation"] or "", mr["correct_note"] or "")
+    samples = []
+    if miss["sample_on"] != 0:
+        try:       # the product image(s) the video used, straight from the client's reference folder; never a reason to fail the save
+            for ps in runs.product_samples(miss["run"], miss["video"], miss["wrong_label"] or miss["wrong_path"]):
+                samples.append((compose.load_product(ps["path"]), ps["label"]))
+                meta.setdefault("product_samples", []).append({"asset": ps["asset_id"], "label": ps["label"], "file": ps["name"]})
+        except Exception as e:  # noqa: BLE001
+            core.audit("system", "product-sample.failed", f"miss {miss['id']}", str(e)[:300])
+            samples = []
+    comp, zoom, ann, ann_f = compose.build(wrong, fixed, shapes, meta, mr["details"] or miss["explanation"] or "", mr["correct_note"] or "", product_samples=samples)
     d = sample_dir(mid)
     d.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(wpng, d / "wrong.png")

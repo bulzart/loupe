@@ -145,6 +145,72 @@ def _products(d: Path) -> list[str]:
     return list(dict.fromkeys(out))[:12]
 
 
+# ------------------------------------------------------------------ the product sample a video used (read from the run's own records, never guessed)
+A_ID = re.compile(r"\bA\d{2,4}\b")
+NOT_PRODUCT = re.compile(r"identity|guide|prepared|source|start frame|hand-off|portrait|face", re.I)
+
+
+def _product_ids(st: dict) -> set:
+    """The asset ids the run's registry lists as products (an entry marked unused is not one)."""
+    a = st.get("assets") if isinstance(st.get("assets"), dict) else {}
+    ids = set()
+    for v in ((a.get("products") or {}) if isinstance(a.get("products"), dict) else {}).values():
+        if isinstance(v, dict) and not v.get("unused"):
+            if isinstance(v.get("canonical"), str):
+                ids.add(v["canonical"])
+            for k in ("files", "other_files"):
+                ids.update(x for x in (v.get(k) or []) if isinstance(x, str))
+    return ids
+
+
+def _request_files(rd: Path, video: str, attempt: int) -> list[Path]:
+    files = sorted((rd / "50-requests").glob(f"video-{core.nn(video)}*request.json"))
+    if attempt:
+        want = [f for f in files if f"-a{attempt}-" in f.name] if attempt > 1 else [f for f in files if not re.search(r"-a\d+-", f.name)]
+        files = want + [f for f in files if f not in want]
+    return files
+
+
+def product_samples(run: str, video: str, wrong: str = "") -> list[dict]:
+    """The product image(s) a video's request used, as files in the client's own reference folder.  The request names each image input with
+    its asset id ("<what it is>: A14"); the run's registry says which ids are products; the run's asset inventory maps an id to the original file.
+    The attempt of the wrong version (a1, a2 ...) picks the request.  Nothing found: an empty list (the report then has no product sample)."""
+    rd = run_dir(run)
+    if not rd or not video:
+        return []
+    st = _json(rd / "state.json") or {}
+    ids = _product_ids(st)
+    inv = {it["id"]: it for it in ((_json(rd / "30-assets" / "project" / "asset-inventory.json") or {}).get("items") or []) if isinstance(it, dict) and it.get("id")}
+    roots = [Path(p) for p in (st.get("assets_paths") or []) if isinstance(p, str)]
+    m = re.search(r"\ba(\d+)\b", str(wrong or "").replace("\\", " ").replace("/", " "), re.I)
+    attempt = int(m.group(1)) if m else 0
+    for rf in _request_files(rd, video, attempt):
+        req = _json(rf) or {}
+        meaning = next((req[k] for k in ("medias_meaning", "media_meaning") if isinstance(req.get(k), dict)), {})
+        out, seen = [], set()
+        for label, text in meaning.items():
+            if not str(label).lower().startswith("image"):
+                continue
+            text = str(text)
+            found = A_ID.findall(text)
+            aid = next((a for a in found if a in ids), None)
+            if aid is None and not ids and found and not NOT_PRODUCT.search(text):      # an older run with no registry: the image that is not a person, a guide or a source
+                aid = found[-1]
+            if not aid or aid in seen:
+                continue
+            it = inv.get(aid) or {}
+            path = Path(it["path"]) if it.get("path") else None
+            if not (path and path.is_file()) and it.get("rel"):
+                path = next((r / it["rel"] for r in roots if (r / it["rel"]).is_file()), None)
+            if not (path and path.is_file()):
+                continue
+            seen.add(aid)
+            out.append({"asset_id": aid, "label": re.split(r":\s*A\d", text)[0].strip()[:90] or aid, "path": path, "name": path.name, "request": rf.name})
+        if out:
+            return out[:2]
+    return []
+
+
 # ------------------------------------------------------------------ usage index (which input went into which request, and what happened)
 ROLE_LABEL = {"image_references": "Image", "video_references": "Video", "audio_references": "Audio"}
 

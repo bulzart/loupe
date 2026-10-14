@@ -60,7 +60,7 @@ CREATE INDEX IF NOT EXISTS usage_name ON usage(name);
 CREATE TABLE IF NOT EXISTS filehash(path TEXT PRIMARY KEY, size INTEGER, mtime REAL, sha1 TEXT);
 CREATE TABLE IF NOT EXISTS misses(id INTEGER PRIMARY KEY AUTOINCREMENT, created TEXT, updated TEXT, run TEXT, video TEXT,
   title TEXT, explanation TEXT, kinds TEXT, model TEXT, mode TEXT, product TEXT, status TEXT DEFAULT 'active',
-  wrong_path TEXT, wrong_label TEXT, fixed_path TEXT, fixed_label TEXT);
+  wrong_path TEXT, wrong_label TEXT, fixed_path TEXT, fixed_label TEXT, sample_on INTEGER DEFAULT 1);
 CREATE TABLE IF NOT EXISTS moments(id INTEGER PRIMARY KEY AUTOINCREMENT, miss_id INTEGER, created TEXT, updated TEXT,
   t_wrong REAL, t_fixed REAL, details TEXT, correct_note TEXT, shapes TEXT, kinds TEXT, status TEXT DEFAULT 'active',
   w INTEGER, h INTEGER);
@@ -86,6 +86,8 @@ def db() -> sqlite3.Connection:
             if not _inited:
                 con.execute("PRAGMA journal_mode=WAL")
                 con.executescript(SCHEMA)
+                if "sample_on" not in [r[1] for r in con.execute("PRAGMA table_info(misses)")]:      # a database made before the product sample existed
+                    con.execute("ALTER TABLE misses ADD COLUMN sample_on INTEGER DEFAULT 1")
                 if "purpose" not in [r[1] for r in con.execute("PRAGMA table_info(consults)")]:      # a database made before planning hints existed
                     con.execute("ALTER TABLE consults ADD COLUMN purpose TEXT DEFAULT 'qc'")
                 con.commit()
