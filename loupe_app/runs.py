@@ -165,7 +165,7 @@ def _expand(spec) -> list[str]:
     return out
 
 
-def _products(st: dict) -> dict:
+def _registry_products(st: dict) -> dict:
     """The run's product registry: key -> {name, canonical, ids}; an entry marked unused is left out."""
     a = st.get("assets") if isinstance(st.get("assets"), dict) else {}
     res = {}
@@ -197,7 +197,7 @@ def product_samples(run: str, video: str, wrong: str = "") -> list[dict]:
     if not rd or not video:
         return []
     st = _json(rd / "state.json") or {}
-    prods = _products(st)
+    prods = _registry_products(st)
     id_owner = {i: k for k, v in prods.items() for i in v["ids"]}
     inv = {it["id"]: it for it in ((_json(rd / "30-assets" / "project" / "asset-inventory.json") or {}).get("items") or []) if isinstance(it, dict) and it.get("id")}
     roots = [Path(x) for x in (st.get("assets_paths") or []) if isinstance(x, str)]
