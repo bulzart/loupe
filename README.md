@@ -9,7 +9,9 @@ The web app of the `/analyze-then-pick` pipeline. It does three things:
    draw an arrow, circle, box or note straight on either of them (red on the wrong one, green on the right one; the same mark
    appears on both with the same place and size, and Undo / Redo / Ctrl+Z / Ctrl+Y work). Type what the miss was,
    press **Mark this moment** (it saves at once), and Loupe saves one image: the miss on the left, the correct frame of the same moment on the right, both with
-   your marks, a zoom of the marked place, and your explanation burned in at the bottom centre.
+   your marks, a zoom of the marked place, and your explanation burned in at the bottom centre. A miss does not need a right version:
+   pick "No right version" and it stays as a miss example (the right panel says so, only the miss is marked). Attach a right version
+   later and the saved moments are rebuilt with it (open Edit on each to line the right video up).
 3. **QC samples.** The QC phase of a run (and only that phase) reads those images. A separate read-only Claude session, the *keeper*,
    holds the whole library and answers QC agents' questions about it; it never edits anything.
 

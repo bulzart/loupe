@@ -275,7 +275,7 @@ def consult(key_name: str, ctx: dict, question: str, purpose: str = "qc") -> dic
                         s = ids[r["id"]]
                         rel.append({"id": s["id"], "why": str(r.get("why", ""))[:400], "check": str(r.get("check", ""))[:400],
                                     "wrong_pattern": str(r.get("wrong_pattern", ""))[:200], "composite_path": s["composite_path"], "image_url": s["image_url"],
-                                    "details": s["details"], "correct_note": s["correct_note"]})
+                                    "details": s["details"], "correct_note": s["correct_note"], "has_right": s.get("has_right", True)})
                 res = {"mode": "keeper", "purpose": "qc", "relevant": rel, "advice": str((parsed or {}).get("advice", ""))[:600] if isinstance(parsed, dict) else str(d.get("result", ""))[:600],
                        "not_covered": str((parsed or {}).get("not_covered", ""))[:400] if isinstance(parsed, dict) else "", "library_size": len(ids)}
         except StopIteration:
