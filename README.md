@@ -6,8 +6,9 @@ The web app of the `/analyze-then-pick` pipeline. It does three things:
    gather (the request, each input with its file, thumbnail and file facts, the same file in earlier runs, the raw answer the
    hook saved). It replaces the old `caught_flags.html` page.
 2. **Generation misses.** One page, no second step: you pick a run and a video, the wrong and the right video play side by side, and you
-   draw an arrow, circle, box or note straight on either of them (red on the wrong one, green on the right one; the same mark
-   appears on both with the same place and size, and Undo / Redo / Ctrl+Z / Ctrl+Y work). Type what the miss was,
+   draw an arrow, circle, box or note straight on either of them (red on the wrong one, green on the right one). You mark each side
+   yourself and pick each side's own frame (the right video has its own slider); nothing is copied or added automatically (a tick box can
+   copy each new mark to the other video if you want that). Undo / Redo / Ctrl+Z / Ctrl+Y work. Type what the miss was,
    press **Mark this moment** (it saves at once), and Loupe saves one image: the miss on the left, the correct frame of the same moment on the right, both with
    your marks, a zoom of the marked place, and your explanation burned in at the bottom. The bottom band is split in half: the explanation on
    the left and, on the right, the **product sample the video used**, found automatically from the run (its request, product registry and asset

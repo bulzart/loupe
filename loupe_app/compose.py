@@ -156,16 +156,6 @@ def to_px(box, W: int, H: int):
     return int(box[0] * W), int(box[1] * H), int(box[2] * W), int(box[3] * H)
 
 
-def _dashed_rect(d: ImageDraw.ImageDraw, box, color, width, dash=18):
-    x0, y0, x1, y1 = box
-    for (ax, ay, bx, by) in ((x0, y0, x1, y0), (x1, y0, x1, y1), (x1, y1, x0, y1), (x0, y1, x0, y0)):
-        L = math.hypot(bx - ax, by - ay)
-        n = max(1, int(L // dash))
-        for i in range(0, n, 2):
-            a, b = i / n, min(1.0, (i + 1) / n)
-            d.line([(ax + (bx - ax) * a, ay + (by - ay) * a), (ax + (bx - ax) * b, ay + (by - ay) * b)], fill=color, width=width)
-
-
 def _wrap(d, text: str, f, width: int) -> list[str]:
     lines = []
     for para in str(text).split("\n"):
@@ -227,7 +217,7 @@ def build(wrong: Image.Image, fixed: Image.Image | None, shapes: list[dict], met
 
     One image: the miss (WRONG) on the left with the admin's red marks, the same moment in the right version (RIGHT) on the right with the same marks in
     green, a zoom of the marked place under them, and the explanation burned in the bottom centre (title, what is wrong, what the right version shows).
-    A side with no marks of its own gets a dashed box at the place that was marked on the other side, so there is always a place to compare.
+    The marks are exactly what the admin drew on each side: nothing is copied or added; each zoom is cut around its own side's marks (the other side's when it has none).
     fixed=None: the miss has no right version (it stays as a miss example); the right panel is a card that says so, and only the miss is marked and zoomed.
     The marks are drawn after each picture has its final size, thin and at the same weight in the panels and in the zoom."""
     wrong = wrong.convert("RGB")
@@ -255,10 +245,6 @@ def build(wrong: Image.Image, fixed: Image.Image | None, shapes: list[dict], met
     else:
         rh = ph
         right = _placeholder(pw, ph, ["No right version", "This sample shows the miss only. Nothing in the video was corrected, so there is no right frame to compare with."])
-    if has_right and nbox and not sw:    # only the right frame was marked: the same place, dashed, on the miss
-        _dashed_rect(ImageDraw.Draw(left), to_px(nbox, pw, ph), RED, max(2, round(lwp)))
-    if has_right and nbox and not sf:    # only the miss was marked: the same place, dashed green, on the right frame
-        _dashed_rect(ImageDraw.Draw(right), to_px(nbox, pw, rh), GREEN, max(2, round(lwp)))
     ph_r = right.height
     W = M * 3 + pw * 2
 
@@ -267,7 +253,7 @@ def build(wrong: Image.Image, fixed: Image.Image | None, shapes: list[dict], met
         zh, zw = 520, pw
 
         def zoomed(src: Image.Image, marks: list[dict], color):
-            bx0, by0, bx1, by1 = to_px(nbox, src.width, src.height)
+            bx0, by0, bx1, by1 = to_px(region_norm(marks) or nbox, src.width, src.height)       # around this side's own marks, else around the other side's
             cw_, ch_ = max(1, bx1 - bx0), max(1, by1 - by0)
             sc = min(zw / cw_, zh / ch_)
             nw, nh = max(1, round(cw_ * sc)), max(1, round(ch_ * sc))

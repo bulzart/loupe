@@ -218,6 +218,9 @@ def main(with_keeper=False):
     check("marks keep the side they were drawn on", s == 200 and [x["side"] for x in mo2["shapes"]] == ["wrong", "fixed"], str(d)[:200])
     imf = Image.open(core.DATA / "samples" / str(mo2["moment_id"]) / "annotated_fixed.png").convert("RGB")
     tx, ty = int(.5 * imf.width), int(.5 * imf.height)
+    from PIL import ImageChops
+    S1 = core.DATA / "samples" / "1"
+    check("nothing is drawn on the right frame the admin did not mark", ImageChops.difference(Image.open(S1 / "annotated_fixed.png").convert("RGB"), Image.open(S1 / "fixed.png").convert("RGB")).getbbox() is None)
     check("the fixed frame carries its own green mark", any(g > 140 and r < 70 and b < 110 for r, g, b in (imf.getpixel((tx + dx, ty + dy)) for dx in range(-40, 1, 4) for dy in range(-40, 1, 4))))
     s, d, _ = req("DELETE", f"/api/moments/{mo2['moment_id']}")
     s, d, _ = req("GET", "/api/product-sample?run=20261001-000000-07&video=03&wrong=" + quote("a1 · raw.mp4"))

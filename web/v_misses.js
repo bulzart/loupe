@@ -53,20 +53,6 @@ function guessVersions(versions) {       // only the wrong version is guessed (t
 
 const COLORS = { wrong: '#ff2d2d', fixed: '#16a34a' };
 
-function regionNorm(shapes, pad = 0.07) {        // the same box the server computes: where the marks are, padded, never tiny
-  const xs = [], ys = [];
-  for (const s of shapes) {
-    if (s.type === 'arrow' || s.type === 'rect') { xs.push(s.x1, s.x2); ys.push(s.y1, s.y2); }
-    else if (s.type === 'circle') { xs.push(s.cx - Math.abs(s.rx), s.cx + Math.abs(s.rx)); ys.push(s.cy - Math.abs(s.ry), s.cy + Math.abs(s.ry)); }
-    else if (s.type === 'text') { xs.push(s.x, s.x + 0.25); ys.push(s.y, s.y + 0.04); }
-  }
-  if (!xs.length) return null;
-  let x0 = Math.max(0, Math.min(...xs) - pad), x1 = Math.min(1, Math.max(...xs) + pad), y0 = Math.max(0, Math.min(...ys) - pad), y1 = Math.min(1, Math.max(...ys) + pad);
-  if (x1 - x0 < 0.38) { const c = (x0 + x1) / 2; x0 = Math.max(0, c - 0.19); x1 = Math.min(1, c + 0.19); }
-  if (y1 - y0 < 0.24) { const c = (y0 + y1) / 2; y0 = Math.max(0, c - 0.12); y1 = Math.min(1, c + 0.12); }
-  return [x0, y0, x1, y1];
-}
-
 function drawShape(c, s, W, H, lw, col) {
   const stroke = (path) => { c.lineJoin = 'round'; c.lineCap = 'round'; c.strokeStyle = '#fff'; c.lineWidth = lw + 2; path(); c.stroke(); c.strokeStyle = col; c.lineWidth = lw; path(); c.stroke(); };
   if (s.type === 'arrow') {
@@ -91,7 +77,7 @@ export async function work(qs) {
   const state = { wrong: miss ? miss.wrong_path : (g.wrong ? g.wrong.path : ''), fixed: miss ? miss.fixed_path : null };     // fixed: null = not chosen yet, '' = there is none, else its path
   const addVersion = (v) => { if (!versions.some((x) => x.path === v.path)) versions.push(v); };
   if (miss) { addVersion({ path: miss.wrong_path, label: miss.wrong_label || miss.wrong_path.split(/[\\/]/).slice(-2).join('/') }); if (miss.fixed_path) addVersion({ path: miss.fixed_path, label: miss.fixed_label || miss.fixed_path.split(/[\\/]/).slice(-2).join('/') }); }
-  const ws = { shapes: [], tool: 'arrow', editing: null, draft: null, past: [], future: [], mirror: true };
+  const ws = { shapes: [], tool: 'arrow', editing: null, draft: null, past: [], future: [], mirror: false };      // nothing is copied unless the admin ticks the box
   const addMark = (shape) => setMarks([...ws.shapes, shape, ...(ws.mirror && state.fixed ? [{ ...shape, side: shape.side === 'wrong' ? 'fixed' : 'wrong' }] : [])]);
   const syncHist = () => { undoBtn.disabled = !ws.past.length; redoBtn.disabled = !ws.future.length; };
   const setMarks = (next) => { ws.past.push(ws.shapes); if (ws.past.length > 200) ws.past.shift(); ws.shapes = next; ws.future = []; redrawAll(); syncHist(); };   // a new mark or a clear: one undoable step
@@ -186,18 +172,15 @@ export async function work(qs) {
     if (p.cv.width !== Math.round(cw * dpr) || p.cv.height !== Math.round(ch * dpr)) { p.cv.width = Math.round(cw * dpr); p.cv.height = Math.round(ch * dpr); }
     const c = p.cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, cw, ch);
     const r = pic(p), col = COLORS[p.side], lw = Math.max(1.5, r.h / 480);
-    const mine = ws.shapes.filter((s) => s.side === p.side), other = ws.shapes.filter((s) => s.side !== p.side);
+    const mine = ws.shapes.filter((s) => s.side === p.side);
     c.save(); c.translate(r.x, r.y);
     for (const s of ws.draft && ws.draft.side === p.side ? [...mine, ws.draft] : mine) drawShape(c, s, r.w, r.h, lw, col);
-    if (!mine.length && other.length) {      // the same place on this side, dashed: where to compare (the saved image does the same)
-      const b = regionNorm(other); c.setLineDash([12, 8]); c.strokeStyle = col; c.lineWidth = lw; c.strokeRect(b[0] * r.w, b[1] * r.h, (b[2] - b[0]) * r.w, (b[3] - b[1]) * r.h);
-    }
     c.restore();
   };
   const redrawAll = () => { redraw(P.wrong); redraw(P.fixed); };
   for (const p of Object.values(P)) {
     new ResizeObserver(() => redraw(p)).observe(p.wrap);
-    p.video.addEventListener('loadedmetadata', () => { redraw(p); if (p.side === 'wrong') range.max = vW.duration || 10; });
+    p.video.addEventListener('loadedmetadata', () => { redraw(p); if (p.side === 'wrong') range.max = vW.duration || 10; else rangeR.max = vF.duration || 10; });
     const norm = (ev) => { const b = p.cv.getBoundingClientRect(), r = pic(p); return [Math.min(1, Math.max(0, (ev.clientX - b.left - r.x) / r.w)), Math.min(1, Math.max(0, (ev.clientY - b.top - r.y) / r.h))]; };
     let start = null;
     p.cv.addEventListener('pointerdown', (ev) => {
@@ -233,14 +216,16 @@ export async function work(qs) {
 
   // ---- the shared transport: one scrubber moves both videos; the offset shifts only the fixed one
   const range = h('input', { type: 'range', min: 0, max: 10, step: 1 / FPS, value: 0, title: 'arrow keys step one frame' });
+  const rangeR = h('input', { type: 'range', min: 0, max: 10, step: 1 / FPS, value: 0, title: 'moves only the right video, to the frame you want there' });
   const tl = h('span', { class: 'mono' }, '0:00.00');
   const offset = h('input', { type: 'number', step: 1 / FPS, value: 0, style: 'width:84px' });
   let syncRight = () => {};
   const setSources = () => { if (state.wrong) vW.src = videoUrl(state.wrong); if (state.fixed) vF.src = videoUrl(state.fixed); else vF.removeAttribute('src'); syncRight(); loadSample(); };
   const showTime = () => { tl.textContent = fmtT(vW.currentTime) + '  ·  right ' + fmtT(vF.currentTime); };
-  const seek = (t) => { t = Math.max(0, +t || 0); vW.currentTime = t; vF.currentTime = Math.max(0, t + (+offset.value || 0)); range.value = t; tl.textContent = fmtT(t) + '  ·  right ' + fmtT(Math.max(0, t + (+offset.value || 0))); };
-  vW.addEventListener('timeupdate', () => { if (!vW.paused) { range.value = vW.currentTime; showTime(); } });
+  const seek = (t) => { t = Math.max(0, +t || 0); vW.currentTime = t; vF.currentTime = Math.max(0, t + (+offset.value || 0)); range.value = t; rangeR.value = Math.max(0, t + (+offset.value || 0)); tl.textContent = fmtT(t) + '  ·  right ' + fmtT(Math.max(0, t + (+offset.value || 0))); };
+  vW.addEventListener('timeupdate', () => { if (!vW.paused) { range.value = vW.currentTime; rangeR.value = vF.currentTime; showTime(); } });
   range.addEventListener('input', () => seek(range.value));
+  rangeR.addEventListener('input', () => { pauseBoth(); vF.currentTime = +rangeR.value; offset.value = (vF.currentTime - vW.currentTime).toFixed(3); showTime(); });     // the right frame is the admin's own pick
   offset.addEventListener('change', () => seek(vW.currentTime));
   const pauseBoth = () => { vW.pause(); vF.pause(); playBoth.textContent = 'Play both'; };
   const step = (d) => { pauseBoth(); seek(vW.currentTime + d); };
@@ -297,10 +282,10 @@ export async function work(qs) {
   drawMoments();
 
   const mirrorLbl = h('label', { class: 'small', style: 'display:inline-flex;gap:4px;align-items:center;margin-left:6px' },
-    h('input', { type: 'checkbox', checked: true, onchange: (e) => { ws.mirror = e.target.checked; } }), 'same mark on both videos');
-  const offsetRow = h('div', { class: 'row' }, h('span', { class: 'muted small' }, 'Right video is shifted by (s)'), offset,
+    h('input', { type: 'checkbox', checked: false, onchange: (e) => { ws.mirror = e.target.checked; } }), 'also copy each new mark to the other video');
+  const offsetRow = h('div', { class: 'row' }, h('span', { class: 'muted small' }, 'Right video frame'), rangeR, h('span', { class: 'muted small' }, 'shifted by (s)'), offset,
     h('button', { class: 'btn sm', onclick: () => nudgeFixed(-1 / FPS) }, 'right ◀ 1f'), h('button', { class: 'btn sm', onclick: () => nudgeFixed(1 / FPS) }, 'right 1f ▶'),
-    h('span', { class: 'muted small' }, 'use it when the right take is a little ahead or behind, so both show the same moment'));
+    h('span', { class: 'muted small' }, 'pick the frame you want on the right video with its own slider or the 1-frame buttons; the shift is only the difference between the two videos'));
   const correctLbl = h('label', { class: 'f' }, 'What the right version shows (optional)');
   const noRightTitle = h('b', {}), noRightText = h('div', { style: 'margin-top:6px;color:#aab;font-size:13px;max-width:320px' });
   const noRightBox = h('div', { class: 'player', style: 'display:none;align-items:center;justify-content:center;text-align:center;min-height:220px' }, h('div', {}, noRightTitle, noRightText));
@@ -339,7 +324,7 @@ export async function work(qs) {
       h('div', { class: 'tools' }, tb('arrow', 'Arrow'), tb('circle', 'Circle'), tb('rect', 'Box'), tb('text', 'Text'),
         undoBtn, redoBtn, mirrorLbl,
         h('button', { class: 'btn sm', onclick: () => { if (ws.shapes.length) setMarks([]); } }, 'Clear marks'),
-        h('span', { class: 'muted small', style: 'margin-left:10px' }, 'Pause on the frame, then draw straight on either video: red on the wrong one, green on the right one; the same mark appears on both so the place and size match. Untick “same mark on both videos” to mark one side only.')),
+        h('span', { class: 'muted small', style: 'margin-left:10px' }, 'Pause on the frame you want in each video, then draw straight on it: red on the wrong one, green on the right one. You mark each side yourself; nothing is copied unless you tick the box.')),
       h('div', { class: 'players' }, P.wrong.el, P.fixed.el, noRightBox),
       h('div', { class: 'scrub' }, playBoth, h('button', { class: 'btn sm', onclick: () => step(-1 / FPS) }, '◀ frame'), range, h('button', { class: 'btn sm', onclick: () => step(1 / FPS) }, 'frame ▶'), tl),
       offsetRow),
