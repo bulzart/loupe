@@ -50,7 +50,7 @@ def score(s: dict, ctx: dict) -> float:
     ck = {str(k).lower() for k in (ctx.get("kinds") or [])}
     sc += 3 * len(ck & set(s.get("kinds") or []))
     blob = " ".join([s.get("title", ""), s.get("explanation", ""), s.get("details", ""), s.get("correct_note", ""), s.get("product", "")]).lower()
-    for p in ctx.get("product_forms") or ([ctx["product"]] if ctx.get("product") else []):
+    for p in ctx.get("product_forms") or [x for x in (ctx.get("product"), ctx.get("product_details")) if x]:
         for tok in re.findall(r"[a-z0-9]{4,}", str(p).lower()):
             if tok in blob:
                 sc += 1.5
@@ -124,6 +124,11 @@ ROLE = ("You are the Loupe keeper of a video-generation pipeline. You hold a lib
         "version would look like. For QC they still show the wrong pattern to look for; for planning, give a hint from one only when the admin's words "
         "let you state the right outcome positively, or the lever is a plain restatement at the matching beat, and then at most medium confidence. "
         "You may Read a sample's image (path given) to describe it, nothing else. "
+        "Reason from mechanisms, not labels: a sample is relevant when it and the video share a product detail (form, size, opening, posture) and a "
+        "scene mechanism, and you say which; a sample about another product form applies only through the same mechanism. Every why, check, trigger, "
+        "right_outcome and lever is a CONDITION tied to this video's product details and beat, never a universal: no never, always, must, avoid or "
+        "should-not, no product-wide ban or prescription. A sample is one admin judgement about one moment; two samples that seem to disagree are two "
+        "conditions, so name what separates them. "
         "QC QUESTION (the video exists; an agent is checking it): answer ONE JSON object and no other text: "
         '{"relevant":[{"id":"S12","why":"<why it applies>","check":"<what exactly to compare in the video under QC>","wrong_pattern":"<the miss in a phrase>"}],'
         '"advice":"<at most 80 words>","not_covered":"<what in the question the library does not cover, or empty>"}. '
@@ -193,8 +198,11 @@ def _json_of(text: str):
     return None
 
 
+UNIVERSAL = re.compile(r"\b(never|always|must not|must|should not|shouldn'?t|do not|don'?t|avoid)\b", re.I)     # a hint is a condition for this plan, not a command
+
+
 def plan_hints_from(parsed, ctx: dict, lib: dict, cap: int = 3) -> tuple[list[dict], int]:
-    """The keeper's planning answer, held to the rules in code too: only real ids, only high or medium confidence, only a compatible model
+    """The keeper's planning answer, held to the rules in code too: only real ids, no universal wording, only high or medium confidence, only a compatible model
     (unless the keeper says the miss is model-independent), a trigger and a lever present, three at most, short fields.  (hints, held_back)"""
     out, held = [], 0
     raw = (parsed or {}).get("hints") if isinstance(parsed, dict) else None
@@ -206,6 +214,9 @@ def plan_hints_from(parsed, ctx: dict, lib: dict, cap: int = 3) -> tuple[list[di
         conf = str(r.get("confidence", "")).strip().lower()
         sm, cm = (s.get("model") or "").lower(), (ctx.get("model") or "").lower()
         indep = bool(r.get("model_independent"))
+        if UNIVERSAL.search(" ".join(str(r.get(k, "")) for k in ("trigger", "right_outcome", "lever"))):
+            held += 1
+            continue
         if conf not in ("high", "medium") or not str(r.get("trigger", "")).strip() or not str(r.get("lever", "")).strip() \
                 or (sm and cm and _family(sm) != _family(cm) and not indep):
             held += 1
@@ -249,7 +260,7 @@ def consult(key_name: str, ctx: dict, question: str, purpose: str = "qc") -> dic
             if st.get("library_sig") != sig:
                 delta = "\nThe library changed since your last digest. Full current list again:\n" + _digest() + "\n"
             who = (f"run {ctx.get('run') or '?'} video {ctx.get('video') or '?'} (model {ctx.get('model') or '?'}, mode {ctx.get('mode') or '?'}, "
-                   f"product {ctx.get('product') or '?'})")
+                   f"product {ctx.get('product') or '?'}; product details: {str(ctx.get('product_details') or '-')[:400]})")
             if plan:
                 prompt = (f"PLANNING question for {who}. The video has not been generated. The writer's plan, one line per beat:\n{question}\n"
                           f"{delta}\nAnswer with the PLANNING JSON object only (an empty hints list is the normal answer).")

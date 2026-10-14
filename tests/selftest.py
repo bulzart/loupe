@@ -229,6 +229,12 @@ def main(with_keeper=False):
     hints, _h = _qc.plan_hints_from({"hints": [mk(2, "high", True)]}, {"model": "wan3_0_prime"}, lib)
     check("a model-independent miss crosses models", [h["id"] for h in hints] == ["S2"])
     check("hint text is shortened and carries no image path", all(len(h["trigger"]) <= 220 and "composite_path" not in h for h in hints))
+    ok_h = {"id": "S1", "trigger": "t", "right_outcome": "the count reads three after the reveal", "lever": "restate the count once at that beat", "caveat": "c", "confidence": "high"}
+    bad = [dict(ok_h, lever="Never lay the pack on the floor"), dict(ok_h, right_outcome="always keep it on the desk"), dict(ok_h, trigger="avoid the desk"), dict(ok_h, lever="the pack must stand")]
+    hints, held = _qc.plan_hints_from({"hints": bad + [ok_h]}, {"model": "wan3_0_prime"}, lib)
+    check("a hint worded as a universal command is held back, a condition is kept", [h["id"] for h in hints] == ["S1"] and held == 4, f"{[h['lever'] for h in hints]} held {held}")
+    s2, d2, _ = req("POST", "/api/qc/consult", {"purpose": "plan", "model": "wan3_0_prime", "product_details": "flat sachet, 6 x 9 cm, tear notch at the top", "question": "Beat 1: he sets the sachet down."}, key=kq)
+    check("a consult carries the product's details without trouble", s2 == 200)
     s, d, _ = req("PATCH", f"/api/moments/1", {"status": "active"})
     # a miss that has no right version stays as a miss example
     s, d, _ = req("POST", "/api/misses", {"run": "20261001-000000-07", "video": "04", "title": "The label is unreadable from the first frame", "explanation": "No fixed take exists.",
