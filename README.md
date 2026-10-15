@@ -89,7 +89,7 @@ This folder is its own git repository; `origin` is the private GitHub repo `bulz
 
 ## Tests
 
-`python tests/selftest.py` (73 checks; `--keeper` adds 5 that call the real keeper), `node tests/transport_check.js` (the frame controls against fake videos), `node tests/page_smoke.js` (the whole report page against a fake DOM and API) and `python tests/demo.py` (a demo instance on port
+`python tests/selftest.py` (73 checks; `--keeper` adds 5 that call the real keeper), `node tests/transport_check.js` (the frame controls against fake videos), `node tests/page_smoke.js` (the whole report page against a fake DOM and API), `python tests/keeper_sync.py` (the keeper receives every change to the library, no model call) and `python tests/demo.py` (a demo instance on port
 8799 with throwaway data, passphrase `demo-passphrase`).
 
 ## Build prompt

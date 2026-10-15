@@ -6,6 +6,7 @@ in the web app.  If the keeper cannot run, QC gets the deterministic brief inste
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -95,11 +96,22 @@ def brief(ctx: dict, limit: int = 8) -> dict:
     text = (f"{len(sam)} sample(s) from the library that match this video ({ctx.get('model') or 'any model'}; "
             f"{', '.join(ctx.get('kinds') or []) or 'any kind'}). Look at each image; compare the marked region with the same place in the video under QC.\n\n"
             + "\n\n".join(sample_lines(s) for s in sam)) if sam else "No sample in the library matches this video."
-    return {"mode": "brief", "samples": [{k: s[k] for k in ("id", "title", "kinds", "model", "details", "correct_note", "has_right", "composite_path", "image_url", "score")} for s in sam],
+    return {"mode": "brief", "samples": [{k: s[k] for k in ("id", "title", "kinds", "model", "details", "correct_note", "has_right", "frames", "n_frames", "composite_path", "image_url", "score")} for s in sam],
             "text": text, "library_size": len(library())}
 
 
 # ------------------------------------------------------------------ keeper
+def _t(t) -> str:
+    t = max(0.0, float(t or 0))
+    return f"{int(t // 60)}:{t - int(t // 60) * 60:05.2f}"
+
+
+def frames_text(s: dict) -> str:
+    """What the sample's image holds: every frame, called WRONG or RIGHT by the admin, where it comes from and its time."""
+    fr = s.get("frames") or []
+    return f"{len(fr)} frame{'' if len(fr) == 1 else 's'}: " + ", ".join(f"{f['role'].upper()} {_t(f['t'])} {f['desc']}" for f in fr)
+
+
 def _digest() -> str:
     lib = library()
     lines = []
@@ -107,14 +119,24 @@ def _digest() -> str:
         compact = len(lib) > 250
         lines.append(f"{s['id']} | {','.join(s['kinds'])} | {s['model'] or 'any'} | {s['title']}"
                      + ("" if compact else f" | miss: {s['explanation'][:240]} | wrong here: {s['details'][:240]} | correct: {s['correct_note'][:240]}")
+                     + f" | {frames_text(s)}"
                      + ("" if s.get("has_right", True) else " | NO RIGHT VERSION (a miss example only)")
                      + f" | image: {s['composite_path']}")
     return "\n".join(lines) or "(the library is empty)"
 
 
 def _sig() -> str:
+    """A version of everything the keeper has been told or may have looked at: the digest itself, and for every sample when it was rebuilt and the exact
+    modification time of its image (a count and the newest timestamp miss a kind changed in the same second, or one report archived while another is restored)."""
     lib = library()
-    return f"{len(lib)}:{max([s['updated'] for s in lib] or [''])}"
+    parts = [_digest()]
+    for s in lib:
+        try:
+            m = os.stat(s["composite_path"]).st_mtime_ns
+        except OSError:
+            m = 0
+        parts.append(f"{s['id']}:{s['updated']}:{m}")
+    return f"{len(lib)}:" + hashlib.sha1("\n".join(parts).encode("utf-8")).hexdigest()[:16]
 
 
 ROLE = ("You are the Loupe keeper of a video-generation pipeline. You hold a library of samples: each is a generation miss (a frame of a wrong "
@@ -259,7 +281,8 @@ def consult(key_name: str, ctx: dict, question: str, purpose: str = "qc") -> dic
                 st = {"session_id": sid, "created": core.now(), "turns": 1, "model": model, "library_sig": sig, "bootstrapped": core.now()}
             delta = ""
             if st.get("library_sig") != sig:
-                delta = "\nThe library changed since your last digest. Full current list again:\n" + _digest() + "\n"
+                delta = ("\nThe library changed since your last digest (a sample added, edited, archived or deleted; an image may have been rebuilt). Full current list again:\n"
+                         + _digest() + "\nAn image you looked at before may have changed: read it again before you rely on what you remember of it.\n")
             who = (f"run {ctx.get('run') or '?'} video {ctx.get('video') or '?'} (model {ctx.get('model') or '?'}, mode {ctx.get('mode') or '?'}, "
                    f"product {ctx.get('product') or '?'}; product details: {str(ctx.get('product_details') or '-')[:400]})")
             if plan:
@@ -287,7 +310,8 @@ def consult(key_name: str, ctx: dict, question: str, purpose: str = "qc") -> dic
                         s = ids[r["id"]]
                         rel.append({"id": s["id"], "why": str(r.get("why", ""))[:400], "check": str(r.get("check", ""))[:400],
                                     "wrong_pattern": str(r.get("wrong_pattern", ""))[:200], "composite_path": s["composite_path"], "image_url": s["image_url"],
-                                    "details": s["details"], "correct_note": s["correct_note"], "has_right": s.get("has_right", True)})
+                                    "details": s["details"], "correct_note": s["correct_note"], "has_right": s.get("has_right", True),
+                                    "frames": s.get("frames", []), "n_frames": s.get("n_frames", 0)})
                 res = {"mode": "keeper", "purpose": "qc", "relevant": rel, "advice": str((parsed or {}).get("advice", ""))[:600] if isinstance(parsed, dict) else str(d.get("result", ""))[:600],
                        "not_covered": str((parsed or {}).get("not_covered", ""))[:400] if isinstance(parsed, dict) else "", "library_size": len(ids)}
         except StopIteration:
