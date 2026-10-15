@@ -13,7 +13,7 @@ export async function reports() {
       h('a', { class: 'btn primary', href: '#/misses/new' }, 'New report')),
     d.misses.length ? d.misses.map((m) => h('div', { class: 'card' },
       h('div', { class: 'row', style: 'justify-content:space-between' },
-        h('div', {}, h('b', {}, m.title), ' ', status(m.status), h('div', { class: 'muted small' }, `${m.run || 'no run'} · video ${m.video || '-'} · ${m.model || 'any model'} · ${fmtDate(m.created)}${m.fixed_path ? '' : ' · miss example (no right version)'}`)),
+        h('div', {}, h('b', {}, m.title), ' ', status(m.status), h('div', { class: 'muted small' }, `${m.run || 'no run'} · video ${m.video || '-'} · ${m.model || 'any model'} · ${fmtDate(m.created)}${!m.wrong_path && !m.fixed_path ? ' · no video' : (m.fixed_path ? '' : ' · no right version')}`)),
         h('div', { class: 'row' }, h('a', { class: 'btn sm', href: `#/misses/work?run=${encodeURIComponent(m.run)}&video=${m.video}&miss=${m.id}` }, 'Open'),
           h('button', { class: 'btn sm', onclick: async () => { await api('PATCH', '/api/misses/' + m.id, { status: m.status === 'active' ? 'archived' : 'active' }); reload(); } }, m.status === 'active' ? 'Archive' : 'Restore'),
           h('button', { class: 'btn sm danger', onclick: async () => { if (confirmBox(`Delete the report “${m.title}” and its ${m.moments.length} sample(s)?`)) { await api('DELETE', '/api/misses/' + m.id); reload(); } } }, 'Delete'))),
@@ -37,7 +37,8 @@ export async function pick() {
       h('div', { class: 'muted small' }, `${v.versions.length} version(s)` + (v.capcut_project ? ` · ${v.capcut_project}` : '') + (v.credits ? ` · ${v.credits} cr` : '')),
       v.qc ? h('div', { class: 'small', style: 'margin-top:4px' }, v.qc.slice(0, 120)) : null))));
   });
-  return h('div', {}, head('New report', 'Choose the run that was executed by the pipeline, then the video that had the miss', h('a', { class: 'btn', href: '#/misses' }, '← Reports')),
+  return h('div', {}, head('New report', 'Choose the run that was executed by the pipeline, then the video the report is about. A report can also be in words only: the idea, what could have been better, what the AI agents missed.',
+      h('a', { class: 'btn', href: '#/misses/work?run=&video=' }, 'Report without a video'), h('a', { class: 'btn', href: '#/misses' }, '← Reports')),
     h('div', { class: 'card' }, sel), h('div', { style: 'margin-top:14px' }, out));
 }
 
@@ -72,9 +73,9 @@ export async function work(qs) {
   const vinfo = runInfo ? (runInfo.videos.find((v) => v.video === (qs.video || '')) || { versions: [] }) : { versions: [] };
   const versions = [...vinfo.versions];
   const g = guessVersions(versions);
-  const state = { wrong: miss ? miss.wrong_path : (g.wrong ? g.wrong.path : ''), fixed: miss ? miss.fixed_path : null };     // fixed: null = not chosen yet, '' = there is none, else its path
+  const state = { wrong: miss ? miss.wrong_path : (g.wrong ? g.wrong.path : ''), fixed: miss ? miss.fixed_path : '' };     // neither video is required: '' = none, else its path (the right version is never guessed)
   const addVersion = (v) => { if (!versions.some((x) => x.path === v.path)) versions.push(v); };
-  if (miss) { addVersion({ path: miss.wrong_path, label: miss.wrong_label || miss.wrong_path.split(/[\\/]/).slice(-2).join('/') }); if (miss.fixed_path) addVersion({ path: miss.fixed_path, label: miss.fixed_label || miss.fixed_path.split(/[\\/]/).slice(-2).join('/') }); }
+  if (miss) { if (miss.wrong_path) addVersion({ path: miss.wrong_path, label: miss.wrong_label || miss.wrong_path.split(/[\\/]/).slice(-2).join('/') }); if (miss.fixed_path) addVersion({ path: miss.fixed_path, label: miss.fixed_label || miss.fixed_path.split(/[\\/]/).slice(-2).join('/') }); }
   const ws = { shapes: [], tool: 'arrow', editing: null, draft: null, past: [], future: [] };      // every mark belongs to one frame (shape.fid); nothing is ever copied for you
   const addMark = (shape) => setMarks([...ws.shapes, shape]);
   const syncHist = () => { undoBtn.disabled = !ws.past.length; redoBtn.disabled = !ws.future.length; };
@@ -87,13 +88,10 @@ export async function work(qs) {
   const label = (v) => v.label + (v.kind === 'fixed-lib' ? '  (client fix)' : '');
   const mkSel = (key) => {
     const opts = versions.map((v) => h('option', { value: v.path, selected: v.path === state[key] }, label(v)));
-    if (key === 'fixed') {
-      opts.unshift(h('option', { value: '__choose__', selected: state.fixed === null }, 'Choose the right version…'));
-      opts.push(h('option', { value: '', selected: state.fixed === '' }, 'No right version exists: save this miss as an example'));
-    }
-    const s = h('select', { style: 'max-width:100%', class: key === 'fixed' && state.fixed === null ? 'need' : '' }, opts);
-    s.addEventListener('change', () => { state[key] = key === 'fixed' && s.value === '__choose__' ? null : s.value; s.classList.toggle('need', key === 'fixed' && state.fixed === null); setSources(); });
-    return s;
+    opts.unshift(h('option', { value: '', selected: !state[key] }, key === 'fixed' ? 'No right version (optional)' : 'No video (a report in words only)'));
+    const sel = h('select', { style: 'max-width:100%' }, opts);
+    sel.addEventListener('change', () => { state[key] = sel.value; setSources(); });
+    return sel;
   };
   let wrongSel = mkSel('wrong'), fixedSel = mkSel('fixed');
   const rebuildSelects = () => { const a = mkSel('wrong'), b = mkSel('fixed'); wrongSel.replaceWith(a); fixedSel.replaceWith(b); wrongSel = a; fixedSel = b; };
@@ -112,9 +110,12 @@ export async function work(qs) {
     catch (_) { /* toasted: outside the folders Loupe may read? add it in Settings */ } } }, 'Use');
 
   // ---- the report fields (the title and the explanation are burned into the saved image)
-  const title = h('input', { value: miss ? miss.title : '', placeholder: 'One line: what went wrong (e.g. “the third capsule disappears after the hand leaves”)', style: 'width:100%' });
+  const title = h('input', { value: miss ? miss.title : '', placeholder: 'One line or a paragraph: what went wrong, or what this scenario is about (e.g. “the third capsule disappears after the hand leaves”)', style: 'width:100%' });
   const details = h('textarea', { placeholder: 'Explain this miss: what is wrong at the marked place and why. This text is burned into the bottom centre of the image, and the QC phase reads it.' });
-  const correct = h('textarea', { placeholder: 'What the right version shows here (optional, burned in under the explanation)', style: 'min-height:48px' });
+  const correct = h('textarea', { placeholder: 'What the right frame shows here (optional, burned in under the explanation)', style: 'min-height:48px' });
+  const idea = h('textarea', { placeholder: 'The idea: what was meant to happen here (optional)', style: 'min-height:48px' });
+  const better = h('textarea', { placeholder: 'What could have been better (optional)', style: 'min-height:48px' });
+  const missed = h('textarea', { placeholder: 'What the AI agents missed or could not understand while generating this (optional)', style: 'min-height:48px' });
   const kinds = chipPicker(settings.kinds, miss ? miss.kinds : []);
   const model = h('input', { value: miss ? miss.model : (runInfo ? runInfo.model || '' : ''), size: 18 });
   const mode = h('input', { value: miss ? miss.mode : (runInfo ? [runInfo.mode, runInfo.submode].filter(Boolean).join('-') : ''), size: 18 });
@@ -136,8 +137,6 @@ export async function work(qs) {
   };
 
   async function saveReport() {
-    if (!state.wrong) { toast('Choose the wrong version', true); return null; }
-    if (state.fixed === null) { toast('Choose the right version first, or say that there is none', true); fixedSel.focus(); return null; }
     const body = { run: qs.run || '', video: qs.video || '', title: title.value, explanation: miss ? miss.explanation : details.value, kinds: kinds.get(), model: model.value, mode: mode.value, product: product.value, product_sample: useSample.checked,
       wrong_path: state.wrong, fixed_path: state.fixed, wrong_label: (versions.find((v) => v.path === state.wrong) || {}).label || '', fixed_label: (versions.find((v) => v.path === state.fixed) || {}).label || '' };
     const wasNoRight = !!miss && !miss.fixed_path, nSaved = miss ? miss.moments.length : 0;
@@ -149,7 +148,7 @@ export async function work(qs) {
 
   // ---- the frames: any number (two to start with), each from either video, each with its own time, each called WRONG or RIGHT by the admin.
   // The marks are kept in the picture's own 0..1 coordinates and belong to one frame (shape.fid).
-  const COLOR = { wrong: '#ff2d2d', right: '#16a34a' };
+  const COLOR = { wrong: '#ff2d2d', right: '#16a34a', neutral: '#3b6edc' };
   const SRC_NAME = { wrong: 'Video A · as generated', fixed: 'Video B · correct version' };
   const MAX_FRAMES = 12;
   const frames = [];
@@ -185,6 +184,7 @@ export async function work(qs) {
   };
   const pauseAll = () => { frames.forEach((f) => f.video.pause()); playAll.textContent = 'Play all'; };
   const seekAll = (t) => {                 // every frame, keeping its gap to the first one
+    if (!frames.length) return;
     const f0 = frames[0], t0 = clampT(f0, t);
     for (const f of frames) { f.t = f === f0 ? t0 : clampT(f, t0 + f.gap); f.video.currentTime = f.t; }
     refresh();
@@ -195,8 +195,8 @@ export async function work(qs) {
     if (f === f0) frames.forEach((o) => { if (o !== f0) o.gap = o.t - f0.t; }); else f.gap = f.t - f0.t;
     refresh();
   };
-  const sameTime = () => { pauseAll(); frames.forEach((f) => { f.gap = 0; }); seekAll(frames[0].t); };
-  const step = (d) => { pauseAll(); seekAll(frames[0].t + d); };
+  const sameTime = () => { pauseAll(); if (!frames.length) return; frames.forEach((f) => { f.gap = 0; }); seekAll(frames[0].t); };
+  const step = (d) => { pauseAll(); if (frames.length) seekAll(frames[0].t + d); };
   const playAll = h('button', { class: 'btn sm', onclick: () => {
     if (!frames.length) return;
     if (frames[0].video.paused) { frames.forEach((f) => { f.video.currentTime = clampT(f, frames[0].t + f.gap); }); frames.forEach((f) => f.video.play()); playAll.textContent = 'Pause all'; } else pauseAll();
@@ -243,19 +243,20 @@ export async function work(qs) {
   };
 
   const styleFrame = (f) => {
-    f.btnWrong.classList.toggle('on', f.role === 'wrong'); f.btnRight.classList.toggle('on', f.role === 'right');
-    f.el.classList.toggle('role-wrong', f.role === 'wrong'); f.el.classList.toggle('role-right', f.role === 'right');
-    f.srcSel.value = f.src; f.srcSel.options[1].disabled = !state.fixed;
+    f.btnWrong.classList.toggle('on', f.role === 'wrong'); f.btnRight.classList.toggle('on', f.role === 'right'); f.btnNeutral.classList.toggle('on', f.role === 'neutral');
+    f.el.classList.toggle('role-wrong', f.role === 'wrong'); f.el.classList.toggle('role-right', f.role === 'right'); f.el.classList.toggle('role-neutral', f.role === 'neutral');
+    f.srcSel.value = f.src; f.srcSel.options[0].disabled = !state.wrong; f.srcSel.options[1].disabled = !state.fixed;
   };
   const loadFrame = (f) => { const path = state[f.src]; if (path) { f.video.src = videoUrl(path); f.video.currentTime = f.t; } else f.video.removeAttribute('src'); };
   const mkFrame = (src, role, t) => {
     const f = { id: ++fseq, src, role, t, gap: 0 };
     f.video = h('video', { preload: 'auto', playsinline: true }); f.video.muted = true;
-    f.cv = h('canvas', { class: 'pc', title: 'Draw here: red marks on a frame called Wrong, green marks on a frame called Right' });
+    f.cv = h('canvas', { class: 'pc', title: 'Draw here: red marks on a frame called Wrong, green on Right, blue on Neutral' });
     f.wrap = h('div', { class: 'vwrap' }, f.video, f.cv);
     f.num = h('b', { class: 'fnum' });
     f.btnWrong = h('button', { class: 'btn sm rolebtn wrong', title: 'This frame shows the miss', onclick: () => setRole(f, 'wrong') }, 'Wrong');
     f.btnRight = h('button', { class: 'btn sm rolebtn right', title: 'This frame shows how it should be', onclick: () => setRole(f, 'right') }, 'Right');
+    f.btnNeutral = h('button', { class: 'btn sm rolebtn neutral', title: 'Show this frame without calling it wrong or right (blue marks)', onclick: () => setRole(f, 'neutral') }, 'Neutral');
     f.srcSel = h('select', { class: 'srcsel', title: 'which video this frame is taken from' }, h('option', { value: 'wrong' }, SRC_NAME.wrong), h('option', { value: 'fixed' }, SRC_NAME.fixed));
     f.srcSel.addEventListener('change', () => setFrameSrc(f, f.srcSel.value));
     f.snd = h('button', { class: 'btn sm', onclick: () => { f.video.muted = !f.video.muted; f.snd.textContent = f.video.muted ? 'Sound off' : 'Sound on'; } }, 'Sound off');
@@ -266,7 +267,7 @@ export async function work(qs) {
     f.stamp.value = fmtT(t);
     f.stamp.addEventListener('change', () => { const v = parseT(f.stamp.value); if (isFinite(v)) moveFrame(f, v); else refresh(); });
     f.el = h('div', { class: 'player' },
-      h('div', { class: 'row', style: 'justify-content:space-between;margin-bottom:6px' }, h('div', { class: 'row' }, f.num, f.btnWrong, f.btnRight), h('div', { class: 'row' }, f.srcSel, f.snd, f.rm)),
+      h('div', { class: 'row', style: 'justify-content:space-between;margin-bottom:6px' }, h('div', { class: 'row' }, f.num, f.btnWrong, f.btnRight, f.btnNeutral), h('div', { class: 'row' }, f.srcSel, f.snd, f.rm)),
       f.wrap,
       h('div', { class: 'row', style: 'flex-wrap:nowrap;margin-top:8px' },
         h('button', { class: 'btn sm', title: 'this frame one video frame back', onclick: () => moveFrame(f, f.t - 1 / FPS) }, '◀'), f.slider,
@@ -278,10 +279,11 @@ export async function work(qs) {
   const syncCorrect = () => { const on = frames.some((x) => x.role === 'right'); correctLbl.style.display = on ? '' : 'none'; correct.style.display = on ? '' : 'none'; };
   const drawPlayers = () => {
     playersBox.replaceChildren(...frames.map((f) => f.el), noRightBox);
-    noRightBox.style.display = frames.length === 1 ? 'flex' : 'none';        // beside a lone frame: what is missing, or what to do next
-    playersBox.style.setProperty('--cols', String(Math.min(Math.max(frames.length + (frames.length === 1 ? 1 : 0), 1), 3)));
-    frames.forEach((f, i) => { f.num.textContent = 'Frame ' + (i + 1); f.rm.style.display = frames.length > 1 ? '' : 'none'; });
-    addBtn.disabled = frames.length >= MAX_FRAMES; sameBtn.style.display = frames.length > 1 ? '' : 'none';
+    const side = frames.length === 0 || (frames.length === 1 && frames[0].role === 'wrong');        // a card beside a lone miss frame, or alone when there are no frames
+    noRightBox.style.display = side ? 'flex' : 'none';
+    playersBox.style.setProperty('--cols', String(Math.min(Math.max(frames.length + (side ? 1 : 0), 1), 3)));
+    frames.forEach((f, i) => { f.num.textContent = 'Frame ' + (i + 1); });
+    addBtn.disabled = frames.length >= MAX_FRAMES || (!state.wrong && !state.fixed); sameBtn.style.display = frames.length > 1 ? '' : 'none';
     syncCorrect(); syncRight();
   };
   const addFrame = (src, role, t) => {
@@ -292,12 +294,11 @@ export async function work(qs) {
   };
   const dispose = (f) => { f.video.pause(); f.ro.disconnect(); f.video.removeAttribute('src'); f.video.load(); };
   const removeFrame = (f) => {
-    if (frames.length < 2) { toast('A moment needs at least one frame', true); return; }
     pauseAll();
     if (marksOf(f).length) setMarks(ws.shapes.filter((x) => x.fid !== f.id));
     dispose(f); frames.splice(frames.indexOf(f), 1);
     frames.forEach((o) => { o.gap = o.t - frames[0].t; });
-    range.max = frames[0].video.duration || 10;
+    if (frames[0]) range.max = frames[0].video.duration || 10;
     drawPlayers(); refresh();
   };
   const setRole = (f, role) => { f.role = role; styleFrame(f); redraw(f); syncCorrect(); };
@@ -307,7 +308,7 @@ export async function work(qs) {
   };
   let syncRight = () => {};
   const setSources = () => {      // the version pickers changed
-    if (!state.fixed) for (const f of frames.filter((x) => x.src === 'fixed')) { if (frames.length > 1) removeFrame(f); else f.src = 'wrong'; }      // frames of a video that is gone fall away
+    for (const f of frames.filter((x) => !state[x.src])) removeFrame(f);      // frames of a video that is gone fall away
     if (state.fixed && frames.length === 1 && !ws.shapes.length && !ws.editing && frames[0].src === 'wrong' && frames[0].role === 'wrong') addFrame('fixed', 'right', frames[0].t);      // two frames to start with
     frames.forEach((f) => { styleFrame(f); loadFrame(f); });
     drawPlayers(); loadSample();
@@ -327,14 +328,14 @@ export async function work(qs) {
     pauseAll();
     const text = details.value.trim();
     // never blocks: with no title it is cut from the explanation, and with neither it is named by the video and the second
-    if (!title.value.trim()) title.value = text ? text.split(/(?<=[.!?])\s/)[0].slice(0, 90) : `Video ${qs.video || ''} at ${fmtT(frames[0].t)}`;
+    if (!title.value.trim()) title.value = text ? text.split(/(?<=[.!?])\s/)[0].slice(0, 90) : (frames.length ? `Video ${qs.video || ''} at ${fmtT(frames[0].t)}` : 'A scenario');
     saveBtn.disabled = true; saveBtn.textContent = 'Building the image…';
     try {
       if (!(await saveReport())) return;
       const idx = new Map(frames.map((f, i) => [f.id, i]));
       const body = { frames: frames.map((f) => ({ src: f.src, role: f.role, t: f.t })),
         shapes: ws.shapes.filter((x) => idx.has(x.fid)).map(({ fid, ...rest }) => ({ ...rest, frame: idx.get(fid) })),
-        details: text, correct_note: frames.some((f) => f.role === 'right') ? correct.value : '', kinds: kinds.get() };
+        details: text, correct_note: frames.some((f) => f.role === 'right') ? correct.value : '', idea: idea.value.trim(), better: better.value.trim(), missed: missed.value.trim(), kinds: kinds.get() };
       const r = ws.editing ? await api('PATCH', '/api/moments/' + ws.editing.moment_id, body) : await api('POST', `/api/misses/${miss.id}/moments`, body);
       await refreshMiss();
       const src = r.moment.image_url + '&v=' + Date.now();
@@ -342,9 +343,9 @@ export async function work(qs) {
         h('div', {}, h('b', {}, `${r.moment.id} saved`), h('span', { class: 'muted small' }, '  this is the one image the QC phase will see')),
         h('button', { class: 'btn sm', onclick: () => result.replaceChildren() }, 'Close')),
         h('img', { src, style: 'max-width:100%;max-height:78vh;display:block;margin:10px auto 0;border-radius:10px;border:1px solid var(--line);cursor:zoom-in', onclick: () => lightbox(src) })));
-      resetMarks([]); details.value = ''; correct.value = ''; leaveEdit();     // ready for the next moment; the frames, the title and kinds stay
+      resetMarks([]); details.value = ''; correct.value = ''; idea.value = ''; better.value = ''; missed.value = ''; leaveEdit();     // ready for the next moment; the frames, the title and kinds stay
       result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    } catch (_) { /* toasted */ } finally { saveBtn.disabled = state.fixed === null; saveBtn.textContent = ws.editing ? 'Update moment' : 'Mark this moment'; }
+    } catch (_) { /* toasted */ } finally { saveBtn.disabled = false; saveBtn.textContent = ws.editing ? 'Update moment' : 'Mark this moment'; }
   }
 
   // ---- the moments saved so far
@@ -353,36 +354,37 @@ export async function work(qs) {
   const loadMoment = (m) => {              // an existing moment comes back into the same workspace: its frames, their own times and roles, its marks, its text
     pauseAll(); ws.editing = m;
     frames.splice(0).forEach(dispose);
-    for (const fr of m.frames) frames.push(mkFrame(fr.src === 'fixed' && !state.fixed ? 'wrong' : fr.src, fr.role, fr.t));
+    for (const fr of m.frames) if (state[fr.src]) frames.push(mkFrame(fr.src, fr.role, fr.t));
     frames.forEach((f) => { f.gap = f.t - frames[0].t; loadFrame(f); });
-    range.max = frames[0].video.duration || 10;
-    resetMarks(JSON.parse(JSON.stringify(m.shapes)).map((x) => ({ ...x, fid: frames[Math.min(x.frame || 0, frames.length - 1)].id })));
+    if (frames[0]) range.max = frames[0].video.duration || 10;
+    resetMarks(frames.length ? JSON.parse(JSON.stringify(m.shapes)).map((x) => ({ ...x, fid: frames[Math.min(x.frame || 0, frames.length - 1)].id })) : []);
     drawPlayers(); refresh(); setTimeout(redrawAll, 250);
-    details.value = m.details || ''; correct.value = m.correct_note || '';
+    details.value = m.details || ''; correct.value = m.correct_note || ''; idea.value = m.idea || ''; better.value = m.better || ''; missed.value = m.missed || '';
     saveBtn.textContent = 'Update moment'; cancelEdit.style.display = ''; window.scrollTo({ top: 0, behavior: 'smooth' });
   };
-  const framesText = (m) => m.frames.map((f) => `${f.role} @ ${fmtT(f.t)}`).join(' · ') + (m.has_right ? '' : ' · miss example, no right frame');
+  const framesText = (m) => (m.frames.length ? m.frames.map((f) => `${f.role === 'neutral' ? 'frame' : f.role} @ ${fmtT(f.t)}`).join(' · ') : 'words only')
+    + (m.sample_kind === 'miss-only' ? ' · miss example, no right frame' : m.sample_kind === 'scenario' ? ' · scenario' : '');
   const drawMoments = () => {
     moments.replaceChildren(miss && miss.moments.length ? h('div', { class: 'grid g3' }, miss.moments.map((m) => h('div', { class: 'card' },
       h('img', { src: m.image_url + '&v=' + encodeURIComponent(m.updated), style: 'width:100%;height:240px;object-fit:cover;object-position:top;border-radius:8px;cursor:zoom-in', onclick: () => lightbox(m.image_url + '&v=' + encodeURIComponent(m.updated)) }),
-      h('div', { class: 'small', style: 'margin-top:6px' }, h('b', {}, m.id), ' · ' + framesText(m)), h('div', { class: 'small' }, m.details),
+      h('div', { class: 'small', style: 'margin-top:6px' }, h('b', {}, m.id), ' · ' + framesText(m)), h('div', { class: 'small' }, m.details || m.missed || m.idea || ''),
       h('div', { class: 'row', style: 'margin-top:6px' }, h('button', { class: 'btn sm', onclick: () => loadMoment(m) }, 'Edit'),
-        h('button', { class: 'btn sm danger', onclick: async () => { if (confirmBox('Delete this sample?')) { await api('DELETE', '/api/moments/' + m.moment_id); await refreshMiss(); } } }, 'Delete'))))) : h('div', { class: 'muted' }, 'No moment saved yet. Pause on the frames that show the miss (and the right look), draw on them, explain it, and press “Mark this moment”.'));
+        h('button', { class: 'btn sm danger', onclick: async () => { if (confirmBox('Delete this sample?')) { await api('DELETE', '/api/moments/' + m.moment_id); await refreshMiss(); } } }, 'Delete'))))) : h('div', { class: 'muted' }, 'No moment saved yet. Pause on the frames that matter (a miss, the right look, or neither), draw on them if it helps, say what it is about, and press “Mark this moment”. Frames are optional: words alone make a report too.'));
   };
   drawMoments();
 
-  const addBtn = h('button', { class: 'btn sm primary', title: 'adds a frame after the last one (0.2 s later, same video, same role); change any of that on the new frame', onclick: () => { const l = frames[frames.length - 1]; addFrame(l.src, l.role, l.t + 0.2); } }, '+ Add a frame');
+  const addBtn = h('button', { class: 'btn sm primary', title: 'adds a frame after the last one (0.2 s later, same video, same role); change any of that on the new frame', onclick: () => { const l = frames[frames.length - 1]; if (l) addFrame(l.src, l.role, l.t + 0.2); else if (state.wrong) addFrame('wrong', 'wrong', 0); else addFrame('fixed', 'neutral', 0); } }, '+ Add a frame');
   const sameBtn = h('button', { class: 'btn sm', title: 'puts every frame on the time of Frame 1', onclick: sameTime }, 'Same time on all frames');
   const correctLbl = h('label', { class: 'f' }, 'What the right frame shows (optional)');
   const noRightTitle = h('b', {}), noRightText = h('div', { style: 'margin-top:6px;color:#aab;font-size:13px;max-width:320px' });
   const noRightBox = h('div', { class: 'player', style: 'display:none;align-items:center;justify-content:center;text-align:center;min-height:220px' }, h('div', {}, noRightTitle, noRightText));
   const saveNote = h('span', { class: 'small', style: 'color:var(--accent);font-weight:600' });
-  syncRight = () => {       // nothing is saved before the user has chosen the right version (or said there is none)
-    const decided = state.fixed !== null;
-    noRightTitle.textContent = !decided ? 'Right version not chosen yet' : (state.fixed ? 'One frame' : 'No right version');
-    noRightText.textContent = !decided ? 'Pick the right version above, or say that none exists. The moment cannot be saved before you choose.'
-      : (state.fixed ? 'Add a frame to compare, from either video.' : 'This miss stays as an example of what goes wrong. You can still add a frame of the same video (for instance an earlier part where it was right) and call it Right.');
-    saveBtn.disabled = !decided; saveNote.textContent = decided ? '' : 'Choose the right version above first (or say there is none).';
+  syncRight = () => {       // beside a lone miss frame, or alone when there is no frame: what is missing, and that it is optional
+    noRightTitle.textContent = frames.length === 0 ? 'No frames' : 'No right frame';
+    noRightText.textContent = frames.length === 0
+      ? 'This report is in words only: write the idea, what could have been better and what the AI agents missed below. Add a frame if a picture helps.'
+      : 'Optional. Add a frame and call it Right (from Video B, or from an earlier part of the same video) if a comparison helps; otherwise this stays a miss example.';
+    saveBtn.disabled = false; saveNote.textContent = '';
   };
   const onKey = (e) => {       // Ctrl+Z undoes, Ctrl+Y or Ctrl+Shift+Z redoes, unless the cursor is in a text field
     if (!root.isConnected) { window.removeEventListener('keydown', onKey); return; }
@@ -393,29 +395,32 @@ export async function work(qs) {
     }
   };
   window.addEventListener('keydown', onKey);
-  addFrame('wrong', 'wrong', 0);
-  setSources();      // two frames when a right version is already chosen
+  if (state.wrong) addFrame('wrong', 'wrong', 0);
+  setSources();      // two frames when a right version is already chosen; none when there is no video
   const root = h('div', {},
     h('div', { class: 'head' }, h('div', {}, h('h1', {}, miss ? `Report: ${miss.title}` : 'New report'),
       h('div', { class: 'muted' }, `${qs.run || ''} · video ${qs.video || ''}${runInfo ? ` · ${runInfo.model || ''} · ${runInfo.mode || ''}${runInfo.submode ? '/' + runInfo.submode : ''}` : ''}`)),
       h('a', { class: 'btn', href: '#/misses' }, '← Reports')),
     h('div', { class: 'card' },
       h('div', { class: 'grid g2' },
-        h('div', {}, h('label', { class: 'f', style: 'margin-top:0' }, 'Video A: the version as generated (where the miss is)'), wrongSel),
-        h('div', {}, h('label', { class: 'f', style: 'margin-top:0' }, 'Video B: the right version (the corrected take: QC fix, your feedback, or the client’s update)'), fixedSel,
+        h('div', {}, h('label', { class: 'f', style: 'margin-top:0' }, 'Video A: the version as generated (optional)'), wrongSel),
+        h('div', {}, h('label', { class: 'f', style: 'margin-top:0' }, 'Video B: the right version (optional: the corrected take, a QC fix, your feedback, or the client’s update)'), fixedSel,
           h('div', { class: 'row', style: 'margin-top:6px' }, h('button', { class: 'btn sm', onclick: () => fileIn.click() }, 'Upload the right video…'), fileIn, prog, pathIn, addPath)))),
     h('div', { class: 'card' },
       h('div', { class: 'tools' }, tb('arrow', 'Arrow'), tb('circle', 'Circle'), tb('rect', 'Box'), tb('text', 'Text'),
         undoBtn, redoBtn,
         h('button', { class: 'btn sm', onclick: () => { if (ws.shapes.length) setMarks([]); } }, 'Clear marks'),
-        h('span', { class: 'muted small', style: 'margin-left:10px' }, 'You choose what each frame is: Wrong (red marks) or Right (green marks), which video it comes from, and its own time. Pause on it, then draw straight on it. Nothing is marked or copied for you.')),
+        h('span', { class: 'muted small', style: 'margin-left:10px' }, 'You choose what each frame is: Wrong (red marks), Right (green) or Neutral (blue), which video it comes from, and its own time. Everything here is optional: a report can have no right version, no wrong frame, even no frames. Nothing is marked or copied for you.')),
       playersBox,
       h('div', { class: 'scrub' }, playAll, h('button', { class: 'btn sm', onclick: () => step(-1 / FPS) }, '◀ frame'), range, h('button', { class: 'btn sm', onclick: () => step(1 / FPS) }, 'frame ▶'),
         h('span', { class: 'muted small' }, 'moves all frames together')),
       h('div', { class: 'row' }, addBtn, sameBtn, h('span', { class: 'muted small' }, 'Every frame has its own slider, 1-frame buttons and time box (type 3.25 or 0:03.25 and press Enter). Two frames to start with; add as many as you need, from either video.'))),
     h('div', { class: 'card' },
-      h('label', { class: 'f', style: 'margin-top:0' }, 'What was the miss?'), title,
-      h('label', { class: 'f' }, 'Explain it (burned into the bottom centre of the image)'), details,
+      h('label', { class: 'f', style: 'margin-top:0' }, 'What was the miss, or what is this scenario about?'), title,
+      h('label', { class: 'f' }, 'The idea: what was meant to happen (optional)'), idea,
+      h('label', { class: 'f' }, 'What could have been better (optional)'), better,
+      h('label', { class: 'f' }, 'What the AI agents missed or could not understand (optional)'), missed,
+      h('label', { class: 'f' }, 'Explain it, if there is more to say (burned into the bottom of the image)'), details,
       correctLbl, correct, sampleBox,
       h('label', { class: 'f' }, 'Kinds (for the QC search)'), kinds.el,
       h('details', { style: 'margin-top:8px' }, h('summary', { class: 'muted small', style: 'cursor:pointer' }, 'Model, mode, product'),

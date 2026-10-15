@@ -6,63 +6,26 @@ const path = require('path');
 const web = path.join(__dirname, '..', 'web');
 const read = (f) => fs.readFileSync(path.join(web, f), 'utf8').split('\r\n').join('\n');
 
-// ---- a fake DOM, just enough for the page
-class El {
-  constructor(tag) {
-    this.tag = tag; this.children = []; this.attrs = {}; this.listeners = {}; this.className = ''; this._text = ''; this.value = '';
-    this.clientWidth = 400; this.clientHeight = 700; this.videoWidth = 0; this.videoHeight = 0; this.width = 0; this.height = 0;
-    this.currentTime = 0; this.duration = NaN; this.paused = true; this.muted = false; this.isConnected = true; this.parentNode = null;
-    const self = this;
-    this.style = { setProperty(k, v) { this[k] = v; } };
-    this.classList = {
-      toggle(c, on) { const s = new Set(self.className.split(/\s+/).filter(Boolean)); (on === undefined ? !s.has(c) : on) ? s.add(c) : s.delete(c); self.className = [...s].join(' '); },
-      add(c) { this.toggle(c, true); }, remove(c) { this.toggle(c, false); }, contains(c) { return self.className.split(/\s+/).includes(c); },
-    };
-  }
-  set textContent(v) { this._text = String(v); this.children = []; }
-  get textContent() { return this._text; }
-  get options() { return this.children.filter((c) => c.tag === 'option'); }
-  setAttribute(k, v) { this.attrs[k] = v; }
-  removeAttribute(k) { delete this.attrs[k]; }
-  addEventListener(n, f) { (this.listeners[n] = this.listeners[n] || []).push(f); }
-  append(...k) { for (const c of k) { if (c && typeof c === 'object') c.parentNode = this; this.children.push(c); } }
-  replaceChildren(...k) { this.children = []; this.append(...k); }
-  remove() { if (this.parentNode) this.parentNode.children = this.parentNode.children.filter((c) => c !== this); }
-  insertBefore(n, ref) { n.parentNode = this; const i = this.children.indexOf(ref); i < 0 ? this.children.push(n) : this.children.splice(i, 0, n); }
-  getContext() { return new Proxy({}, { get: (_t, k) => (k === 'measureText' ? () => ({ width: 10 }) : () => {}), set: () => true }); }
-  getBoundingClientRect() { return { left: 0, top: 0, width: 400, height: 700 }; }
-  setPointerCapture() {}
-  pause() { this.paused = true; } play() { this.paused = false; } load() {}
-  scrollIntoView() {} focus() {} closest() { return null; }
-  get nodeType() { return 1; }
-  get text() { return this._text + this.children.map((c) => (typeof c === 'string' ? c : c.text || '')).join(''); }
-}
-const walk = (e, f, out = []) => { if (f(e)) out.push(e); for (const c of e.children || []) if (c && typeof c === 'object') walk(c, f, out); return out; };
-const click = (e, ev = {}) => (e.listeners.click || []).forEach((f) => f(ev));
-global.document = {
-  createElement: (t) => new El(t), createTextNode: (s) => ({ nodeType: 3, textContent: String(s), text: String(s), children: [] }), activeElement: null,
-  getElementById: () => new El('div'), querySelector: () => new El('div'),
-};
-global.window = { devicePixelRatio: 1, addEventListener() {}, removeEventListener() {}, scrollTo() {} };
-global.ResizeObserver = class { observe() {} disconnect() {} };
-global.history = { replaceState() {} };
+const { El, walk, click } = require('./fakedom');
 
 // ---- the page's own source, with its imports replaced by small stand-ins
 const uiSrc = read('ui.js').replace(/^export /gm, '').replace(/^import .*$/gm, '');
 const sent = [];
 let withMoment = false;
+let noRight = false;
 const savedMoment = { moment_id: 5, id: 'S5', image_url: '/x?a=5', updated: 'u', details: 'the pack is right early', correct_note: 'c', has_right: true,
   frames: [{ src: 'wrong', role: 'right', t: 0.5, desc: 'as generated' }, { src: 'wrong', role: 'wrong', t: 3.0, desc: 'as generated' }, { src: 'fixed', role: 'right', t: 3.25, desc: 'correct version' }],
   shapes: [{ type: 'rect', frame: 1, x1: 0.1, y1: 0.1, x2: 0.4, y2: 0.4 }] };
 const api = async (method, url, body) => {
   sent.push({ method, url, body });
+  if (url === '/api/runs/_') throw new Error('no run');
   if (url === '/api/moments/5' && method === 'PATCH') return { moment: savedMoment };
-  if (withMoment && url.startsWith('/api/misses/1') && method === 'GET') return { miss: { id: 1, title: 'T', explanation: '', kinds: [], model: 'm', mode: 'x', product: '', wrong_path: 'A.mp4', fixed_path: 'B.mp4', moments: [savedMoment], product_sample: true } };
+  if (withMoment && url.startsWith('/api/misses/1') && method === 'GET') return { miss: { id: 1, title: 'T', explanation: '', kinds: [], model: 'm', mode: 'x', product: '', wrong_path: 'A.mp4', fixed_path: noRight ? '' : 'B.mp4', moments: [savedMoment], product_sample: true } };
   if (url.startsWith('/api/runs/')) return { model: 'wan3_0_prime', mode: 'analyze', submode: 'recreate', products: [], videos: [{ video: '03', versions: [
     { path: 'A.mp4', label: 'a1 · raw.mp4', kind: 'attempt' }, { path: 'B.mp4', label: 'capcut-preview.mp4', kind: 'fixed' }] }] };
   if (url === '/api/settings') return { kinds: [] };
-  if (url.startsWith('/api/misses/1') && method === 'GET') return { miss: { id: 1, title: 'T', explanation: '', kinds: [], model: 'm', mode: 'x', product: '', wrong_path: 'A.mp4', fixed_path: 'B.mp4', moments: [], product_sample: true } };
-  if (url.startsWith('/api/misses/1') && method === 'PATCH') return { miss: { id: 1, title: 'T', explanation: '', kinds: [], wrong_path: 'A.mp4', fixed_path: 'B.mp4', moments: [], product_sample: true } };
+  if (url.startsWith('/api/misses/1') && method === 'GET') return { miss: { id: 1, title: 'T', explanation: '', kinds: [], model: 'm', mode: 'x', product: '', wrong_path: 'A.mp4', fixed_path: noRight ? '' : 'B.mp4', moments: [], product_sample: true } };
+  if (url.startsWith('/api/misses/1') && method === 'PATCH') return { miss: { id: 1, title: 'T', explanation: '', kinds: [], wrong_path: 'A.mp4', fixed_path: noRight ? '' : 'B.mp4', moments: [], product_sample: true } };
   if (url.endsWith('/moments')) return { moment: { id: 'S1', moment_id: 1, image_url: '/x?a=1', updated: 'u' } };
   if (url.startsWith('/api/product-sample')) return { samples: [] };
   return {};
@@ -122,6 +85,32 @@ const ok = (name, cond, info = '') => { console.log((cond ? '  ok   ' : '  FAIL 
   await Promise.all(walk(root2, (e) => e.tag === 'button' && e.text === 'Update moment').flatMap((b) => (b.listeners.click || []).map((f) => f())));
   const patch = sent.find((x) => x.method === 'PATCH' && x.url === '/api/moments/5');
   ok('updating sends the same frames and the mark on frame index 1', patch && patch.body.frames.map((f) => f.role[0] + f.t).join(' ') === 'r0.5 w3 r3.25' && patch.body.shapes.length === 1 && patch.body.shapes[0].frame === 1, JSON.stringify(patch && patch.body));
+  // nothing is required: no right version, a neutral frame, no frame at all, the idea, what could be better and what the agents missed
+  withMoment = false; noRight = true; sent.length = 0;
+  const root3 = await work({ run: 'R', video: '03', miss: '1' });
+  const visible3 = () => walk(root3, (e) => e.className === 'players')[0].children.filter((e) => e.className.split(/\s+/).includes('player') && e.style.display !== 'none');
+  const frames3 = () => visible3().filter((e) => walk(e, (x) => x.tag === 'canvas').length);
+  const b3 = (t) => walk(root3, (e) => e.tag === 'button' && e.text === t);
+  ok('with no right version the page starts with one frame and a card that says the right frame is optional', frames3().length === 1 && visible3().length === 2 && visible3()[1].text.includes('Optional'), String(visible3().length));
+  ok('and saving is never blocked', !b3('Mark this moment')[0].disabled);
+  click(b3('Neutral')[0]);
+  ok('a frame can be called Neutral (blue)', frames3()[0].className.includes('role-neutral') && !frames3()[0].className.includes('role-wrong'));
+  const area = (start) => walk(root3, (e) => e.tag === 'textarea' && (e.attrs.placeholder || '').startsWith(start))[0];
+  area('The idea').value = 'The hand holds the can to the end.'; area('What could have been better').value = 'State the grip at each beat.'; area('What the AI agents missed').value = 'They treated the hold as optional.';
+  await Promise.all((b3('Mark this moment')[0].listeners.click || []).map((f) => f()));
+  const postN = sent.find((x) => x.method === 'POST' && x.url.endsWith('/moments'));
+  ok('a neutral frame and the three scenario texts are sent', postN && postN.body.frames.length === 1 && postN.body.frames[0].role === 'neutral' && postN.body.idea.startsWith('The hand') && postN.body.better.startsWith('State') && postN.body.missed.startsWith('They treated'), JSON.stringify(postN && postN.body));
+  click(btn('✕', frames3()[0])[0]);
+  ok('the only frame can be removed: the report is then in words only', frames3().length === 0 && visible3().length === 1 && visible3()[0].text.includes('No frames'), String(frames3().length));
+  sent.length = 0;
+  area('The idea').value = 'Words only.';
+  await Promise.all((b3('Mark this moment')[0].listeners.click || []).map((f) => f()));
+  const postW = sent.find((x) => x.method === 'POST' && x.url.endsWith('/moments'));
+  ok('and it saves with no frame at all', postW && Array.isArray(postW.body.frames) && postW.body.frames.length === 0 && postW.body.shapes.length === 0 && postW.body.idea === 'Words only.', JSON.stringify(postW && postW.body));
+  const root4 = await work({ run: '', video: '' });
+  const players4 = walk(root4, (e) => e.className === 'players')[0];
+  ok('a report with no run and no video opens with no frame, a card, and nothing to add a frame from', players4.children.filter((e) => walk(e, (x) => x.tag === 'canvas').length).length === 0
+    && walk(root4, (e) => e.tag === 'button' && e.text === '+ Add a frame')[0].disabled === true);
   console.log(fails ? `${fails} failed` : 'all passed');
   process.exit(fails ? 1 : 0);
 })().catch((e) => { console.log('FAIL the page threw: ' + (e && e.stack || e)); process.exit(1); });

@@ -26,9 +26,9 @@ def _kinds(v) -> str:
     return ",".join(out[:8])
 
 
-# A moment is one or more frames the admin chose.  Each frame comes from one of the report's two videos (src "wrong" = the version as generated, "fixed" = the
-# right version), has its own time, and is called WRONG or RIGHT by the admin; the marks belong to a frame (its index).  An older moment holds no frames:
-# it is the miss frame at t_wrong and, when the report has a right version, the right frame at t_fixed.
+# A moment is any number of frames the admin chose, none at all included (a scenario in words only).  Each frame comes from one of the report's two videos (src "wrong" =
+# the version as generated, "fixed" = the right version), has its own time, and is called WRONG, RIGHT or neither (role "neutral") by the admin; the marks belong to a
+# frame (its index).  An older moment holds no frames column at all: it is the miss frame at t_wrong and, when the report has a right version, the right frame at t_fixed.
 FRAME_DESC = {"wrong": "as generated", "fixed": "correct version"}
 TITLE_MAX = 2000       # the title is often a whole paragraph and is burned into the image in full: never cut it short
 
@@ -39,22 +39,22 @@ def _frames_clean(raw, miss: dict) -> list[dict]:
         if not isinstance(f, dict):
             continue
         src = "fixed" if f.get("src") == "fixed" else "wrong"
-        role = "right" if f.get("role") == "right" else "wrong"
+        role = {"right": "right", "neutral": "neutral", "none": "neutral"}.get(f.get("role"), "wrong")
         try:
             t = max(0.0, float(f.get("t") or 0.0))
         except (TypeError, ValueError):
             t = 0.0
         if src == "fixed" and not miss.get("fixed_path"):
             raise ValueError("a frame comes from the right version, but this report has none")
+        if src == "wrong" and not miss.get("wrong_path"):
+            raise ValueError("a frame comes from Video A, but this report has none")
         out.append({"src": src, "role": role, "t": round(t, 3)})
-    if not out:
-        raise ValueError("a moment needs at least one frame")
     return out
 
 
 def _frames_legacy(tw, tf, miss: dict) -> list[dict]:
     tw = max(0.0, float(tw or 0.0))
-    fr = [{"src": "wrong", "role": "wrong", "t": round(tw, 3)}]
+    fr = [{"src": "wrong", "role": "wrong", "t": round(tw, 3)}] if miss.get("wrong_path") else []
     if miss.get("fixed_path"):
         fr.append({"src": "fixed", "role": "right", "t": round(max(0.0, float(tf if tf not in (None, "") else tw)), 3)})
     return fr
@@ -62,16 +62,21 @@ def _frames_legacy(tw, tf, miss: dict) -> list[dict]:
 
 def frames_of(row, miss: dict) -> list[dict]:
     try:
-        stored = json.loads(row["frames"] or "[]")
-    except (TypeError, ValueError, KeyError, IndexError):
-        stored = []
-    if stored:
-        return [{"src": f["src"], "role": f["role"], "t": f["t"]} for f in stored if isinstance(f, dict) and "t" in f]
+        raw = row["frames"]
+    except (KeyError, IndexError):
+        raw = None
+    if raw not in (None, ""):          # saved with frames, possibly none: that is a scenario in words only, not an older moment
+        try:
+            return [{"src": f["src"], "role": f["role"], "t": f["t"]} for f in json.loads(raw) if isinstance(f, dict) and "t" in f]
+        except (TypeError, ValueError):
+            pass
     return _frames_legacy(row["t_wrong"], row["t_fixed"], miss)
 
 
 def _times(frames: list[dict]) -> tuple[float, float]:
     """The two summary times kept for listings: the first miss frame and the first right frame."""
+    if not frames:
+        return 0.0, 0.0
     tw = next((f["t"] for f in frames if f["role"] == "wrong"), frames[0]["t"])
     return tw, next((f["t"] for f in frames if f["role"] == "right"), tw)
 
@@ -98,9 +103,10 @@ def sample_dir(mid: int) -> Path:
 # ------------------------------------------------------------------ misses
 def create(data: dict, actor: str) -> dict:
     wrong, fixed = str(data.get("wrong_path") or ""), str(data.get("fixed_path") or "")
-    media.resolve_media(wrong)      # raises when the file is missing or not readable
+    if wrong:
+        media.resolve_media(wrong)      # raises when the file is missing or not readable
     if fixed:
-        media.resolve_media(fixed)      # a miss may have no right version at all: it then stays as a miss example
+        media.resolve_media(fixed)      # neither video is required: a report can be a scenario in words only (the idea, what could be better, what the agents missed)
     if not str(data.get("title") or "").strip():
         raise ValueError("a title is needed (one line: what went wrong)")
     con = core.db()
@@ -178,7 +184,7 @@ def update(mid: int, patch: dict, actor: str) -> dict | None:
     for k in ("wrong_path", "fixed_path"):
         if k in patch and (patch[k] or "") != cur[k]:
             v = str(patch[k] or "")
-            if v or k == "wrong_path":       # the right version can be cleared (a miss example again) or attached later; the wrong one is required
+            if v:       # either video can be cleared (a miss example, or a scenario in words only) or attached later
                 media.resolve_media(v)
             cols[k] = v
     if cols:
@@ -190,14 +196,15 @@ def update(mid: int, patch: dict, actor: str) -> dict | None:
         finally:
             con.close()
         core.audit(actor, "miss.update", f"miss {mid}", ",".join(cols))
-        if "fixed_path" in cols and cols["fixed_path"] != (cur["fixed_path"] or ""):
-            for mo in cur["moments"]:       # a right version attached later adds the right frame at the same second; clearing it drops the frames that came from it
+        changed = [src for src, k in (("wrong", "wrong_path"), ("fixed", "fixed_path")) if k in cols and cols[k] != (cur[k] or "")]
+        if changed:
+            for mo in cur["moments"]:       # a right version attached later adds the right frame at the same second; clearing a video drops the frames that came from it
                 fr, sh = [{k: f[k] for k in ("src", "role", "t")} for f in mo["frames"]], compose.clean_shapes(mo["shapes"])
-                if not cols["fixed_path"]:
-                    keep = [i for i, f in enumerate(fr) if f["src"] != "fixed"] or [0]
-                    fr = [fr[i] if fr[i]["src"] != "fixed" else {"src": "wrong", "role": "wrong", "t": mo["t_wrong"]} for i in keep]
-                    sh = _fit_shapes(sh, keep)
-                elif not cur["fixed_path"] and len(fr) == 1 and fr[0]["role"] == "wrong" and fr[0]["src"] == "wrong":
+                drop = [src for src in changed if not cols["wrong_path" if src == "wrong" else "fixed_path"]]
+                if drop:
+                    keep = [i for i, f in enumerate(fr) if f["src"] not in drop]
+                    fr, sh = [fr[i] for i in keep], _fit_shapes(sh, keep)
+                elif "fixed" in changed and not cur["fixed_path"] and len(fr) == 1 and fr[0]["role"] == "wrong" and fr[0]["src"] == "wrong":
                     fr.append({"src": "fixed", "role": "right", "t": fr[0]["t"]})
                 _write_frames(mo["moment_id"], fr, sh)
         if any(k in cols for k in ("title", "explanation", "wrong_path", "fixed_path", "model", "run", "video", "sample_on", "wrong_label")):
@@ -225,23 +232,25 @@ def add_moment(miss_id: int, data: dict, actor: str) -> dict:
     m = get(miss_id)
     if not m:
         raise LookupError("no such miss")
-    frames = _frames_clean(data["frames"], m) if data.get("frames") else _frames_legacy(data.get("t_wrong"), data.get("t_fixed"), m)
+    frames = _frames_clean(data["frames"], m) if data.get("frames") is not None else _frames_legacy(data.get("t_wrong"), data.get("t_fixed"), m)
     tw, tf = _times(frames)
     shapes = _fit_shapes(compose.clean_shapes(data.get("shapes")), list(range(len(frames))))
     con = core.db()
     try:
-        cur = con.execute("""INSERT INTO moments(miss_id,created,updated,t_wrong,t_fixed,details,correct_note,shapes,kinds,status,frames)
-                             VALUES(?,?,?,?,?,?,?,?,?,?,?)""",
+        cur = con.execute("""INSERT INTO moments(miss_id,created,updated,t_wrong,t_fixed,details,correct_note,shapes,kinds,status,frames,idea,better,missed)
+                             VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                           (miss_id, core.now(), core.now(), tw, tf, str(data.get("details") or "").strip(),
-                           str(data.get("correct_note") or "").strip(), core.jdump(shapes), _kinds(data.get("kinds")), "active", core.jdump(frames)))
+                           str(data.get("correct_note") or "").strip(), core.jdump(shapes), _kinds(data.get("kinds")), "active", core.jdump(frames),
+                           str(data.get("idea") or "").strip(), str(data.get("better") or "").strip(), str(data.get("missed") or "").strip()))
         con.commit()
         mid = cur.lastrowid
     finally:
         con.close()
-    if not (m["explanation"] or "").strip() and str(data.get("details") or "").strip():     # the report's summary defaults to its first explanation
+    first = str(data.get("details") or "").strip()
+    if not (m["explanation"] or "").strip() and first:     # the report's summary defaults to its first explanation
         con = core.db()
         try:
-            con.execute("UPDATE misses SET explanation=?, updated=? WHERE id=?", (str(data["details"]).strip(), core.now(), miss_id))
+            con.execute("UPDATE misses SET explanation=?, updated=? WHERE id=?", (first, core.now(), miss_id))
             con.commit()
         finally:
             con.close()
@@ -257,7 +266,7 @@ def update_moment(mid: int, patch: dict, actor: str) -> dict | None:
     cols = {}
     frames = None
     if patch.get("frames") is not None:
-        frames = _frames_clean(patch["frames"], {"fixed_path": cur["has_right_version"]})
+        frames = _frames_clean(patch["frames"], {"fixed_path": cur["has_right_version"], "wrong_path": cur["has_wrong_version"]})
     elif "t_wrong" in patch or "t_fixed" in patch:       # an older caller moves the first miss frame and the first right frame
         frames = [dict(f) for f in cur["frames"]]
         for key, role in (("t_wrong", "wrong"), ("t_fixed", "right")):
@@ -268,7 +277,7 @@ def update_moment(mid: int, patch: dict, actor: str) -> dict | None:
     if frames is not None:
         cols["frames"] = core.jdump(frames)
         cols["t_wrong"], cols["t_fixed"] = _times(frames)
-    for k in ("details", "correct_note", "status"):
+    for k in ("details", "correct_note", "status", "idea", "better", "missed"):
         if k in patch:
             cols[k] = str(patch[k] or "").strip()
     if "shapes" in patch or frames is not None:
@@ -285,7 +294,7 @@ def update_moment(mid: int, patch: dict, actor: str) -> dict | None:
         finally:
             con.close()
         core.audit(actor, "moment.update", f"moment {mid}", ",".join(cols))
-        if any(k in cols for k in ("frames", "t_wrong", "t_fixed", "details", "correct_note", "shapes")):
+        if any(k in cols for k in ("frames", "t_wrong", "t_fixed", "details", "correct_note", "shapes", "idea", "better", "missed")):
             regenerate(mid)
     return moment(mid)
 
@@ -319,8 +328,6 @@ def regenerate(mid: int):
         png = media.frame_file(media.resolve_media(path), f["t"])
         items.append({"img": Image.open(png).convert("RGB"), "role": f["role"], "desc": FRAME_DESC[f["src"]], "t": f["t"], "shapes": [s for s in shapes if s["frame"] == i]})
         pngs.append(png)
-    if not items:
-        raise RuntimeError("no frame of this moment can be cut: its videos are gone")
     tw, tf = _times(frames)
     meta = {"title": miss["title"], "model": miss["model"], "run": miss["run"], "video": miss["video"], "t_wrong": tw, "t_fixed": tf, "sample": f"S{mid}",
             "frames": [{"n": k + 1, "role": it["role"], "from": it["desc"], "t": it["t"]} for k, it in enumerate(items)]}
@@ -333,7 +340,8 @@ def regenerate(mid: int):
         except Exception as e:  # noqa: BLE001
             core.audit("system", "product-sample.failed", f"miss {miss['id']}", str(e)[:300])
             samples = []
-    comp, zoom, ann = compose.build(items, meta, mr["details"] or miss["explanation"] or "", mr["correct_note"] or "", product_samples=samples)
+    comp, zoom, ann = compose.build(items, meta, mr["details"] or miss["explanation"] or "", mr["correct_note"] or "", product_samples=samples,
+                                    idea=mr["idea"] or "", better=mr["better"] or "", missed=mr["missed"] or "")
     d = sample_dir(mid)
     d.mkdir(parents=True, exist_ok=True)
     for old in list(d.glob("frame-*.png")) + [d / n for n in ("wrong.png", "annotated.png", "fixed.png", "annotated_fixed.png", "zoom.png")]:
@@ -352,7 +360,7 @@ def regenerate(mid: int):
         zoom.save(d / "zoom.png", optimize=True)
     con = core.db()
     try:
-        con.execute("UPDATE moments SET w=?, h=?, updated=? WHERE id=?", (items[0]["img"].width, items[0]["img"].height, core.now(), mid))
+        con.execute("UPDATE moments SET w=?, h=?, updated=? WHERE id=?", (items[0]["img"].width if items else None, items[0]["img"].height if items else None, core.now(), mid))
         con.commit()
     finally:
         con.close()
@@ -372,11 +380,14 @@ def moment_view(r, miss: dict) -> dict:
     kinds = [k for k in (r["kinds"] or "").split(",") if k] or miss.get("kinds", [])
     d = sample_dir(mid)
     frames = frames_of(r, miss)
-    return {"moment_id": mid, "frames": [dict(f, desc=FRAME_DESC[f["src"]]) for f in frames], "n_frames": len(frames), "has_right_version": miss.get("fixed_path") or "", "id": f"S{mid}", "miss_id": miss["id"], "title": miss["title"], "explanation": miss["explanation"], "details": r["details"],
+    has_wrong, has_right = any(f["role"] == "wrong" for f in frames), any(f["role"] == "right" for f in frames)
+    return {"moment_id": mid, "frames": [dict(f, desc=FRAME_DESC[f["src"]]) for f in frames], "n_frames": len(frames), "has_right_version": miss.get("fixed_path") or "",
+            "has_wrong_version": miss.get("wrong_path") or "", "has_wrong": has_wrong, "sample_kind": ("pair" if has_right else "miss-only") if has_wrong else "scenario",
+            "idea": r["idea"] or "", "better": r["better"] or "", "missed": r["missed"] or "", "id": f"S{mid}", "miss_id": miss["id"], "title": miss["title"], "explanation": miss["explanation"], "details": r["details"],
             "correct_note": r["correct_note"], "kinds": kinds, "model": miss["model"], "mode": miss["mode"], "product": miss["product"],
             "run": miss["run"], "video": miss["video"], "t_wrong": r["t_wrong"], "t_fixed": r["t_fixed"], "shapes": compose.clean_shapes(json.loads(r["shapes"] or "[]")),
             "status": r["status"], "miss_status": miss["status"], "created": r["created"], "updated": r["updated"],
-            "has_right": any(f["role"] == "right" for f in frames), "image_url": f"/api/moments/{mid}/image?kind=composite", "zoom_url": f"/api/moments/{mid}/image?kind=zoom" if (d / "zoom.png").exists() else "",
+            "has_right": has_right, "image_url": f"/api/moments/{mid}/image?kind=composite", "zoom_url": f"/api/moments/{mid}/image?kind=zoom" if (d / "zoom.png").exists() else "",
             "composite_path": str(d / "composite.png")}
 
 

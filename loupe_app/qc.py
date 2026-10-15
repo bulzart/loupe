@@ -50,7 +50,8 @@ def score(s: dict, ctx: dict) -> float:
         sc += 1
     ck = {str(k).lower() for k in (ctx.get("kinds") or [])}
     sc += 3 * len(ck & set(s.get("kinds") or []))
-    blob = " ".join([s.get("title", ""), s.get("explanation", ""), s.get("details", ""), s.get("correct_note", ""), s.get("product", "")]).lower()
+    blob = " ".join([s.get("title", ""), s.get("explanation", ""), s.get("details", ""), s.get("correct_note", ""), s.get("product", ""),
+                     s.get("idea", ""), s.get("better", ""), s.get("missed", "")]).lower()
     for p in ctx.get("product_forms") or [x for x in (ctx.get("product"), ctx.get("product_details")) if x]:
         for tok in re.findall(r"[a-z0-9]{4,}", str(p).lower()):
             if tok in blob:
@@ -76,18 +77,25 @@ def search(ctx: dict, limit: int = 8) -> list[dict]:
 
 
 def sample_lines(s: dict, with_path: bool = True) -> str:
+    kind = s.get("sample_kind", "pair")
     t = [f"[{s['id']}] kinds: {', '.join(s['kinds']) or '-'} | model {s['model'] or 'any'} | {s['run'] or 'no run'} video {s['video'] or '-'} @ {s['t_wrong']:.2f}s",
-         f"  MISS: {s['title']}" + (f". {s['explanation'][:400]}" if s["explanation"] else "")]
+         f"  {'SCENARIO' if kind == 'scenario' else 'MISS'}: {s['title']}" + (f". {s['explanation'][:400]}" if s["explanation"] else "")]
     if s["details"]:
-        t.append(f"  WRONG HERE: {s['details'][:400]}")
-    if not s.get("has_right", True):
+        t.append(f"  {'NOTE' if kind == 'scenario' else 'WRONG HERE'}: {s['details'][:400]}")
+    for label, key in (("IDEA (what was meant to happen)", "idea"), ("COULD HAVE BEEN BETTER", "better"), ("THE AI AGENTS MISSED OR COULD NOT UNDERSTAND", "missed")):
+        if s.get(key):
+            t.append(f"  {label}: {s[key][:400]}")
+    if kind == "miss-only":
         t.append("  NO RIGHT VERSION: a miss example only")
     elif s["correct_note"]:
         t.append(f"  CORRECT: {s['correct_note'][:400]}")
     if with_path:
-        fl = ", ".join(f"{f['role'].upper()} @ {f['t']:.2f}s ({f['desc']})" for f in s.get("frames", []))
-        t.append(f"  image ({s.get('n_frames', 2)} frame(s), each tagged WRONG in red or RIGHT in green with its time and the admin's marks, a zoom of each below; frames: {fl}): {s['composite_path']}" if s.get("has_right", True)
-                 else f"  image ({s.get('n_frames', 1)} frame(s) tagged WRONG in red with the admin's marks and a zoom; this sample has NO right version, it is a miss example only; frames: {fl}): {s['composite_path']}")
+        if not s.get("n_frames"):
+            t.append(f"  image (a text card with the admin's words and the product sample; this scenario has no frames): {s['composite_path']}")
+        else:
+            fl = ", ".join(f"{f['role'].upper()} @ {f['t']:.2f}s ({f['desc']})" for f in s.get("frames", []))
+            t.append(f"  image ({s['n_frames']} frame(s), each tagged WRONG in red, RIGHT in green or FRAME in blue with its time and the admin's marks, a zoom of each below, the admin's words at the bottom; frames: {fl})"
+                     + ("; this sample has NO right version, it is a miss example only" if kind == "miss-only" else "") + f": {s['composite_path']}")
     return "\n".join(t)
 
 
@@ -96,7 +104,7 @@ def brief(ctx: dict, limit: int = 8) -> dict:
     text = (f"{len(sam)} sample(s) from the library that match this video ({ctx.get('model') or 'any model'}; "
             f"{', '.join(ctx.get('kinds') or []) or 'any kind'}). Look at each image; compare the marked region with the same place in the video under QC.\n\n"
             + "\n\n".join(sample_lines(s) for s in sam)) if sam else "No sample in the library matches this video."
-    return {"mode": "brief", "samples": [{k: s[k] for k in ("id", "title", "kinds", "model", "details", "correct_note", "has_right", "frames", "n_frames", "composite_path", "image_url", "score")} for s in sam],
+    return {"mode": "brief", "samples": [{k: s[k] for k in ("id", "title", "kinds", "model", "details", "correct_note", "idea", "better", "missed", "sample_kind", "has_right", "frames", "n_frames", "composite_path", "image_url", "score")} for s in sam],
             "text": text, "library_size": len(library())}
 
 
@@ -109,7 +117,9 @@ def _t(t) -> str:
 def frames_text(s: dict) -> str:
     """What the sample's image holds: every frame, called WRONG or RIGHT by the admin, where it comes from and its time."""
     fr = s.get("frames") or []
-    return f"{len(fr)} frame{'' if len(fr) == 1 else 's'}: " + ", ".join(f"{f['role'].upper()} {_t(f['t'])} {f['desc']}" for f in fr)
+    if not fr:
+        return "no frames (the admin's words only)"
+    return f"{len(fr)} frame{'' if len(fr) == 1 else 's'}: " + ", ".join(f"{({'wrong': 'WRONG', 'right': 'RIGHT'}).get(f['role'], 'FRAME')} {_t(f['t'])} {f['desc']}" for f in fr)
 
 
 def _digest() -> str:
@@ -118,9 +128,11 @@ def _digest() -> str:
     for s in lib:
         compact = len(lib) > 250
         lines.append(f"{s['id']} | {','.join(s['kinds'])} | {s['model'] or 'any'} | {s['title']}"
-                     + ("" if compact else f" | miss: {s['explanation'][:240]} | wrong here: {s['details'][:240]} | correct: {s['correct_note'][:240]}")
+                     + ("" if compact else f" | miss: {s['explanation'][:240]} | wrong here: {s['details'][:240]} | correct: {s['correct_note'][:240]}"
+                        + "".join(f" | {lab}: {s[k][:240]}" for lab, k in (("idea", "idea"), ("could be better", "better"), ("agents missed", "missed")) if s.get(k)))
                      + f" | {frames_text(s)}"
-                     + ("" if s.get("has_right", True) else " | NO RIGHT VERSION (a miss example only)")
+                     + {"miss-only": " | NO RIGHT VERSION (a miss example only)",
+                        "scenario": " | SCENARIO (no frame is called wrong: the admin's words say what was meant, what could be better and what the agents missed)"}.get(s.get("sample_kind"), "")
                      + f" | image: {s['composite_path']}")
     return "\n".join(lines) or "(the library is empty)"
 
@@ -144,7 +156,10 @@ ROLE = ("You are the Loupe keeper of a video-generation pipeline. You hold a lib
         "READ; you never write, edit or create anything, and you never add to the library (only the admin does, in the web app). Cite only sample ids "
         "that exist in your library; never invent a sample or a rule; judge only from the samples and the admin's words, never from general knowledge "
         "of video models. Some samples are marked NO RIGHT VERSION: they are miss examples only (nothing was corrected); never invent what a right "
-        "version would look like. For QC they still show the wrong pattern to look for; for planning, give a hint from one only when the admin's words "
+        "version would look like. Some samples are SCENARIOS: no frame is called wrong (a text card, or frames the admin left unjudged or called right); they hold the admin's idea (what was "
+        "meant to happen), what could have been better and what the AI agents missed or could not understand. They are insight into how the agents misread or under-delivered, not a "
+        "visual pattern to match: for QC compare the video with the idea and with what was missed, and for planning let one justify a hint only when a beat of the plan matches the "
+        "situation it describes, under the same rules as any hint. For QC a miss example still shows the wrong pattern to look for; for planning, give a hint from one only when the admin's words "
         "let you state the right outcome positively, or the lever is a plain restatement at the matching beat, and then at most medium confidence. "
         "You may Read a sample's image (path given) to describe it, nothing else. "
         "Reason from mechanisms, not labels: a sample is relevant when it and the video share a product detail (form, size, opening, posture) and a "
@@ -311,6 +326,7 @@ def consult(key_name: str, ctx: dict, question: str, purpose: str = "qc") -> dic
                         rel.append({"id": s["id"], "why": str(r.get("why", ""))[:400], "check": str(r.get("check", ""))[:400],
                                     "wrong_pattern": str(r.get("wrong_pattern", ""))[:200], "composite_path": s["composite_path"], "image_url": s["image_url"],
                                     "details": s["details"], "correct_note": s["correct_note"], "has_right": s.get("has_right", True),
+                                    "idea": s.get("idea", ""), "better": s.get("better", ""), "missed": s.get("missed", ""), "sample_kind": s.get("sample_kind", "pair"),
                                     "frames": s.get("frames", []), "n_frames": s.get("n_frames", 0)})
                 res = {"mode": "keeper", "purpose": "qc", "relevant": rel, "advice": str((parsed or {}).get("advice", ""))[:600] if isinstance(parsed, dict) else str(d.get("result", ""))[:600],
                        "not_covered": str((parsed or {}).get("not_covered", ""))[:400] if isinstance(parsed, dict) else "", "library_size": len(ids)}

@@ -86,6 +86,10 @@ misses.update_moment(Am, {"details": "the can is half its size at 0:01"}, "test"
 fresh, current, _ = ask()
 check("an edited explanation reaches the keeper", fresh and current)
 
+misses.update_moment(Am, {"idea": "The can should keep its size from the first shot to the last", "missed": "The agents let the distance change the size"}, "test")
+fresh, current, text = ask()
+check("the idea and what the agents missed reach the keeper", fresh and current and "agents missed: The agents let the distance" in qc._digest(), qc._digest()[:300])
+
 misses.update_moment(Am, {"frames": [{"src": "wrong", "role": "right", "t": 0.5}, {"src": "wrong", "role": "wrong", "t": 2.0}, {"src": "fixed", "role": "right", "t": 2.0}]}, "test")
 fresh, current, text = ask()
 check("a frame added to a sample reaches the keeper", fresh and current)

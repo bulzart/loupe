@@ -8,7 +8,8 @@ The web app of the `/analyze-then-pick` pipeline. It does three things:
 2. **Generation misses.** One page, no second step: you pick a run and a video, the frames play side by side (two to start with: the miss from Video A and the right version from Video B, on the same time), and you
    draw an arrow, circle, box or note straight on any of them (red on a frame you call Wrong, green on a frame you call Right). You choose what each
    frame is: Wrong or Right, which video it comes from (so an early frame of one video can be the right one), and its own time (slider, 1-frame buttons or a time box); **+ Add a frame** adds as many as you need.
-   Nothing is marked or copied for you. Undo / Redo / Ctrl+Z / Ctrl+Y work. Type what the miss was,
+   Nothing is marked or copied for you. Undo / Redo / Ctrl+Z / Ctrl+Y work. Everything is optional: a right version, a wrong frame, even a video or any frame (a report can be in words only: the idea, what could have been better, what the AI agents missed or could not understand).
+   Type what the miss was or what the scenario is about,
    press **Mark this moment** (it saves at once), and Loupe saves one image: each frame
    tagged WRONG or RIGHT with its time and your marks, a zoom around each frame's own marks, and your explanation burned in at the bottom. The bottom band is split in half: the explanation on
    the left and, on the right, the **product sample the video used**, found automatically from the run (its request, product registry and asset
@@ -89,7 +90,7 @@ This folder is its own git repository; `origin` is the private GitHub repo `bulz
 
 ## Tests
 
-`python tests/selftest.py` (73 checks; `--keeper` adds 5 that call the real keeper), `node tests/transport_check.js` (the frame controls against fake videos), `node tests/page_smoke.js` (the whole report page against a fake DOM and API), `python tests/keeper_sync.py` (the keeper receives every change to the library, no model call) and `python tests/demo.py` (a demo instance on port
+`python tests/selftest.py` (73 checks; `--keeper` adds 5 that call the real keeper), `node tests/transport_check.js` (the frame controls against fake videos), `node tests/page_smoke.js` (the whole report page against a fake DOM and API), `node tests/flags_smoke.js` (the Flags page), `python tests/keeper_sync.py` (the keeper receives every change to the library, no model call) and `python tests/demo.py` (a demo instance on port
 8799 with throwaway data, passphrase `demo-passphrase`).
 
 ## Build prompt

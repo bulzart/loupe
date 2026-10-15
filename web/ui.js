@@ -41,12 +41,12 @@ export const status = (s) => h('span', { class: 'st ' + (s || '') }, s || '');
 export const chips = (arr, onClick) => (arr || []).map((t) => h(onClick ? 'button' : 'span', { class: 'chip', onclick: onClick ? () => onClick(t) : null }, t));
 
 // A chip picker: toggles values in a Set; returns the element and a getter.
-export function chipPicker(options, selected, onChange) {
+export function chipPicker(options, selected, onChange, describe) {       // describe(value) -> { label, title }: plain words for a value, the value itself stays what is saved
   const sel = new Set(selected || []);
   const box = h('div');
   const draw = () => {
-    box.replaceChildren(...[...new Set([...options, ...sel])].map((o) => h('button', { type: 'button', class: 'chip' + (sel.has(o) ? ' on' : ''),
-      onclick: () => { sel.has(o) ? sel.delete(o) : sel.add(o); draw(); onChange && onChange([...sel]); } }, o)));
+    box.replaceChildren(...[...new Set([...options, ...sel])].map((o) => h('button', { type: 'button', class: 'chip' + (sel.has(o) ? ' on' : ''), title: describe ? describe(o).title : null,
+      onclick: () => { sel.has(o) ? sel.delete(o) : sel.add(o); draw(); onChange && onChange([...sel]); } }, describe ? describe(o).label : o)));
     const add = h('input', { placeholder: 'add a kind…', size: 12, onkeydown: (e) => {
       if (e.key === 'Enter') { e.preventDefault(); const v = e.target.value.trim().toLowerCase().replace(/\s+/g, '-'); if (v) { sel.add(v); draw(); onChange && onChange([...sel]); } } } });
     box.append(add);

@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS misses(id INTEGER PRIMARY KEY AUTOINCREMENT, created 
   wrong_path TEXT, wrong_label TEXT, fixed_path TEXT, fixed_label TEXT, sample_on INTEGER DEFAULT 1);
 CREATE TABLE IF NOT EXISTS moments(id INTEGER PRIMARY KEY AUTOINCREMENT, miss_id INTEGER, created TEXT, updated TEXT,
   t_wrong REAL, t_fixed REAL, details TEXT, correct_note TEXT, shapes TEXT, kinds TEXT, status TEXT DEFAULT 'active',
-  w INTEGER, h INTEGER, frames TEXT);
+  w INTEGER, h INTEGER, frames TEXT, idea TEXT, better TEXT, missed TEXT);
 CREATE INDEX IF NOT EXISTS moments_miss ON moments(miss_id);
 CREATE TABLE IF NOT EXISTS consults(id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT, key_name TEXT, run TEXT, video TEXT,
   question TEXT, sample_ids TEXT, answer TEXT, ms INTEGER, mode TEXT, cost REAL, purpose TEXT DEFAULT 'qc');
@@ -90,6 +90,9 @@ def db() -> sqlite3.Connection:
                     con.execute("ALTER TABLE misses ADD COLUMN sample_on INTEGER DEFAULT 1")
                 if "frames" not in [r[1] for r in con.execute("PRAGMA table_info(moments)")]:      # a database made before a moment held any number of frames
                     con.execute("ALTER TABLE moments ADD COLUMN frames TEXT")
+                for col in (("idea", "TEXT"), ("better", "TEXT"), ("missed", "TEXT")):      # a database made before a report could be a scenario
+                    if col[0] not in [r[1] for r in con.execute("PRAGMA table_info(moments)")]:
+                        con.execute(f"ALTER TABLE moments ADD COLUMN {col[0]} {col[1]}")
                 if "purpose" not in [r[1] for r in con.execute("PRAGMA table_info(consults)")]:      # a database made before planning hints existed
                     con.execute("ALTER TABLE consults ADD COLUMN purpose TEXT DEFAULT 'qc'")
                 con.commit()

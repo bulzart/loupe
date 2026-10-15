@@ -10,6 +10,7 @@ from PIL import Image, ImageDraw, ImageFont
 RED = (255, 45, 45)
 GREEN = (46, 204, 113)
 GREEN_DARK = (22, 163, 74)
+NEUTRAL = (59, 110, 220)       # a frame the admin called neither wrong nor right
 INK = (24, 26, 32)
 PAPER = (245, 245, 247)
 MUTED = (120, 124, 134)
@@ -216,31 +217,37 @@ def _placeholder(w: int, h: int, lines: list[str]) -> Image.Image:
     return im
 
 
-def build(frames: list[dict], meta: dict, details: str, correct_note: str, include_zoom: bool = True, product_samples: list | None = None):
+def build(frames: list[dict], meta: dict, details: str, correct_note: str, include_zoom: bool = True, product_samples: list | None = None,
+          idea: str = "", better: str = "", missed: str = ""):
     """(composite, zoom_or_None, [annotated frame, ...]).
 
-    frames: [{"img": a PIL image, "role": "wrong" | "right", "desc": where it comes from, "t": seconds, "shapes": [its marks]}] in the order the admin chose.
-    One image: every frame in a panel with a tag (WRONG in red or RIGHT in green, where it comes from, its time) and exactly the marks the admin drew on it (nothing
-    is copied or added), two panels in a row up to two frames and three in a row beyond that; under each row a zoom of every frame cut around its own marks (around all
-    the marks when it has none); and the explanation burned in at the bottom with the product sample beside it.
-    A lone miss frame gets a quiet card beside it that says there is nothing right to compare with.  The marks are drawn after each picture has its final size,
-    thin and at the same weight in the panels and in the zoom."""
+    frames: [{"img": a PIL image, "role": "wrong" | "right" | "neutral", "desc": where it comes from, "t": seconds, "shapes": [its marks]}] in the order the admin chose;
+    there may be none at all (a report that is only words).
+    One image: every frame in a panel with a tag (red WRONG, green RIGHT or blue FRAME, where it comes from, its time) and exactly the marks the admin drew on it (nothing is
+    copied or added), two panels in a row up to two frames and three in a row beyond that, every row centred; under each row a zoom of every frame cut around its own marks
+    (around all the marks when it has none); and the words burned in at the bottom with the product sample beside them: the title, the explanation, and the admin's idea (what was
+    meant to happen), what could have been better and what the AI agents missed or could not understand, each when given.
+    A lone miss frame gets a quiet card beside it that says there is nothing right to compare with.  The marks are drawn after each picture has its final size, thin and at the
+    same weight in the panels and in the zoom."""
     fr = [dict(f, img=f["img"].convert("RGB"), shapes=list(f.get("shapes") or [])) for f in frames][:MAX_FRAMES]
     n = len(fr)
-    colr = lambda role: RED if role == "wrong" else GREEN_DARK      # noqa: E731
+    colr = lambda role: {"wrong": RED, "right": GREEN_DARK}.get(role, NEUTRAL)      # noqa: E731
     annotated = [draw_shapes(f["img"], f["shapes"], colr(f["role"])) if f["shapes"] else f["img"].copy() for f in fr]      # the full-size files
     nbox = region_norm([s for f in fr for s in f["shapes"]])           # the place that matters: every mark on every frame
     has_right = any(f["role"] == "right" for f in fr)
-    lone = n == 1 and not has_right
+    lone = n == 1 and fr[0]["role"] == "wrong"
     panels = [("frame", i) for i in range(n)] + ([("card", 0)] if lone else [])
-    cols = len(panels) if len(panels) <= 2 else 3
+    cols = max(1, len(panels)) if len(panels) <= 2 else 3
 
     PW, M = 560, 24
-    f0 = fr[0]["img"]
-    ph = min(round(PW * f0.height / f0.width), 1000)
-    pw = round(ph * f0.width / f0.height) if ph == 1000 else PW
-    pw = max(pw, 200)
-    lwp = _line_w(ph)                    # one mark weight for the panels and the zoom
+    if n:
+        f0 = fr[0]["img"]
+        ph = min(round(PW * f0.height / f0.width), 1000)
+        pw = round(ph * f0.width / f0.height) if ph == 1000 else PW
+        pw = max(pw, 200)
+    else:
+        ph, pw = 0, PW
+    lwp = _line_w(ph or 996)             # one mark weight for the panels and the zoom
     pics = []
     for kind, i in panels:
         if kind == "card":
@@ -251,7 +258,9 @@ def build(frames: list[dict], meta: dict, details: str, correct_note: str, inclu
         pic = im.resize((pw, hi), Image.LANCZOS)
         pics.append(draw_shapes(pic, fr[i]["shapes"], colr(fr[i]["role"]), lw=lwp, ref_h=ph) if fr[i]["shapes"] else pic)
     rows = [list(range(k, min(k + cols, len(panels)))) for k in range(0, len(panels), cols)]
-    W = M * (cols + 1) + pw * cols
+    cols_w = max(cols, 2)                # never narrower than two panels, so the words always have room
+    W = M * (cols_w + 1) + pw * cols_w
+    row_x = lambda k: (W - (k * pw + (k - 1) * M)) // 2      # noqa: E731  every row is centred
 
     zh = 520
     zoom_rows: list[Image.Image] = []
@@ -272,9 +281,10 @@ def build(frames: list[dict], meta: dict, details: str, correct_note: str, inclu
 
         for row in rows:
             zr = Image.new("RGB", (W, zh + M), PAPER)
+            x0 = row_x(len(row))
             for c, pi in enumerate(row):
                 kind, i = panels[pi]
-                zr.paste(zoomed(i) if kind == "frame" else Image.new("RGB", (pw, zh), (34, 36, 44)), (M + c * (M + pw), 0))
+                zr.paste(zoomed(i) if kind == "frame" else Image.new("RGB", (pw, zh), (34, 36, 44)), (x0 + c * (M + pw), 0))
             zoom_rows.append(zr)
     zoom = None
     if zoom_rows:
@@ -282,9 +292,9 @@ def build(frames: list[dict], meta: dict, details: str, correct_note: str, inclu
         for k, zr in enumerate(zoom_rows):
             zoom.paste(zr, (0, k * (zh + M)))
 
-    # the burned caption (bottom centre): title, what is wrong here, what the right version shows
+    # the burned words (bottom): the title, the explanation, the idea, what could be better, what the agents missed, what the right frame shows
     scratch = ImageDraw.Draw(Image.new("RGB", (10, 10)))
-    ps = list(product_samples or [])       # [(image, label)]: the bottom band is then split, the description on the left half, the product sample on the right
+    ps = list(product_samples or [])       # [(image, label)]: the bottom band is then split, the words on the left half, the product sample on the right
     colw = W // 2
     cap_w = (colw - M * 3) if ps else (W - M * 4)
     f_title, f_txt, f_cap = font(30, True), font(25), font(23)
@@ -296,14 +306,17 @@ def build(frames: list[dict], meta: dict, details: str, correct_note: str, inclu
         cap.append((f_title, (255, 255, 255), _wrap(scratch, title, f_title, cap_w)))
     if details.strip():
         cap.append((f_txt, (255, 214, 214), _wrap(scratch, details.strip(), f_txt, cap_w)))
+    for label, text, col in (("The idea: ", idea, (170, 205, 255)), ("Could have been better: ", better, (255, 222, 150)), ("The AI agents missed: ", missed, (255, 170, 170))):
+        if text.strip():
+            cap.append((f_cap, col, _wrap(scratch, label + text.strip(), f_cap, cap_w)))
     if correct_note.strip() and has_right:
         cap.append((f_cap, (150, 235, 185), _wrap(scratch, "Right: " + correct_note.strip(), f_cap, cap_w)))
     text_h = 36 + sum(len(ls) * (f.size + 9) + 12 for f, _c, ls in cap) if cap else 0
     cap_h = max(text_h, 300) if ps else text_h        # the product needs some height to be recognised
 
-    head_h, tag_room = 74, 40
+    head_h, tag_room = (74 if n else 40), 40
     row_h = [max(pics[pi].height for pi in row) for row in rows]
-    H = head_h + sum(rh + M + ((zh + M) if zoom_rows else 0) for rh in row_h) + tag_room * (len(rows) - 1) + cap_h
+    H = head_h + sum(rh + M + ((zh + M) if zoom_rows else 0) for rh in row_h) + tag_room * max(0, len(rows) - 1) + max(cap_h, 60 if not rows else 0)
     img = Image.new("RGB", (W, H), PAPER)
     d = ImageDraw.Draw(img)
     sub = "  ·  ".join(x for x in (meta.get("model"), meta.get("run"), ("video " + str(meta.get("video"))) if meta.get("video") else "", meta.get("sample")) if x)
@@ -313,12 +326,13 @@ def build(frames: list[dict], meta: dict, details: str, correct_note: str, inclu
     for r, row in enumerate(rows):
         if r:
             y += tag_room
+        x0 = row_x(len(row))
         for c, pi in enumerate(row):
             kind, i = panels[pi]
-            x = M + c * (M + pw)
+            x = x0 + c * (M + pw)
             if kind == "frame":
                 f = fr[i]
-                tag = " · ".join(x_ for x_ in (("WRONG" if f["role"] == "wrong" else "RIGHT"), str(f.get("desc") or ""), _fmt_t(f.get("t"))) if x_)
+                tag = " · ".join(x_ for x_ in ({"wrong": "WRONG", "right": "RIGHT"}.get(f["role"], "FRAME"), str(f.get("desc") or ""), _fmt_t(f.get("t"))) if x_)
                 fill = colr(f["role"])
             else:
                 tag, fill = "NO RIGHT VERSION · miss example only", (96, 100, 112)

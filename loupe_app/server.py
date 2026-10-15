@@ -607,7 +607,7 @@ def moments_image(h, mid):
 # ======================================================================= QC (what the QC phase and the keeper use)
 def _qc_sample(s: dict) -> dict:
     return {k: s[k] for k in ("id", "title", "explanation", "details", "correct_note", "kinds", "model", "mode", "product", "run", "video",
-                              "t_wrong", "t_fixed", "frames", "n_frames", "has_right", "image_url", "zoom_url", "composite_path", "created") if k in s}
+                              "t_wrong", "t_fixed", "frames", "n_frames", "idea", "better", "missed", "sample_kind", "has_right", "image_url", "zoom_url", "composite_path", "created") if k in s}
 
 
 @route("GET", "/api/qc/samples", scope="qc:read")

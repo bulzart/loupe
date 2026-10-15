@@ -243,7 +243,8 @@ def main(with_keeper=False):
     s, d, _ = req("PATCH", f"/api/moments/{m3['moment_id']}", {"frames": five[:1]})
     check("removing frames drops their marks", s == 200 and d["moment"]["n_frames"] == 1 and d["moment"]["shapes"] == [], str(d["moment"]["shapes"]))
     s, d, _ = req("PATCH", f"/api/moments/{m3['moment_id']}", {"frames": []})
-    check("a moment needs at least one frame", s == 400, str(s))
+    check("a moment may have no frame at all (a scenario in words only)", s == 200 and d["moment"]["n_frames"] == 0 and d["moment"]["shapes"] == [] and d["moment"]["sample_kind"] == "scenario", str(d)[:300])
+    check("and its image is a card of words (the width of two panels, no frames)", Image.open(dir3 / "composite.png").width == 1192 and not (dir3 / "fixed.png").exists() and not (dir3 / "wrong.png").exists())
     s, d, _ = req("DELETE", f"/api/moments/{m3['moment_id']}")
     s, d, _ = req("DELETE", f"/api/moments/{mo2['moment_id']}")
     s, d, _ = req("GET", "/api/product-sample?run=20261001-000000-07&video=03&wrong=" + quote("a1 · raw.mp4"))
@@ -293,6 +294,33 @@ def main(with_keeper=False):
     long_meta = json.loads((core.DATA / "samples" / str(d["moment"]["moment_id"]) / "meta.json").read_text(encoding="utf-8"))
     check("a long title is kept whole (it was once cut at 200 characters) and reaches the image", len(lm["title"]) == len(long_title) > 600 and long_meta["title"] == long_title, f"{len(lm['title'])} of {len(long_title)}")
     s, d, _ = req("DELETE", f"/api/misses/{lm['id']}")
+    # a report in words only: no video at all, no frame, the idea, what could be better and what the agents missed
+    s, d, _ = req("POST", "/api/misses", {"run": "", "video": "", "title": "The plan wanted the can to stay in hand; the agents let it go", "model": "wan3_0_prime"})
+    wm = d["miss"]
+    check("a report needs no video at all", s == 200 and wm["wrong_path"] == "" and wm["fixed_path"] == "", str(d)[:200])
+    s, d, _ = req("POST", f"/api/misses/{wm['id']}/moments", {"frames": [{"src": "wrong", "role": "wrong", "t": 1.0}]})
+    check("a frame cannot come from a Video A that does not exist", s == 400, str(s))
+    s, d, _ = req("POST", f"/api/misses/{wm['id']}/moments", {"frames": [], "idea": "The hand keeps the can until the last beat.", "better": "State the grip at every beat.",
+                                                              "missed": "The agents read the hold as optional.", "details": "Words only."})
+    sc = d["moment"]
+    sdir = core.DATA / "samples" / str(sc["moment_id"])
+    check("a moment with no frames is a scenario that carries the idea, what could be better and what was missed", s == 200 and sc["sample_kind"] == "scenario" and sc["n_frames"] == 0
+          and sc["idea"].startswith("The hand keeps") and sc["better"].startswith("State the grip") and sc["missed"].startswith("The agents read"), str(sc)[:300])
+    sim = Image.open(sdir / "composite.png").convert("RGB")
+    check("its image holds the words on a dark band", s == 200 and sim.width == 1192 and sim.height > 150 and sum(sim.getpixel((5, sim.height - 3))) < 120, str(sim.size))
+    s, d, _ = req("POST", "/api/qc/brief", {"q": "the agents let the can go out of the hand", "model": "wan3_0_prime"}, key=kq)
+    check("QC sees it as a scenario with the three texts", "SCENARIO" in d["text"] and "THE AI AGENTS MISSED OR COULD NOT UNDERSTAND: The agents read the hold" in d["text"] and "IDEA (what was meant to happen)" in d["text"], d["text"][:400])
+    s, d, _ = req("GET", "/api/qc/samples?limit=30", key=kq)
+    check("and the QC list marks it", any(x["id"] == sc["id"] and x["sample_kind"] == "scenario" and x["missed"] for x in d["samples"]))
+    s, d, _ = req("PATCH", f"/api/misses/{wm['id']}", {"wrong_path": wrong})
+    s, d, _ = req("POST", f"/api/misses/{wm['id']}/moments", {"frames": [{"src": "wrong", "role": "neutral", "t": 1.0}], "shapes": [{"type": "rect", "frame": 0, "x1": .2, "y1": .3, "x2": .6, "y2": .5}], "idea": "Look at this frame."})
+    nf = d["moment"]
+    nimg = Image.open(core.DATA / "samples" / str(nf["moment_id"]) / "composite.png").convert("RGB")
+    check("a frame can be neither wrong nor right: it gets a blue FRAME tag, alone and centred, with no card beside it", nf["sample_kind"] == "scenario" and nimg.getpixel((319, 55)) == (59, 110, 220) and nimg.width == 1192, str(nimg.getpixel((319, 55))))
+    s, d, _ = req("PATCH", f"/api/misses/{wm['id']}", {"wrong_path": ""})
+    s2, d2, _ = req("GET", f"/api/misses/{wm['id']}")
+    check("clearing Video A drops the frames that came from it and leaves the words", s == 200 and all(x["n_frames"] == 0 for x in d2["miss"]["moments"]) and any(x["idea"] for x in d2["miss"]["moments"]))
+    s, d, _ = req("DELETE", f"/api/misses/{wm['id']}")
     # a miss that has no right version stays as a miss example
     s, d, _ = req("POST", "/api/misses", {"run": "20261001-000000-07", "video": "04", "title": "The label is unreadable from the first frame", "explanation": "No fixed take exists.",
                                           "kinds": ["label-orientation"], "model": "wan3_0_prime", "mode": "analyze-recreate", "wrong_path": wrong})
