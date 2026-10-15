@@ -7,7 +7,7 @@ The web app of the `/analyze-then-pick` pipeline. It does three things:
    hook saved). It replaces the old `caught_flags.html` page.
 2. **Generation misses.** One page, no second step: you pick a run and a video, the wrong and the right video play side by side, and you
    draw an arrow, circle, box or note straight on either of them (red on the wrong one, green on the right one). You mark each side
-   yourself and pick each side's own frame (the right video has its own slider); nothing is copied or added automatically (a tick box can
+   yourself and pick each side's own frame (both videos start on the same frame; the slider under each video moves only that video); nothing is copied or added automatically (a tick box can
    copy each new mark to the other video if you want that). Undo / Redo / Ctrl+Z / Ctrl+Y work. Type what the miss was,
    press **Mark this moment** (it saves at once), and Loupe saves one image: the miss on the left, the correct frame of the same moment on the right, both with
    your marks, a zoom around each side's own marks, and your explanation burned in at the bottom. The bottom band is split in half: the explanation on
@@ -85,7 +85,7 @@ product's details, not only its name, so samples can be matched this way.
 
 ## Tests
 
-`python tests/selftest.py` (36 checks; `--keeper` adds 3 that call the real keeper) and `python tests/demo.py` (a demo instance on port
+`python tests/selftest.py` (61 checks; `--keeper` adds 5 that call the real keeper), `node tests/transport_check.js` (the report page's frame controls against fake videos) and `python tests/demo.py` (a demo instance on port
 8799 with throwaway data, passphrase `demo-passphrase`).
 
 ## Build prompt
