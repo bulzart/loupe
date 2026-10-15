@@ -1,0 +1,9 @@
+# Loupe's own data: the database, API keys, the admin passphrase hash, caches, uploads, the keeper session. Never commit.
+data/
+
+__pycache__/
+*.pyc
+node_modules/
+.env
+*.bak
+*.bak-*
