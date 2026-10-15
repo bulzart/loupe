@@ -202,21 +202,6 @@ def _fmt_t(t) -> str:
     return f"{m}:{t - m * 60:05.2f}"
 
 
-def _placeholder(w: int, h: int, lines: list[str]) -> Image.Image:
-    """The right-hand panel of a miss that has no right version: a quiet card that says so."""
-    im = Image.new("RGB", (w, h), (34, 36, 44))
-    d = ImageDraw.Draw(im)
-    f1, f2 = font(30, True), font(22)
-    y = h // 2 - 70
-    for i, ln in enumerate(lines):
-        f = f1 if i == 0 else f2
-        for part in _wrap(d, ln, f, w - 70):
-            d.text(((w - d.textlength(part, font=f)) / 2, y), part, font=f, fill=(235, 235, 240) if i == 0 else (170, 174, 186))
-            y += f.size + 10
-        y += 8
-    return im
-
-
 def build(frames: list[dict], meta: dict, details: str, correct_note: str, include_zoom: bool = True, product_samples: list | None = None,
           idea: str = "", better: str = "", missed: str = ""):
     """(composite, zoom_or_None, [annotated frame, ...]).
@@ -224,20 +209,20 @@ def build(frames: list[dict], meta: dict, details: str, correct_note: str, inclu
     frames: [{"img": a PIL image, "role": "wrong" | "right" | "neutral", "desc": where it comes from, "t": seconds, "shapes": [its marks]}] in the order the admin chose;
     there may be none at all (a report that is only words).
     One image: every frame in a panel with a tag (red WRONG, green RIGHT or blue FRAME, where it comes from, its time) and exactly the marks the admin drew on it (nothing is
-    copied or added), two panels in a row up to two frames and three in a row beyond that, every row centred; under each row a zoom of every frame cut around its own marks
-    (around all the marks when it has none); and the words burned in at the bottom with the product sample beside them: the title, the explanation, and the admin's idea (what was
-    meant to happen), what could have been better and what the AI agents missed or could not understand, each when given.
-    A lone miss frame gets a quiet card beside it that says there is nothing right to compare with.  The marks are drawn after each picture has its final size, thin and at the
-    same weight in the panels and in the zoom."""
+    copied or added), two panels in a row up to two frames and three in a row beyond that, every row centred.  Under a row of two or three frames, a zoom of each frame cut around
+    its own marks (around all the marks when it has none).  A frame that sits alone in its row (a one-frame sample, or the last frame of a row of three) is shown the other way:
+    the normal-range shot on the left and, next to it, its close range at the same height, so no row is left half empty.  A lone miss frame also carries a grey NO RIGHT VERSION
+    tag.  The words are burned in at the bottom with the product sample beside them: the title, the explanation, and the admin's idea (what was meant to happen), what could have
+    been better and what the AI agents missed or could not understand, each when given.  The marks are drawn after each picture has its final size, thin and at the same weight in
+    the panels and in the zoom."""
     fr = [dict(f, img=f["img"].convert("RGB"), shapes=list(f.get("shapes") or [])) for f in frames][:MAX_FRAMES]
     n = len(fr)
     colr = lambda role: {"wrong": RED, "right": GREEN_DARK}.get(role, NEUTRAL)      # noqa: E731
     annotated = [draw_shapes(f["img"], f["shapes"], colr(f["role"])) if f["shapes"] else f["img"].copy() for f in fr]      # the full-size files
     nbox = region_norm([s for f in fr for s in f["shapes"]])           # the place that matters: every mark on every frame
     has_right = any(f["role"] == "right" for f in fr)
-    lone = n == 1 and fr[0]["role"] == "wrong"
-    panels = [("frame", i) for i in range(n)] + ([("card", 0)] if lone else [])
-    cols = max(1, len(panels)) if len(panels) <= 2 else 3
+    has_zoom = bool(include_zoom and nbox)
+    cols = max(1, n) if n <= 2 else 3
 
     PW, M = 560, 24
     if n:
@@ -249,42 +234,41 @@ def build(frames: list[dict], meta: dict, details: str, correct_note: str, inclu
         ph, pw = 0, PW
     lwp = _line_w(ph or 996)             # one mark weight for the panels and the zoom
     pics = []
-    for kind, i in panels:
-        if kind == "card":
-            pics.append(_placeholder(pw, ph, ["No right version", "This sample shows the miss only. Nothing in the video was corrected, so there is no right frame to compare with."]))
-            continue
+    for i in range(n):
         im = fr[i]["img"]
         hi = round(pw * im.height / im.width) if abs(im.width / im.height - f0.width / f0.height) > 0.02 else ph
         pic = im.resize((pw, hi), Image.LANCZOS)
         pics.append(draw_shapes(pic, fr[i]["shapes"], colr(fr[i]["role"]), lw=lwp, ref_h=ph) if fr[i]["shapes"] else pic)
-    rows = [list(range(k, min(k + cols, len(panels)))) for k in range(0, len(panels), cols)]
+    rows = [list(range(k, min(k + cols, n))) for k in range(0, n, cols)]
+    pair = [has_zoom and len(row) == 1 for row in rows]          # a frame alone in its row: the normal range and its close range side by side
     cols_w = max(cols, 2)                # never narrower than two panels, so the words always have room
     W = M * (cols_w + 1) + pw * cols_w
     row_x = lambda k: (W - (k * pw + (k - 1) * M)) // 2      # noqa: E731  every row is centred
 
     zh = 520
-    zoom_rows: list[Image.Image] = []
-    if include_zoom and nbox:
-        def zoomed(i: int):
-            im, marks = fr[i]["img"], fr[i]["shapes"]
-            bx0, by0, bx1, by1 = to_px(region_norm(marks) or nbox, im.width, im.height)       # around this frame's own marks, else around all the marks
-            cw_, ch_ = max(1, bx1 - bx0), max(1, by1 - by0)
-            sc = min(pw / cw_, zh / ch_)
-            nw, nh = max(1, round(cw_ * sc)), max(1, round(ch_ * sc))
-            ox, oy = (pw - nw) // 2, (zh - nh) // 2
-            canvas = Image.new("RGB", (pw, zh), (18, 18, 22))
-            canvas.paste(im.crop((bx0, by0, bx1, by1)).resize((nw, nh), Image.LANCZOS), (ox, oy))
-            if marks:       # normalised point -> pixel of this zoom: ox + (x * W - bx0) * scale
-                canvas = draw_shapes(canvas, marks, colr(fr[i]["role"]), lw=lwp, box=(ox - bx0 * sc, oy - by0 * sc, im.width * sc, im.height * sc), ref_h=ph)
-            ImageDraw.Draw(canvas).text((6, 4), "zoom: marked place", font=font(15, True), fill=(255, 255, 255))
-            return canvas
 
+    def zoomed(i: int, height: int):
+        im, marks = fr[i]["img"], fr[i]["shapes"]
+        bx0, by0, bx1, by1 = to_px(region_norm(marks) or nbox, im.width, im.height)       # around this frame's own marks, else around all the marks
+        cw_, ch_ = max(1, bx1 - bx0), max(1, by1 - by0)
+        sc = min(pw / cw_, height / ch_)
+        nw, nh = max(1, round(cw_ * sc)), max(1, round(ch_ * sc))
+        ox, oy = (pw - nw) // 2, (height - nh) // 2
+        canvas = Image.new("RGB", (pw, height), (18, 18, 22))
+        canvas.paste(im.crop((bx0, by0, bx1, by1)).resize((nw, nh), Image.LANCZOS), (ox, oy))
+        if marks:       # normalised point -> pixel of this zoom: ox + (x * W - bx0) * scale
+            canvas = draw_shapes(canvas, marks, colr(fr[i]["role"]), lw=lwp, box=(ox - bx0 * sc, oy - by0 * sc, im.width * sc, im.height * sc), ref_h=ph)
+        return canvas
+
+    zoom_rows: list[Image.Image] = []        # the zoom file: every frame's close range, one row per row of frames
+    if has_zoom:
         for row in rows:
             zr = Image.new("RGB", (W, zh + M), PAPER)
             x0 = row_x(len(row))
-            for c, pi in enumerate(row):
-                kind, i = panels[pi]
-                zr.paste(zoomed(i) if kind == "frame" else Image.new("RGB", (pw, zh), (34, 36, 44)), (x0 + c * (M + pw), 0))
+            for c, i in enumerate(row):
+                cell = zoomed(i, zh)
+                ImageDraw.Draw(cell).text((6, 4), "zoom: marked place", font=font(15, True), fill=(255, 255, 255))
+                zr.paste(cell, (x0 + c * (M + pw), 0))
             zoom_rows.append(zr)
     zoom = None
     if zoom_rows:
@@ -315,32 +299,37 @@ def build(frames: list[dict], meta: dict, details: str, correct_note: str, inclu
     cap_h = max(text_h, 300) if ps else text_h        # the product needs some height to be recognised
 
     head_h, tag_room = (74 if n else 40), 40
-    row_h = [max(pics[pi].height for pi in row) for row in rows]
-    H = head_h + sum(rh + M + ((zh + M) if zoom_rows else 0) for rh in row_h) + tag_room * max(0, len(rows) - 1) + max(cap_h, 60 if not rows else 0)
+    row_h = [max(pics[i].height for i in row) for row in rows]
+    H = (head_h + sum(rh + M + ((zh + M) if (has_zoom and not pr) else 0) for rh, pr in zip(row_h, pair)) + tag_room * max(0, len(rows) - 1)
+         + max(cap_h, 60 if not rows else 0))
     img = Image.new("RGB", (W, H), PAPER)
     d = ImageDraw.Draw(img)
     sub = "  ·  ".join(x for x in (meta.get("model"), meta.get("run"), ("video " + str(meta.get("video"))) if meta.get("video") else "", meta.get("sample")) if x)
     d.text((M, 10), sub[:150], font=font(16), fill=MUTED)
     fb = font(17, True)
+
+    def tag(x: int, y: int, text: str, fill):
+        d.rectangle([x, y - 32, x + d.textlength(text, font=fb) + 20, y - 6], fill=fill)
+        d.text((x + 10, y - 29), text, font=fb, fill=(255, 255, 255))
+        return int(x + d.textlength(text, font=fb) + 20)
+
     y = head_h
     for r, row in enumerate(rows):
         if r:
             y += tag_room
-        x0 = row_x(len(row))
-        for c, pi in enumerate(row):
-            kind, i = panels[pi]
+        x0 = row_x(2 if pair[r] else len(row))
+        for c, i in enumerate(row):
+            f = fr[i]
             x = x0 + c * (M + pw)
-            if kind == "frame":
-                f = fr[i]
-                tag = " · ".join(x_ for x_ in ({"wrong": "WRONG", "right": "RIGHT"}.get(f["role"], "FRAME"), str(f.get("desc") or ""), _fmt_t(f.get("t"))) if x_)
-                fill = colr(f["role"])
-            else:
-                tag, fill = "NO RIGHT VERSION · miss example only", (96, 100, 112)
-            d.rectangle([x, y - 32, x + d.textlength(tag, font=fb) + 20, y - 6], fill=fill)
-            d.text((x + 10, y - 29), tag, font=fb, fill=(255, 255, 255))
-            img.paste(pics[pi], (x, y))
+            end = tag(x, y, " · ".join(t for t in ({"wrong": "WRONG", "right": "RIGHT"}.get(f["role"], "FRAME"), str(f.get("desc") or ""), _fmt_t(f.get("t"))) if t), colr(f["role"]))
+            if n == 1 and f["role"] == "wrong":
+                tag(end + 8, y, "NO RIGHT VERSION", (96, 100, 112))      # no right frame to compare with: said in the image itself
+            img.paste(pics[i], (x, y))
+            if pair[r]:       # the close range next to the normal-range shot, at the same height
+                tag(x0 + M + pw, y, "CLOSE RANGE", (70, 74, 90))
+                img.paste(zoomed(i, pics[i].height), (x0 + M + pw, y))
         y += row_h[r] + M
-        if zoom_rows:
+        if has_zoom and not pair[r]:
             img.paste(zoom_rows[r], (0, y))
             y += zh + M
     if cap or ps:

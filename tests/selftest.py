@@ -316,7 +316,13 @@ def main(with_keeper=False):
     s, d, _ = req("POST", f"/api/misses/{wm['id']}/moments", {"frames": [{"src": "wrong", "role": "neutral", "t": 1.0}], "shapes": [{"type": "rect", "frame": 0, "x1": .2, "y1": .3, "x2": .6, "y2": .5}], "idea": "Look at this frame."})
     nf = d["moment"]
     nimg = Image.open(core.DATA / "samples" / str(nf["moment_id"]) / "composite.png").convert("RGB")
-    check("a frame can be neither wrong nor right: it gets a blue FRAME tag, alone and centred, with no card beside it", nf["sample_kind"] == "scenario" and nimg.getpixel((319, 55)) == (59, 110, 220) and nimg.width == 1192, str(nimg.getpixel((319, 55))))
+    check("a frame can be neither wrong nor right: it gets a blue FRAME tag, with its close range beside it at the same height", nf["sample_kind"] == "scenario" and nimg.getpixel((27, 55)) == (59, 110, 220)
+          and nimg.getpixel((611, 55)) == (70, 74, 90) and nimg.width == 1192, f"{nimg.getpixel((27, 55))} {nimg.getpixel((611, 55))}")
+    s, d, _ = req("POST", f"/api/misses/{wm['id']}/moments", {"frames": [{"src": "wrong", "role": "wrong", "t": 1.0}, {"src": "wrong", "role": "wrong", "t": 1.5}, {"src": "wrong", "role": "wrong", "t": 2.0},
+                                                                         {"src": "wrong", "role": "neutral", "t": 2.5}],
+                                                              "shapes": [{"type": "rect", "frame": 0, "x1": .2, "y1": .3, "x2": .6, "y2": .5}]})
+    four = Image.open(core.DATA / "samples" / str(d["moment"]["moment_id"]) / "composite.png").convert("RGB")
+    check("four frames: three in a row with their zoom row, and the fourth alone in its row beside its close range", s == 200 and four.getpixel((319, 1659)) == (59, 110, 220) and four.getpixel((903, 1659)) == (70, 74, 90) and four.getpixel((27 + 584 * 2, 55)) == (255, 45, 45), f"{four.size} {four.getpixel((319, 1659))} {four.getpixel((903, 1659))}")
     s, d, _ = req("PATCH", f"/api/misses/{wm['id']}", {"wrong_path": ""})
     s2, d2, _ = req("GET", f"/api/misses/{wm['id']}")
     check("clearing Video A drops the frames that came from it and leaves the words", s == 200 and all(x["n_frames"] == 0 for x in d2["miss"]["moments"]) and any(x["idea"] for x in d2["miss"]["moments"]))
@@ -332,14 +338,15 @@ def main(with_keeper=False):
     ndir = core.DATA / "samples" / str(nm["moment_id"])
     nim = Image.open(ndir / "composite.png").convert("RGB")
     check("the sample knows it has no right version", s == 200 and nm["has_right"] is False and not (ndir / "fixed.png").exists() and not (ndir / "annotated_fixed.png").exists())
-    check("the right panel is a card that says so", nim.getpixel((618, 84)) == (34, 36, 44), str(nim.getpixel((618, 84))))
+    grey = lambda im: any(im.getpixel((x, 55)) == (96, 100, 112) for x in range(24, 900))      # noqa: E731
+    check("a lone miss frame has its close range beside it and a grey NO RIGHT VERSION tag in the image", nim.getpixel((611, 55)) == (70, 74, 90) and grey(nim), str(nim.getpixel((611, 55))))
     s, d, _ = req("GET", "/api/qc/samples?limit=20", key=kq)
     check("QC sees that it is a miss example only", any(x["id"] == nm["id"] and x["has_right"] is False for x in d["samples"]) and any(x["has_right"] is True for x in d["samples"]))
     s, d, _ = req("POST", "/api/qc/brief", {"q": "label unreadable scribbles", "model": "wan3_0_prime"}, key=kq)
     check("the brief says there is no right version for it", "NO RIGHT VERSION" in d["text"])
     s, d, _ = req("PATCH", f"/api/misses/{nid}", {"fixed_path": fixed, "fixed_label": "client fix"})
     nim2 = Image.open(ndir / "composite.png").convert("RGB")
-    check("a right version attached later rebuilds the saved moments", s == 200 and (ndir / "fixed.png").exists() and nim2.getpixel((618, 84)) != (34, 36, 44))
+    check("a right version attached later rebuilds the saved moments", s == 200 and (ndir / "fixed.png").exists() and nim2.getpixel((611, 55)) == (22, 163, 74) and not grey(nim2))
     s, d, _ = req("POST", f"/api/misses/{nid}/moments", {"frames": [{"src": "wrong", "role": "right", "t": 0.5}, {"src": "wrong", "role": "wrong", "t": 3.0}, {"src": "fixed", "role": "right", "t": 3.0}], "details": "Two frames of the one video and one of the client fix."})
     kept = d["moment"]
     check("a frame of the same video can be the right one (early) with the miss later", s == 200 and kept["has_right"] is True and kept["n_frames"] == 3, str(d)[:200])
@@ -351,7 +358,7 @@ def main(with_keeper=False):
     check("a frame cannot come from a right version that does not exist", s == 400, str(s))
     s, d, _ = req("DELETE", f"/api/moments/{kept['moment_id']}")
     nim3 = Image.open(ndir / "composite.png").convert("RGB")
-    check("clearing it makes the miss an example again", s == 200 and not (ndir / "fixed.png").exists() and nim3.getpixel((618, 84)) == (34, 36, 44))
+    check("clearing it makes the miss an example again", s == 200 and not (ndir / "fixed.png").exists() and nim3.getpixel((611, 55)) == (70, 74, 90) and grey(nim3))
     s, d, _ = req("DELETE", f"/api/misses/{nid}")
     if with_keeper:
         print("\n[keeper] (a real headless session)")
