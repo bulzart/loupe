@@ -215,13 +215,36 @@ def main(with_keeper=False):
     shapes2 = [{"type": "circle", "side": "wrong", "cx": 0.4, "cy": 0.5, "rx": 0.1, "ry": 0.06}, {"type": "arrow", "side": "fixed", "x1": 0.2, "y1": 0.3, "x2": 0.5, "y2": 0.5}]
     s, d, _ = req("POST", f"/api/misses/{mid}/moments", {"t_wrong": 2.0, "t_fixed": 2.0, "shapes": shapes2, "details": "Second moment: the pack changes size.", "correct_note": ""})
     mo2 = d["moment"]
-    check("marks keep the side they were drawn on", s == 200 and [x["side"] for x in mo2["shapes"]] == ["wrong", "fixed"], str(d)[:200])
+    check("marks keep the frame they were drawn on", s == 200 and [x["frame"] for x in mo2["shapes"]] == [0, 1], str(d)[:200])
+    check("an older request becomes a miss frame and a right frame, each with its own time", [(f["src"], f["role"], f["t"]) for f in mo2["frames"]] == [("wrong", "wrong", 2.0), ("fixed", "right", 2.0)], str(mo2["frames"]))
     imf = Image.open(core.DATA / "samples" / str(mo2["moment_id"]) / "annotated_fixed.png").convert("RGB")
     tx, ty = int(.5 * imf.width), int(.5 * imf.height)
     from PIL import ImageChops
     S1 = core.DATA / "samples" / "1"
     check("nothing is drawn on the right frame the admin did not mark", ImageChops.difference(Image.open(S1 / "annotated_fixed.png").convert("RGB"), Image.open(S1 / "fixed.png").convert("RGB")).getbbox() is None)
     check("the fixed frame carries its own green mark", any(g > 140 and r < 70 and b < 110 for r, g, b in (imf.getpixel((tx + dx, ty + dy)) for dx in range(-40, 1, 4) for dy in range(-40, 1, 4))))
+    # any number of frames, each from either video, each with its own time, each called WRONG or RIGHT by the admin
+    three = [{"src": "wrong", "role": "right", "t": 0.5}, {"src": "wrong", "role": "wrong", "t": 2.5}, {"src": "fixed", "role": "right", "t": 3.25}]
+    s, d, _ = req("POST", f"/api/misses/{mid}/moments", {"frames": three, "shapes": [{"type": "rect", "frame": 1, "x1": .2, "y1": .3, "x2": .6, "y2": .5}], "details": "The pack is right early and wrong later."})
+    m3 = d["moment"]
+    dir3 = core.DATA / "samples" / str(m3["moment_id"])
+    im3 = Image.open(dir3 / "composite.png").convert("RGB")
+    check("a moment keeps three frames with their own times and roles", s == 200 and m3["n_frames"] == 3 and [(f["role"], f["t"]) for f in m3["frames"]] == [("right", 0.5), ("wrong", 2.5), ("right", 3.25)], str(d)[:300])
+    check("three frames sit side by side", im3.width > 1700, str(im3.size))
+    tags = [im3.getpixel((27 + k * 584, 55)) for k in range(3)]
+    check("each frame has its own tag: green, red, green", tags[0][1] > 140 and tags[0][0] < 70 and tags[1][0] > 200 and tags[1][1] < 80 and tags[2][1] > 140 and tags[2][0] < 70, str(tags))
+    check("the first frame called RIGHT is saved as the right frame, the first called WRONG as the wrong one", (dir3 / "fixed.png").exists() and (dir3 / "wrong.png").exists() and all((dir3 / f"frame-{k}-marked.png").exists() for k in (1, 2, 3)))
+    check("the sample is not a miss example only because a frame is right", m3["has_right"] is True)
+    m3_h = im3.height
+    five = three + [{"src": "wrong", "role": "wrong", "t": 2.75}, {"src": "wrong", "role": "wrong", "t": 3.0}]
+    s, d, _ = req("PATCH", f"/api/moments/{m3['moment_id']}", {"frames": five})
+    im5 = Image.open(dir3 / "composite.png").convert("RGB")
+    check("five frames wrap into two rows", s == 200 and d["moment"]["n_frames"] == 5 and im5.height > m3_h + 900 and im5.width == im3.width, f"{im5.size} vs {im3.size}")
+    s, d, _ = req("PATCH", f"/api/moments/{m3['moment_id']}", {"frames": five[:1]})
+    check("removing frames drops their marks", s == 200 and d["moment"]["n_frames"] == 1 and d["moment"]["shapes"] == [], str(d["moment"]["shapes"]))
+    s, d, _ = req("PATCH", f"/api/moments/{m3['moment_id']}", {"frames": []})
+    check("a moment needs at least one frame", s == 400, str(s))
+    s, d, _ = req("DELETE", f"/api/moments/{m3['moment_id']}")
     s, d, _ = req("DELETE", f"/api/moments/{mo2['moment_id']}")
     s, d, _ = req("GET", "/api/product-sample?run=20261001-000000-07&video=03&wrong=" + quote("a1 · raw.mp4"))
     check("the product the video used is found from its request, the registry and the inventory", s == 200 and [x["asset_id"] for x in d["samples"]] == ["A14"] and "Test can" in d["samples"][0]["label"], str(d)[:300])
@@ -282,7 +305,16 @@ def main(with_keeper=False):
     s, d, _ = req("PATCH", f"/api/misses/{nid}", {"fixed_path": fixed, "fixed_label": "client fix"})
     nim2 = Image.open(ndir / "composite.png").convert("RGB")
     check("a right version attached later rebuilds the saved moments", s == 200 and (ndir / "fixed.png").exists() and nim2.getpixel((618, 84)) != (34, 36, 44))
+    s, d, _ = req("POST", f"/api/misses/{nid}/moments", {"frames": [{"src": "wrong", "role": "right", "t": 0.5}, {"src": "wrong", "role": "wrong", "t": 3.0}, {"src": "fixed", "role": "right", "t": 3.0}], "details": "Two frames of the one video and one of the client fix."})
+    kept = d["moment"]
+    check("a frame of the same video can be the right one (early) with the miss later", s == 200 and kept["has_right"] is True and kept["n_frames"] == 3, str(d)[:200])
     s, d, _ = req("PATCH", f"/api/misses/{nid}", {"fixed_path": ""})
+    s2, d2, _ = req("GET", f"/api/misses/{nid}")
+    kv = next(x for x in d2["miss"]["moments"] if x["moment_id"] == kept["moment_id"])
+    check("clearing the right version drops only the frames that came from it", [(f["src"], f["role"]) for f in kv["frames"]] == [("wrong", "right"), ("wrong", "wrong")] and kv["has_right"] is True, str(kv["frames"]))
+    s, d, _ = req("POST", f"/api/misses/{nid}/moments", {"frames": [{"src": "fixed", "role": "right", "t": 1.0}]})
+    check("a frame cannot come from a right version that does not exist", s == 400, str(s))
+    s, d, _ = req("DELETE", f"/api/moments/{kept['moment_id']}")
     nim3 = Image.open(ndir / "composite.png").convert("RGB")
     check("clearing it makes the miss an example again", s == 200 and not (ndir / "fixed.png").exists() and nim3.getpixel((618, 84)) == (34, 36, 44))
     s, d, _ = req("DELETE", f"/api/misses/{nid}")

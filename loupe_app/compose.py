@@ -13,6 +13,7 @@ GREEN_DARK = (22, 163, 74)
 INK = (24, 26, 32)
 PAPER = (245, 245, 247)
 MUTED = (120, 124, 134)
+MAX_FRAMES = 12
 _fonts: dict = {}
 
 
@@ -42,20 +43,24 @@ def font(size: int, bold: bool = False):
 def clean_shapes(shapes) -> list[dict]:
     """Validate the admin's shapes (normalised 0..1 coordinates); drop anything malformed."""
     out = []
-    for s in (shapes or [])[:40]:
+    for s in (shapes or [])[:120]:
         if not isinstance(s, dict):
             continue
         t = s.get("type")
-        side = "fixed" if s.get("side") == "fixed" else "wrong"     # a mark belongs to the wrong frame (red) or the fixed one (green)
+        try:       # a mark belongs to one frame of the moment (its index); an older mark names a side: the miss frame is 0, the right one is 1
+            fr = int(s["frame"]) if s.get("frame") is not None else (1 if s.get("side") == "fixed" else 0)
+        except (TypeError, ValueError):
+            fr = 0
+        fr = min(max(fr, 0), MAX_FRAMES - 1)
         try:
             if t == "arrow":
-                out.append({"type": "arrow", "side": side, **{k: float(s[k]) for k in ("x1", "y1", "x2", "y2")}})
+                out.append({"type": "arrow", "frame": fr, **{k: float(s[k]) for k in ("x1", "y1", "x2", "y2")}})
             elif t == "circle":
-                out.append({"type": "circle", "side": side, **{k: float(s[k]) for k in ("cx", "cy", "rx", "ry")}})
+                out.append({"type": "circle", "frame": fr, **{k: float(s[k]) for k in ("cx", "cy", "rx", "ry")}})
             elif t == "rect":
-                out.append({"type": "rect", "side": side, **{k: float(s[k]) for k in ("x1", "y1", "x2", "y2")}})
+                out.append({"type": "rect", "frame": fr, **{k: float(s[k]) for k in ("x1", "y1", "x2", "y2")}})
             elif t == "text" and str(s.get("text", "")).strip():
-                out.append({"type": "text", "side": side, "x": float(s["x"]), "y": float(s["y"]), "text": str(s["text"]).strip()[:80]})
+                out.append({"type": "text", "frame": fr, "x": float(s["x"]), "y": float(s["y"]), "text": str(s["text"]).strip()[:80]})
         except (KeyError, TypeError, ValueError):
             continue
     return out
@@ -211,63 +216,71 @@ def _placeholder(w: int, h: int, lines: list[str]) -> Image.Image:
     return im
 
 
-def build(wrong: Image.Image, fixed: Image.Image | None, shapes: list[dict], meta: dict, details: str, correct_note: str,
-          include_zoom: bool = True, product_samples: list | None = None):
-    """(composite, zoom_or_None, annotated_wrong, annotated_right_or_None).
+def build(frames: list[dict], meta: dict, details: str, correct_note: str, include_zoom: bool = True, product_samples: list | None = None):
+    """(composite, zoom_or_None, [annotated frame, ...]).
 
-    One image: the miss (WRONG) on the left with the admin's red marks, the same moment in the right version (RIGHT) on the right with the same marks in
-    green, a zoom of the marked place under them, and the explanation burned in the bottom centre (title, what is wrong, what the right version shows).
-    The marks are exactly what the admin drew on each side: nothing is copied or added; each zoom is cut around its own side's marks (the other side's when it has none).
-    fixed=None: the miss has no right version (it stays as a miss example); the right panel is a card that says so, and only the miss is marked and zoomed.
-    The marks are drawn after each picture has its final size, thin and at the same weight in the panels and in the zoom."""
-    wrong = wrong.convert("RGB")
-    has_right = fixed is not None
-    fixed = fixed.convert("RGB") if has_right else None
-    if not has_right:
-        shapes = [dict(s, side="wrong") for s in shapes if s.get("side") != "fixed"]
-    sw = [s for s in shapes if s.get("side") != "fixed"]
-    sf = [s for s in shapes if s.get("side") == "fixed"]
-    annotated = draw_shapes(wrong, sw, RED) if sw else wrong.copy()                      # the full-size files
-    annotated_f = (draw_shapes(fixed, sf, GREEN_DARK) if sf else fixed.copy()) if has_right else None
-    nbox = region_norm(shapes)           # the place that matters: every mark on both sides
+    frames: [{"img": a PIL image, "role": "wrong" | "right", "desc": where it comes from, "t": seconds, "shapes": [its marks]}] in the order the admin chose.
+    One image: every frame in a panel with a tag (WRONG in red or RIGHT in green, where it comes from, its time) and exactly the marks the admin drew on it (nothing
+    is copied or added), two panels in a row up to two frames and three in a row beyond that; under each row a zoom of every frame cut around its own marks (around all
+    the marks when it has none); and the explanation burned in at the bottom with the product sample beside it.
+    A lone miss frame gets a quiet card beside it that says there is nothing right to compare with.  The marks are drawn after each picture has its final size,
+    thin and at the same weight in the panels and in the zoom."""
+    fr = [dict(f, img=f["img"].convert("RGB"), shapes=list(f.get("shapes") or [])) for f in frames][:MAX_FRAMES]
+    n = len(fr)
+    colr = lambda role: RED if role == "wrong" else GREEN_DARK      # noqa: E731
+    annotated = [draw_shapes(f["img"], f["shapes"], colr(f["role"])) if f["shapes"] else f["img"].copy() for f in fr]      # the full-size files
+    nbox = region_norm([s for f in fr for s in f["shapes"]])           # the place that matters: every mark on every frame
+    has_right = any(f["role"] == "right" for f in fr)
+    lone = n == 1 and not has_right
+    panels = [("frame", i) for i in range(n)] + ([("card", 0)] if lone else [])
+    cols = len(panels) if len(panels) <= 2 else 3
 
     PW, M = 560, 24
-    ph = min(round(PW * wrong.height / wrong.width), 1000)
-    pw = round(ph * wrong.width / wrong.height) if ph == 1000 else PW
+    f0 = fr[0]["img"]
+    ph = min(round(PW * f0.height / f0.width), 1000)
+    pw = round(ph * f0.width / f0.height) if ph == 1000 else PW
     pw = max(pw, 200)
     lwp = _line_w(ph)                    # one mark weight for the panels and the zoom
-    left = wrong.resize((pw, ph), Image.LANCZOS)
-    left = draw_shapes(left, sw, RED, lw=lwp, ref_h=ph) if sw else left
-    if has_right:
-        rh = round(pw * fixed.height / fixed.width) if abs(fixed.width / fixed.height - wrong.width / wrong.height) > 0.02 else ph
-        right = fixed.resize((pw, rh), Image.LANCZOS)
-        right = draw_shapes(right, sf, GREEN_DARK, lw=lwp, ref_h=ph) if sf else right
-    else:
-        rh = ph
-        right = _placeholder(pw, ph, ["No right version", "This sample shows the miss only. Nothing in the video was corrected, so there is no right frame to compare with."])
-    ph_r = right.height
-    W = M * 3 + pw * 2
+    pics = []
+    for kind, i in panels:
+        if kind == "card":
+            pics.append(_placeholder(pw, ph, ["No right version", "This sample shows the miss only. Nothing in the video was corrected, so there is no right frame to compare with."]))
+            continue
+        im = fr[i]["img"]
+        hi = round(pw * im.height / im.width) if abs(im.width / im.height - f0.width / f0.height) > 0.02 else ph
+        pic = im.resize((pw, hi), Image.LANCZOS)
+        pics.append(draw_shapes(pic, fr[i]["shapes"], colr(fr[i]["role"]), lw=lwp, ref_h=ph) if fr[i]["shapes"] else pic)
+    rows = [list(range(k, min(k + cols, len(panels)))) for k in range(0, len(panels), cols)]
+    W = M * (cols + 1) + pw * cols
 
-    zoom, zoom_h = None, 0
+    zh = 520
+    zoom_rows: list[Image.Image] = []
     if include_zoom and nbox:
-        zh, zw = 520, pw
-
-        def zoomed(src: Image.Image, marks: list[dict], color):
-            bx0, by0, bx1, by1 = to_px(region_norm(marks) or nbox, src.width, src.height)       # around this side's own marks, else around the other side's
+        def zoomed(i: int):
+            im, marks = fr[i]["img"], fr[i]["shapes"]
+            bx0, by0, bx1, by1 = to_px(region_norm(marks) or nbox, im.width, im.height)       # around this frame's own marks, else around all the marks
             cw_, ch_ = max(1, bx1 - bx0), max(1, by1 - by0)
-            sc = min(zw / cw_, zh / ch_)
+            sc = min(pw / cw_, zh / ch_)
             nw, nh = max(1, round(cw_ * sc)), max(1, round(ch_ * sc))
-            ox, oy = (zw - nw) // 2, (zh - nh) // 2
-            canvas = Image.new("RGB", (zw, zh), (18, 18, 22))
-            canvas.paste(src.crop((bx0, by0, bx1, by1)).resize((nw, nh), Image.LANCZOS), (ox, oy))
+            ox, oy = (pw - nw) // 2, (zh - nh) // 2
+            canvas = Image.new("RGB", (pw, zh), (18, 18, 22))
+            canvas.paste(im.crop((bx0, by0, bx1, by1)).resize((nw, nh), Image.LANCZOS), (ox, oy))
             if marks:       # normalised point -> pixel of this zoom: ox + (x * W - bx0) * scale
-                canvas = draw_shapes(canvas, marks, color, lw=lwp, box=(ox - bx0 * sc, oy - by0 * sc, src.width * sc, src.height * sc), ref_h=ph)
+                canvas = draw_shapes(canvas, marks, colr(fr[i]["role"]), lw=lwp, box=(ox - bx0 * sc, oy - by0 * sc, im.width * sc, im.height * sc), ref_h=ph)
+            ImageDraw.Draw(canvas).text((6, 4), "zoom: marked place", font=font(15, True), fill=(255, 255, 255))
             return canvas
 
-        zoom = Image.new("RGB", (M * 3 + zw * 2, zh + M), PAPER)
-        zoom.paste(zoomed(wrong, sw, RED), (M, 0))
-        zoom.paste(zoomed(fixed, sf, GREEN_DARK) if has_right else Image.new("RGB", (zw, zh), (34, 36, 44)), (M * 2 + zw, 0))
-        zoom_h = zh + M
+        for row in rows:
+            zr = Image.new("RGB", (W, zh + M), PAPER)
+            for c, pi in enumerate(row):
+                kind, i = panels[pi]
+                zr.paste(zoomed(i) if kind == "frame" else Image.new("RGB", (pw, zh), (34, 36, 44)), (M + c * (M + pw), 0))
+            zoom_rows.append(zr)
+    zoom = None
+    if zoom_rows:
+        zoom = Image.new("RGB", (W, (zh + M) * len(zoom_rows)), PAPER)
+        for k, zr in enumerate(zoom_rows):
+            zoom.paste(zr, (0, k * (zh + M)))
 
     # the burned caption (bottom centre): title, what is wrong here, what the right version shows
     scratch = ImageDraw.Draw(Image.new("RGB", (10, 10)))
@@ -288,27 +301,34 @@ def build(wrong: Image.Image, fixed: Image.Image | None, shapes: list[dict], met
     text_h = 36 + sum(len(ls) * (f.size + 9) + 12 for f, _c, ls in cap) if cap else 0
     cap_h = max(text_h, 300) if ps else text_h        # the product needs some height to be recognised
 
-    head_h = 74
-    H = head_h + max(ph, ph_r) + M + zoom_h + cap_h
+    head_h, tag_room = 74, 40
+    row_h = [max(pics[pi].height for pi in row) for row in rows]
+    H = head_h + sum(rh + M + ((zh + M) if zoom_rows else 0) for rh in row_h) + tag_room * (len(rows) - 1) + cap_h
     img = Image.new("RGB", (W, H), PAPER)
     d = ImageDraw.Draw(img)
     sub = "  ·  ".join(x for x in (meta.get("model"), meta.get("run"), ("video " + str(meta.get("video"))) if meta.get("video") else "", meta.get("sample")) if x)
     d.text((M, 10), sub[:150], font=font(16), fill=MUTED)
-    y = head_h
-    lw_ = f"WRONG · as generated · {_fmt_t(meta.get('t_wrong'))}"
-    lf_ = f"RIGHT · correct version · {_fmt_t(meta.get('t_fixed'))}" if has_right else "NO RIGHT VERSION · miss example only"
     fb = font(17, True)
-    d.rectangle([M, y - 32, M + d.textlength(lw_, font=fb) + 20, y - 6], fill=RED)
-    d.text((M + 10, y - 29), lw_, font=fb, fill=(255, 255, 255))
-    d.rectangle([M * 2 + pw, y - 32, M * 2 + pw + d.textlength(lf_, font=fb) + 20, y - 6], fill=GREEN_DARK if has_right else (96, 100, 112))
-    d.text((M * 2 + pw + 10, y - 29), lf_, font=fb, fill=(255, 255, 255))
-    img.paste(left, (M, y))
-    img.paste(right, (M * 2 + pw, y))
-    y += max(ph, ph_r) + M
-    if zoom:
-        img.paste(zoom, (0, y))
-        d.text((M + 6, y + 4), "zoom: marked place", font=font(15, True), fill=(255, 255, 255))
-        y += zoom_h
+    y = head_h
+    for r, row in enumerate(rows):
+        if r:
+            y += tag_room
+        for c, pi in enumerate(row):
+            kind, i = panels[pi]
+            x = M + c * (M + pw)
+            if kind == "frame":
+                f = fr[i]
+                tag = " · ".join(x_ for x_ in (("WRONG" if f["role"] == "wrong" else "RIGHT"), str(f.get("desc") or ""), _fmt_t(f.get("t"))) if x_)
+                fill = colr(f["role"])
+            else:
+                tag, fill = "NO RIGHT VERSION · miss example only", (96, 100, 112)
+            d.rectangle([x, y - 32, x + d.textlength(tag, font=fb) + 20, y - 6], fill=fill)
+            d.text((x + 10, y - 29), tag, font=fb, fill=(255, 255, 255))
+            img.paste(pics[pi], (x, y))
+        y += row_h[r] + M
+        if zoom_rows:
+            img.paste(zoom_rows[r], (0, y))
+            y += zh + M
     if cap or ps:
         d.rectangle([0, y, W, H], fill=(18, 18, 22))
         band_top, mid = y, (colw if ps else W)
@@ -334,4 +354,4 @@ def build(wrong: Image.Image, fixed: Image.Image | None, shapes: list[dict], met
             while d.textlength(lab, font=fl) > x1 - x0 - 24 and len(lab) > 24:
                 lab = lab[:-4].rstrip() + "…"
             d.text((x0 + 12, y1 - lab_h + 6), lab, font=fl, fill=(40, 42, 50))
-    return img, zoom, annotated, annotated_f
+    return img, zoom, annotated

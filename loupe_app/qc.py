@@ -84,8 +84,9 @@ def sample_lines(s: dict, with_path: bool = True) -> str:
     elif s["correct_note"]:
         t.append(f"  CORRECT: {s['correct_note'][:400]}")
     if with_path:
-        t.append(f"  image (left: the miss with the marks, right: the correct frame, below: zoom): {s['composite_path']}" if s.get("has_right", True)
-                 else f"  image (the miss with its marks and a zoom; this sample has NO right version, it is a miss example only): {s['composite_path']}")
+        fl = ", ".join(f"{f['role'].upper()} @ {f['t']:.2f}s ({f['desc']})" for f in s.get("frames", []))
+        t.append(f"  image ({s.get('n_frames', 2)} frame(s), each tagged WRONG in red or RIGHT in green with its time and the admin's marks, a zoom of each below; frames: {fl}): {s['composite_path']}" if s.get("has_right", True)
+                 else f"  image ({s.get('n_frames', 1)} frame(s) tagged WRONG in red with the admin's marks and a zoom; this sample has NO right version, it is a miss example only; frames: {fl}): {s['composite_path']}")
     return "\n".join(t)
 
 
@@ -117,7 +118,7 @@ def _sig() -> str:
 
 
 ROLE = ("You are the Loupe keeper of a video-generation pipeline. You hold a library of samples: each is a generation miss (a frame of a wrong "
-        "video with the admin's marks) next to the same moment of the right version, with the admin's own words. Rules for every question: you only "
+        "video with the admin's marks) and, when there is one, the right frame to compare, each frame tagged WRONG (red) or RIGHT (green) with its time (a right frame can come from the right version or from an earlier part of the same video), with the admin's own words. Rules for every question: you only "
         "READ; you never write, edit or create anything, and you never add to the library (only the admin does, in the web app). Cite only sample ids "
         "that exist in your library; never invent a sample or a rule; judge only from the samples and the admin's words, never from general knowledge "
         "of video models. Some samples are marked NO RIGHT VERSION: they are miss examples only (nothing was corrected); never invent what a right "
