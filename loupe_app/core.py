@@ -93,6 +93,15 @@ def db() -> sqlite3.Connection:
                 for col in (("idea", "TEXT"), ("better", "TEXT"), ("missed", "TEXT")):      # a database made before a report could be a scenario
                     if col[0] not in [r[1] for r in con.execute("PRAGMA table_info(moments)")]:
                         con.execute(f"ALTER TABLE moments ADD COLUMN {col[0]} {col[1]}")
+                for r in con.execute("SELECT id, frames FROM moments WHERE frames LIKE '%neutral%'").fetchall():      # the role first called neutral is now called example
+                    try:
+                        fr = json.loads(r["frames"])
+                    except ValueError:
+                        continue
+                    for f in fr:
+                        if isinstance(f, dict) and f.get("role") == "neutral":
+                            f["role"] = "example"
+                    con.execute("UPDATE moments SET frames=? WHERE id=?", (jdump(fr), r["id"]))
                 if "purpose" not in [r[1] for r in con.execute("PRAGMA table_info(consults)")]:      # a database made before planning hints existed
                     con.execute("ALTER TABLE consults ADD COLUMN purpose TEXT DEFAULT 'qc'")
                 con.commit()

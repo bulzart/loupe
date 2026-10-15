@@ -94,7 +94,7 @@ def sample_lines(s: dict, with_path: bool = True) -> str:
             t.append(f"  image (a text card with the admin's words and the product sample; this scenario has no frames): {s['composite_path']}")
         else:
             fl = ", ".join(f"{f['role'].upper()} @ {f['t']:.2f}s ({f['desc']})" for f in s.get("frames", []))
-            t.append(f"  image ({s['n_frames']} frame(s), each tagged WRONG in red, RIGHT in green or FRAME in blue with its time and the admin's marks, a zoom of each below, the admin's words at the bottom; frames: {fl})"
+            t.append(f"  image ({s['n_frames']} frame(s), each tagged WRONG in red, RIGHT in green or EXAMPLE in blue with its time and the admin's marks, a zoom of each below, the admin's words at the bottom; frames: {fl})"
                      + ("; this sample has NO right version, it is a miss example only" if kind == "miss-only" else "") + f": {s['composite_path']}")
     return "\n".join(t)
 
@@ -119,7 +119,7 @@ def frames_text(s: dict) -> str:
     fr = s.get("frames") or []
     if not fr:
         return "no frames (the admin's words only)"
-    return f"{len(fr)} frame{'' if len(fr) == 1 else 's'}: " + ", ".join(f"{({'wrong': 'WRONG', 'right': 'RIGHT'}).get(f['role'], 'FRAME')} {_t(f['t'])} {f['desc']}" for f in fr)
+    return f"{len(fr)} frame{'' if len(fr) == 1 else 's'}: " + ", ".join(f"{({'wrong': 'WRONG', 'right': 'RIGHT'}).get(f['role'], 'EXAMPLE')} {_t(f['t'])} {f['desc']}" for f in fr)
 
 
 def _digest() -> str:
@@ -156,7 +156,7 @@ ROLE = ("You are the Loupe keeper of a video-generation pipeline. You hold a lib
         "READ; you never write, edit or create anything, and you never add to the library (only the admin does, in the web app). Cite only sample ids "
         "that exist in your library; never invent a sample or a rule; judge only from the samples and the admin's words, never from general knowledge "
         "of video models. Some samples are marked NO RIGHT VERSION: they are miss examples only (nothing was corrected); never invent what a right "
-        "version would look like. Some samples are SCENARIOS: no frame is called wrong (a text card, or frames the admin left unjudged or called right); they hold the admin's idea (what was "
+        "version would look like. A frame tagged EXAMPLE (blue) is one the admin keeps for you to understand and remember: it is neither a miss nor the right look, so read it together with the admin's words to see what it exemplifies (what was meant, what the agents missed, or something to keep in mind), and never treat it as a defect or as a model of what is right. Some samples are SCENARIOS: no frame is called wrong (a text card, or frames the admin called Example or Right); they hold the admin's idea (what was "
         "meant to happen), what could have been better and what the AI agents missed or could not understand. They are insight into how the agents misread or under-delivered, not a "
         "visual pattern to match: for QC compare the video with the idea and with what was missed, and for planning let one justify a hint only when a beat of the plan matches the "
         "situation it describes, under the same rules as any hint. For QC a miss example still shows the wrong pattern to look for; for planning, give a hint from one only when the admin's words "

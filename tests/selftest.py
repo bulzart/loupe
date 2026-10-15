@@ -313,13 +313,16 @@ def main(with_keeper=False):
     s, d, _ = req("GET", "/api/qc/samples?limit=30", key=kq)
     check("and the QC list marks it", any(x["id"] == sc["id"] and x["sample_kind"] == "scenario" and x["missed"] for x in d["samples"]))
     s, d, _ = req("PATCH", f"/api/misses/{wm['id']}", {"wrong_path": wrong})
-    s, d, _ = req("POST", f"/api/misses/{wm['id']}/moments", {"frames": [{"src": "wrong", "role": "neutral", "t": 1.0}], "shapes": [{"type": "rect", "frame": 0, "x1": .2, "y1": .3, "x2": .6, "y2": .5}], "idea": "Look at this frame."})
+    s, d, _ = req("POST", f"/api/misses/{wm['id']}/moments", {"frames": [{"src": "wrong", "role": "example", "t": 1.0}], "shapes": [{"type": "rect", "frame": 0, "x1": .2, "y1": .3, "x2": .6, "y2": .5}], "idea": "Look at this frame."})
     nf = d["moment"]
+    check("its role is saved as example", [f["role"] for f in nf["frames"]] == ["example"], str(nf["frames"]))
+    s, d, _ = req("POST", f"/api/misses/{wm['id']}/moments", {"frames": [{"src": "wrong", "role": "neutral", "t": 1.0}]})
+    check("the first name of the role (neutral) is still accepted and becomes example", s == 200 and d["moment"]["frames"][0]["role"] == "example", str(d)[:200])
     nimg = Image.open(core.DATA / "samples" / str(nf["moment_id"]) / "composite.png").convert("RGB")
-    check("a frame can be neither wrong nor right: it gets a blue FRAME tag, with its close range beside it at the same height", nf["sample_kind"] == "scenario" and nimg.getpixel((27, 55)) == (59, 110, 220)
+    check("a frame can be kept as an Example (neither wrong nor right): it gets a blue EXAMPLE tag, with its close range beside it at the same height", nf["sample_kind"] == "scenario" and nimg.getpixel((27, 55)) == (59, 110, 220)
           and nimg.getpixel((611, 55)) == (70, 74, 90) and nimg.width == 1192, f"{nimg.getpixel((27, 55))} {nimg.getpixel((611, 55))}")
     s, d, _ = req("POST", f"/api/misses/{wm['id']}/moments", {"frames": [{"src": "wrong", "role": "wrong", "t": 1.0}, {"src": "wrong", "role": "wrong", "t": 1.5}, {"src": "wrong", "role": "wrong", "t": 2.0},
-                                                                         {"src": "wrong", "role": "neutral", "t": 2.5}],
+                                                                         {"src": "wrong", "role": "example", "t": 2.5}],
                                                               "shapes": [{"type": "rect", "frame": 0, "x1": .2, "y1": .3, "x2": .6, "y2": .5}]})
     four = Image.open(core.DATA / "samples" / str(d["moment"]["moment_id"]) / "composite.png").convert("RGB")
     check("four frames: three in a row with their zoom row, and the fourth alone in its row beside its close range", s == 200 and four.getpixel((319, 1659)) == (59, 110, 220) and four.getpixel((903, 1659)) == (70, 74, 90) and four.getpixel((27 + 584 * 2, 55)) == (255, 45, 45), f"{four.size} {four.getpixel((319, 1659))} {four.getpixel((903, 1659))}")

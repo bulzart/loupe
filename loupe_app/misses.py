@@ -27,7 +27,7 @@ def _kinds(v) -> str:
 
 
 # A moment is any number of frames the admin chose, none at all included (a scenario in words only).  Each frame comes from one of the report's two videos (src "wrong" =
-# the version as generated, "fixed" = the right version), has its own time, and is called WRONG, RIGHT or neither (role "neutral") by the admin; the marks belong to a
+# the version as generated, "fixed" = the right version), has its own time, and is called WRONG, RIGHT or EXAMPLE (role "example": something the admin keeps for the QC keeper to understand and remember, neither a miss nor the right look) by the admin; the marks belong to a
 # frame (its index).  An older moment holds no frames column at all: it is the miss frame at t_wrong and, when the report has a right version, the right frame at t_fixed.
 FRAME_DESC = {"wrong": "as generated", "fixed": "correct version"}
 TITLE_MAX = 2000       # the title is often a whole paragraph and is burned into the image in full: never cut it short
@@ -39,7 +39,7 @@ def _frames_clean(raw, miss: dict) -> list[dict]:
         if not isinstance(f, dict):
             continue
         src = "fixed" if f.get("src") == "fixed" else "wrong"
-        role = {"right": "right", "neutral": "neutral", "none": "neutral"}.get(f.get("role"), "wrong")
+        role = {"right": "right", "example": "example", "neutral": "example", "none": "example"}.get(f.get("role"), "wrong")      # "neutral" is the name this role had first
         try:
             t = max(0.0, float(f.get("t") or 0.0))
         except (TypeError, ValueError):
@@ -67,7 +67,7 @@ def frames_of(row, miss: dict) -> list[dict]:
         raw = None
     if raw not in (None, ""):          # saved with frames, possibly none: that is a scenario in words only, not an older moment
         try:
-            return [{"src": f["src"], "role": f["role"], "t": f["t"]} for f in json.loads(raw) if isinstance(f, dict) and "t" in f]
+            return [{"src": f["src"], "role": "example" if f["role"] == "neutral" else f["role"], "t": f["t"]} for f in json.loads(raw) if isinstance(f, dict) and "t" in f]
         except (TypeError, ValueError):
             pass
     return _frames_legacy(row["t_wrong"], row["t_fixed"], miss)

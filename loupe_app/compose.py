@@ -10,7 +10,7 @@ from PIL import Image, ImageDraw, ImageFont
 RED = (255, 45, 45)
 GREEN = (46, 204, 113)
 GREEN_DARK = (22, 163, 74)
-NEUTRAL = (59, 110, 220)       # a frame the admin called neither wrong nor right
+EXAMPLE = (59, 110, 220)       # a frame the admin keeps as an example: neither a miss nor the right look
 INK = (24, 26, 32)
 PAPER = (245, 245, 247)
 MUTED = (120, 124, 134)
@@ -206,9 +206,9 @@ def build(frames: list[dict], meta: dict, details: str, correct_note: str, inclu
           idea: str = "", better: str = "", missed: str = ""):
     """(composite, zoom_or_None, [annotated frame, ...]).
 
-    frames: [{"img": a PIL image, "role": "wrong" | "right" | "neutral", "desc": where it comes from, "t": seconds, "shapes": [its marks]}] in the order the admin chose;
+    frames: [{"img": a PIL image, "role": "wrong" | "right" | "example", "desc": where it comes from, "t": seconds, "shapes": [its marks]}] in the order the admin chose;
     there may be none at all (a report that is only words).
-    One image: every frame in a panel with a tag (red WRONG, green RIGHT or blue FRAME, where it comes from, its time) and exactly the marks the admin drew on it (nothing is
+    One image: every frame in a panel with a tag (red WRONG, green RIGHT or blue EXAMPLE, where it comes from, its time) and exactly the marks the admin drew on it (nothing is
     copied or added), two panels in a row up to two frames and three in a row beyond that, every row centred.  Under a row of two or three frames, a zoom of each frame cut around
     its own marks (around all the marks when it has none).  A frame that sits alone in its row (a one-frame sample, or the last frame of a row of three) is shown the other way:
     the normal-range shot on the left and, next to it, its close range at the same height, so no row is left half empty.  A lone miss frame also carries a grey NO RIGHT VERSION
@@ -217,7 +217,7 @@ def build(frames: list[dict], meta: dict, details: str, correct_note: str, inclu
     the panels and in the zoom."""
     fr = [dict(f, img=f["img"].convert("RGB"), shapes=list(f.get("shapes") or [])) for f in frames][:MAX_FRAMES]
     n = len(fr)
-    colr = lambda role: {"wrong": RED, "right": GREEN_DARK}.get(role, NEUTRAL)      # noqa: E731
+    colr = lambda role: {"wrong": RED, "right": GREEN_DARK}.get(role, EXAMPLE)      # noqa: E731
     annotated = [draw_shapes(f["img"], f["shapes"], colr(f["role"])) if f["shapes"] else f["img"].copy() for f in fr]      # the full-size files
     nbox = region_norm([s for f in fr for s in f["shapes"]])           # the place that matters: every mark on every frame
     has_right = any(f["role"] == "right" for f in fr)
@@ -321,7 +321,7 @@ def build(frames: list[dict], meta: dict, details: str, correct_note: str, inclu
         for c, i in enumerate(row):
             f = fr[i]
             x = x0 + c * (M + pw)
-            end = tag(x, y, " · ".join(t for t in ({"wrong": "WRONG", "right": "RIGHT"}.get(f["role"], "FRAME"), str(f.get("desc") or ""), _fmt_t(f.get("t"))) if t), colr(f["role"]))
+            end = tag(x, y, " · ".join(t for t in ({"wrong": "WRONG", "right": "RIGHT"}.get(f["role"], "EXAMPLE"), str(f.get("desc") or ""), _fmt_t(f.get("t"))) if t), colr(f["role"]))
             if n == 1 and f["role"] == "wrong":
                 tag(end + 8, y, "NO RIGHT VERSION", (96, 100, 112))      # no right frame to compare with: said in the image itself
             img.paste(pics[i], (x, y))

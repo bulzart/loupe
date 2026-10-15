@@ -85,7 +85,7 @@ const ok = (name, cond, info = '') => { console.log((cond ? '  ok   ' : '  FAIL 
   await Promise.all(walk(root2, (e) => e.tag === 'button' && e.text === 'Update moment').flatMap((b) => (b.listeners.click || []).map((f) => f())));
   const patch = sent.find((x) => x.method === 'PATCH' && x.url === '/api/moments/5');
   ok('updating sends the same frames and the mark on frame index 1', patch && patch.body.frames.map((f) => f.role[0] + f.t).join(' ') === 'r0.5 w3 r3.25' && patch.body.shapes.length === 1 && patch.body.shapes[0].frame === 1, JSON.stringify(patch && patch.body));
-  // nothing is required: no right version, a neutral frame, no frame at all, the idea, what could be better and what the agents missed
+  // nothing is required: no right version, an Example frame, no frame at all, the idea, what could be better and what the agents missed
   withMoment = false; noRight = true; sent.length = 0;
   const root3 = await work({ run: 'R', video: '03', miss: '1' });
   const visible3 = () => walk(root3, (e) => e.className === 'players')[0].children.filter((e) => e.className.split(/\s+/).includes('player') && e.style.display !== 'none');
@@ -93,13 +93,13 @@ const ok = (name, cond, info = '') => { console.log((cond ? '  ok   ' : '  FAIL 
   const b3 = (t) => walk(root3, (e) => e.tag === 'button' && e.text === t);
   ok('with no right version the page starts with one frame and a card that says the right frame is optional', frames3().length === 1 && visible3().length === 2 && visible3()[1].text.includes('Optional'), String(visible3().length));
   ok('and saving is never blocked', !b3('Mark this moment')[0].disabled);
-  click(b3('Neutral')[0]);
-  ok('a frame can be called Neutral (blue)', frames3()[0].className.includes('role-neutral') && !frames3()[0].className.includes('role-wrong'));
+  click(b3('Example')[0]);
+  ok('a frame can be called Example (blue)', frames3()[0].className.includes('role-example') && !frames3()[0].className.includes('role-wrong'));
   const area = (start) => walk(root3, (e) => e.tag === 'textarea' && (e.attrs.placeholder || '').startsWith(start))[0];
   area('The idea').value = 'The hand holds the can to the end.'; area('What could have been better').value = 'State the grip at each beat.'; area('What the AI agents missed').value = 'They treated the hold as optional.';
   await Promise.all((b3('Mark this moment')[0].listeners.click || []).map((f) => f()));
   const postN = sent.find((x) => x.method === 'POST' && x.url.endsWith('/moments'));
-  ok('a neutral frame and the three scenario texts are sent', postN && postN.body.frames.length === 1 && postN.body.frames[0].role === 'neutral' && postN.body.idea.startsWith('The hand') && postN.body.better.startsWith('State') && postN.body.missed.startsWith('They treated'), JSON.stringify(postN && postN.body));
+  ok('an Example frame and the three scenario texts are sent', postN && postN.body.frames.length === 1 && postN.body.frames[0].role === 'example' && postN.body.idea.startsWith('The hand') && postN.body.better.startsWith('State') && postN.body.missed.startsWith('They treated'), JSON.stringify(postN && postN.body));
   click(btn('✕', frames3()[0])[0]);
   ok('the only frame can be removed: the report is then in words only', frames3().length === 0 && visible3().length === 1 && visible3()[0].text.includes('No frames'), String(frames3().length));
   sent.length = 0;

@@ -148,7 +148,7 @@ export async function work(qs) {
 
   // ---- the frames: any number (two to start with), each from either video, each with its own time, each called WRONG or RIGHT by the admin.
   // The marks are kept in the picture's own 0..1 coordinates and belong to one frame (shape.fid).
-  const COLOR = { wrong: '#ff2d2d', right: '#16a34a', neutral: '#3b6edc' };
+  const COLOR = { wrong: '#ff2d2d', right: '#16a34a', example: '#3b6edc' };
   const SRC_NAME = { wrong: 'Video A · as generated', fixed: 'Video B · correct version' };
   const MAX_FRAMES = 12;
   const frames = [];
@@ -243,20 +243,20 @@ export async function work(qs) {
   };
 
   const styleFrame = (f) => {
-    f.btnWrong.classList.toggle('on', f.role === 'wrong'); f.btnRight.classList.toggle('on', f.role === 'right'); f.btnNeutral.classList.toggle('on', f.role === 'neutral');
-    f.el.classList.toggle('role-wrong', f.role === 'wrong'); f.el.classList.toggle('role-right', f.role === 'right'); f.el.classList.toggle('role-neutral', f.role === 'neutral');
+    f.btnWrong.classList.toggle('on', f.role === 'wrong'); f.btnRight.classList.toggle('on', f.role === 'right'); f.btnExample.classList.toggle('on', f.role === 'example');
+    f.el.classList.toggle('role-wrong', f.role === 'wrong'); f.el.classList.toggle('role-right', f.role === 'right'); f.el.classList.toggle('role-example', f.role === 'example');
     f.srcSel.value = f.src; f.srcSel.options[0].disabled = !state.wrong; f.srcSel.options[1].disabled = !state.fixed;
   };
   const loadFrame = (f) => { const path = state[f.src]; if (path) { f.video.src = videoUrl(path); f.video.currentTime = f.t; } else f.video.removeAttribute('src'); };
   const mkFrame = (src, role, t) => {
     const f = { id: ++fseq, src, role, t, gap: 0 };
     f.video = h('video', { preload: 'auto', playsinline: true }); f.video.muted = true;
-    f.cv = h('canvas', { class: 'pc', title: 'Draw here: red marks on a frame called Wrong, green on Right, blue on Neutral' });
+    f.cv = h('canvas', { class: 'pc', title: 'Draw here: red marks on a frame called Wrong, green on Right, blue on Example' });
     f.wrap = h('div', { class: 'vwrap' }, f.video, f.cv);
     f.num = h('b', { class: 'fnum' });
     f.btnWrong = h('button', { class: 'btn sm rolebtn wrong', title: 'This frame shows the miss', onclick: () => setRole(f, 'wrong') }, 'Wrong');
     f.btnRight = h('button', { class: 'btn sm rolebtn right', title: 'This frame shows how it should be', onclick: () => setRole(f, 'right') }, 'Right');
-    f.btnNeutral = h('button', { class: 'btn sm rolebtn neutral', title: 'Show this frame without calling it wrong or right (blue marks)', onclick: () => setRole(f, 'neutral') }, 'Neutral');
+    f.btnExample = h('button', { class: 'btn sm rolebtn example', title: 'Keep this frame as an example for the QC keeper to understand and remember: neither a miss nor the right look (blue marks)', onclick: () => setRole(f, 'example') }, 'Example');
     f.srcSel = h('select', { class: 'srcsel', title: 'which video this frame is taken from' }, h('option', { value: 'wrong' }, SRC_NAME.wrong), h('option', { value: 'fixed' }, SRC_NAME.fixed));
     f.srcSel.addEventListener('change', () => setFrameSrc(f, f.srcSel.value));
     f.snd = h('button', { class: 'btn sm', onclick: () => { f.video.muted = !f.video.muted; f.snd.textContent = f.video.muted ? 'Sound off' : 'Sound on'; } }, 'Sound off');
@@ -267,7 +267,7 @@ export async function work(qs) {
     f.stamp.value = fmtT(t);
     f.stamp.addEventListener('change', () => { const v = parseT(f.stamp.value); if (isFinite(v)) moveFrame(f, v); else refresh(); });
     f.el = h('div', { class: 'player' },
-      h('div', { class: 'row', style: 'justify-content:space-between;margin-bottom:6px' }, h('div', { class: 'row' }, f.num, f.btnWrong, f.btnRight, f.btnNeutral), h('div', { class: 'row' }, f.srcSel, f.snd, f.rm)),
+      h('div', { class: 'row', style: 'justify-content:space-between;margin-bottom:6px' }, h('div', { class: 'row' }, f.num, f.btnWrong, f.btnRight, f.btnExample), h('div', { class: 'row' }, f.srcSel, f.snd, f.rm)),
       f.wrap,
       h('div', { class: 'row', style: 'flex-wrap:nowrap;margin-top:8px' },
         h('button', { class: 'btn sm', title: 'this frame one video frame back', onclick: () => moveFrame(f, f.t - 1 / FPS) }, '◀'), f.slider,
@@ -362,7 +362,7 @@ export async function work(qs) {
     details.value = m.details || ''; correct.value = m.correct_note || ''; idea.value = m.idea || ''; better.value = m.better || ''; missed.value = m.missed || '';
     saveBtn.textContent = 'Update moment'; cancelEdit.style.display = ''; window.scrollTo({ top: 0, behavior: 'smooth' });
   };
-  const framesText = (m) => (m.frames.length ? m.frames.map((f) => `${f.role === 'neutral' ? 'frame' : f.role} @ ${fmtT(f.t)}`).join(' · ') : 'words only')
+  const framesText = (m) => (m.frames.length ? m.frames.map((f) => `${f.role} @ ${fmtT(f.t)}`).join(' · ') : 'words only')
     + (m.sample_kind === 'miss-only' ? ' · miss example, no right frame' : m.sample_kind === 'scenario' ? ' · scenario' : '');
   const drawMoments = () => {
     moments.replaceChildren(miss && miss.moments.length ? h('div', { class: 'grid g3' }, miss.moments.map((m) => h('div', { class: 'card' },
@@ -373,7 +373,7 @@ export async function work(qs) {
   };
   drawMoments();
 
-  const addBtn = h('button', { class: 'btn sm primary', title: 'adds a frame after the last one (0.2 s later, same video, same role); change any of that on the new frame', onclick: () => { const l = frames[frames.length - 1]; if (l) addFrame(l.src, l.role, l.t + 0.2); else if (state.wrong) addFrame('wrong', 'wrong', 0); else addFrame('fixed', 'neutral', 0); } }, '+ Add a frame');
+  const addBtn = h('button', { class: 'btn sm primary', title: 'adds a frame after the last one (0.2 s later, same video, same role); change any of that on the new frame', onclick: () => { const l = frames[frames.length - 1]; if (l) addFrame(l.src, l.role, l.t + 0.2); else if (state.wrong) addFrame('wrong', 'wrong', 0); else addFrame('fixed', 'example', 0); } }, '+ Add a frame');
   const sameBtn = h('button', { class: 'btn sm', title: 'puts every frame on the time of Frame 1', onclick: sameTime }, 'Same time on all frames');
   const correctLbl = h('label', { class: 'f' }, 'What the right frame shows (optional)');
   const noRightTitle = h('b', {}), noRightText = h('div', { style: 'margin-top:6px;color:#aab;font-size:13px;max-width:320px' });
@@ -410,7 +410,7 @@ export async function work(qs) {
       h('div', { class: 'tools' }, tb('arrow', 'Arrow'), tb('circle', 'Circle'), tb('rect', 'Box'), tb('text', 'Text'),
         undoBtn, redoBtn,
         h('button', { class: 'btn sm', onclick: () => { if (ws.shapes.length) setMarks([]); } }, 'Clear marks'),
-        h('span', { class: 'muted small', style: 'margin-left:10px' }, 'You choose what each frame is: Wrong (red marks), Right (green) or Neutral (blue), which video it comes from, and its own time. Everything here is optional: a report can have no right version, no wrong frame, even no frames. Nothing is marked or copied for you.')),
+        h('span', { class: 'muted small', style: 'margin-left:10px' }, 'You choose what each frame is: Wrong (red marks), Right (green) or Example (blue: something for the QC keeper to understand and remember), which video it comes from, and its own time. Everything here is optional: a report can have no right version, no wrong frame, even no frames. Nothing is marked or copied for you.')),
       playersBox,
       h('div', { class: 'scrub' }, playAll, h('button', { class: 'btn sm', onclick: () => step(-1 / FPS) }, '◀ frame'), range, h('button', { class: 'btn sm', onclick: () => step(1 / FPS) }, 'frame ▶'),
         h('span', { class: 'muted small' }, 'moves all frames together')),
