@@ -30,6 +30,7 @@ def _kinds(v) -> str:
 # right version), has its own time, and is called WRONG or RIGHT by the admin; the marks belong to a frame (its index).  An older moment holds no frames:
 # it is the miss frame at t_wrong and, when the report has a right version, the right frame at t_fixed.
 FRAME_DESC = {"wrong": "as generated", "fixed": "correct version"}
+TITLE_MAX = 2000       # the title is often a whole paragraph and is burned into the image in full: never cut it short
 
 
 def _frames_clean(raw, miss: dict) -> list[dict]:
@@ -106,7 +107,7 @@ def create(data: dict, actor: str) -> dict:
     try:
         cur = con.execute("""INSERT INTO misses(created,updated,run,video,title,explanation,kinds,model,mode,product,status,wrong_path,wrong_label,
                              fixed_path,fixed_label,sample_on) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                          (core.now(), core.now(), str(data.get("run") or ""), core.nn(data.get("video")), str(data["title"]).strip()[:200],
+                          (core.now(), core.now(), str(data.get("run") or ""), core.nn(data.get("video")), str(data["title"]).strip()[:TITLE_MAX],
                            str(data.get("explanation") or "").strip(), _kinds(data.get("kinds")), str(data.get("model") or ""),
                            str(data.get("mode") or ""), str(data.get("product") or ""), "active", wrong, str(data.get("wrong_label") or ""),
                            fixed, str(data.get("fixed_label") or ""), 0 if data.get("product_sample") is False else 1))

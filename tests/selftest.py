@@ -286,6 +286,13 @@ def main(with_keeper=False):
     s2, d2, _ = req("POST", "/api/qc/consult", {"purpose": "plan", "model": "wan3_0_prime", "product_details": "flat sachet, 6 x 9 cm, tear notch at the top", "question": "Beat 1: he sets the sachet down."}, key=kq)
     check("a consult carries the product's details without trouble", s2 == 200)
     s, d, _ = req("PATCH", f"/api/moments/1", {"status": "active"})
+    long_title = ("The can size changes drastically and unexpectedly without any logical reasoning, " * 8).strip()
+    s, d, _ = req("POST", "/api/misses", {"run": "20261001-000000-07", "video": "04", "title": long_title, "model": "wan3_0_prime", "wrong_path": wrong})
+    lm = d["miss"]
+    s, d, _ = req("POST", f"/api/misses/{lm['id']}/moments", {"frames": [{"src": "wrong", "role": "wrong", "t": 1.0}]})
+    long_meta = json.loads((core.DATA / "samples" / str(d["moment"]["moment_id"]) / "meta.json").read_text(encoding="utf-8"))
+    check("a long title is kept whole (it was once cut at 200 characters) and reaches the image", len(lm["title"]) == len(long_title) > 600 and long_meta["title"] == long_title, f"{len(lm['title'])} of {len(long_title)}")
+    s, d, _ = req("DELETE", f"/api/misses/{lm['id']}")
     # a miss that has no right version stays as a miss example
     s, d, _ = req("POST", "/api/misses", {"run": "20261001-000000-07", "video": "04", "title": "The label is unreadable from the first frame", "explanation": "No fixed take exists.",
                                           "kinds": ["label-orientation"], "model": "wan3_0_prime", "mode": "analyze-recreate", "wrong_path": wrong})
