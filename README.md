@@ -83,6 +83,10 @@ product's details, not only its name, so samples can be matched this way.
 `data/loupe.db` (SQLite), `data/samples/<id>/{wrong,fixed,annotated,composite,zoom}.png`, `data/flags/` (thumbnails), `data/captures/`,
 `data/keys/`, `data/keeper/`, `data/cache/`, `data/outbox/`. Back up the `data` folder to keep the record.
 
+## Repository
+
+This folder is its own git repository; `origin` is the private GitHub repo `bulzart/loupe`. `CLAUDE.md` holds the working rules for any session that edits it: commit every change with a descriptive message, push after committing, never commit `data/`, keep this README and the build prompt in step.
+
 ## Tests
 
 `python tests/selftest.py` (73 checks; `--keeper` adds 5 that call the real keeper), `node tests/transport_check.js` (the frame controls against fake videos), `node tests/page_smoke.js` (the whole report page against a fake DOM and API) and `python tests/demo.py` (a demo instance on port
