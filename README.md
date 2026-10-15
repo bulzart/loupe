@@ -5,12 +5,12 @@ The web app of the `/analyze-then-pick` pipeline. It does three things:
 1. **Flag record.** Every prompt and video Higgsfield flagged, refused, withheld or rerouted, with the evidence the pipeline could
    gather (the request, each input with its file, thumbnail and file facts, the same file in earlier runs, the raw answer the
    hook saved). It replaces the old `caught_flags.html` page.
-2. **Generation misses.** One page, no second step: you pick a run and a video, the wrong and the right video play side by side, and you
-   draw an arrow, circle, box or note straight on either of them (red on the wrong one, green on the right one). You mark each side
-   yourself and pick each side's own frame (both videos start on the same frame; the slider under each video moves only that video); nothing is copied or added automatically (a tick box can
-   copy each new mark to the other video if you want that). Undo / Redo / Ctrl+Z / Ctrl+Y work. Type what the miss was,
-   press **Mark this moment** (it saves at once), and Loupe saves one image: the miss on the left, the correct frame of the same moment on the right, both with
-   your marks, a zoom around each side's own marks, and your explanation burned in at the bottom. The bottom band is split in half: the explanation on
+2. **Generation misses.** One page, no second step: you pick a run and a video, the frames play side by side (two to start with: the miss from Video A and the right version from Video B, on the same time), and you
+   draw an arrow, circle, box or note straight on any of them (red on a frame you call Wrong, green on a frame you call Right). You choose what each
+   frame is: Wrong or Right, which video it comes from (so an early frame of one video can be the right one), and its own time (slider, 1-frame buttons or a time box); **+ Add a frame** adds as many as you need.
+   Nothing is marked or copied for you. Undo / Redo / Ctrl+Z / Ctrl+Y work. Type what the miss was,
+   press **Mark this moment** (it saves at once), and Loupe saves one image: each frame
+   tagged WRONG or RIGHT with its time and your marks, a zoom around each frame's own marks, and your explanation burned in at the bottom. The bottom band is split in half: the explanation on
    the left and, on the right, the **product sample the video used**, found automatically from the run (its request, product registry and asset
    inventory) as the original file in the client's reference folder. The report page shows what it found and lets you switch it off. A miss does not need a right version:
    the page never guesses the right version: you pick it, or pick "No right version exists", before a moment can be saved, and then the miss stays as a miss example (the right panel says so, only the miss is marked). Attach a right version
@@ -85,7 +85,7 @@ product's details, not only its name, so samples can be matched this way.
 
 ## Tests
 
-`python tests/selftest.py` (61 checks; `--keeper` adds 5 that call the real keeper), `node tests/transport_check.js` (the report page's frame controls against fake videos) and `python tests/demo.py` (a demo instance on port
+`python tests/selftest.py` (73 checks; `--keeper` adds 5 that call the real keeper), `node tests/transport_check.js` (the frame controls against fake videos), `node tests/page_smoke.js` (the whole report page against a fake DOM and API) and `python tests/demo.py` (a demo instance on port
 8799 with throwaway data, passphrase `demo-passphrase`).
 
 ## Build prompt
