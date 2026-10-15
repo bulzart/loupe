@@ -42,16 +42,14 @@ export async function pick() {
 }
 
 // ------------------------------------------------------------------------------------------ the workspace
-// One page, one step: the wrong and the right video side by side, marks drawn straight on either of them, and one button that saves
-// the moment as a single image (wrong | right, the marks, a zoom, and the explanation burned in the bottom centre).
+// One page, one step: any number of frames side by side (two to start with), each from either video, each with its own time and called WRONG or RIGHT by the
+// admin, marks drawn straight on any of them, and one button that saves the moment as a single image (the frames, the marks, a zoom, the explanation burned in).
 function guessVersions(versions) {       // only the wrong version is guessed (the first attempt); the right one is always the user's choice
   const attempts = versions.filter((v) => v.kind === 'attempt');
   const clean = (v) => /with-original-audio\.mp4$|clean\.mp4$|trimmed\.mp4$/.test(v.label);
   const firstA = attempts.find((v) => /^a1 ·/.test(v.label) && clean(v)) || attempts.find((v) => /^a1 ·/.test(v.label)) || versions[0];
   return { wrong: firstA };
 }
-
-const COLORS = { wrong: '#ff2d2d', fixed: '#16a34a' };
 
 function drawShape(c, s, W, H, lw, col) {
   const stroke = (path) => { c.lineJoin = 'round'; c.lineCap = 'round'; c.strokeStyle = '#fff'; c.lineWidth = lw + 2; path(); c.stroke(); c.strokeStyle = col; c.lineWidth = lw; path(); c.stroke(); };
@@ -77,8 +75,8 @@ export async function work(qs) {
   const state = { wrong: miss ? miss.wrong_path : (g.wrong ? g.wrong.path : ''), fixed: miss ? miss.fixed_path : null };     // fixed: null = not chosen yet, '' = there is none, else its path
   const addVersion = (v) => { if (!versions.some((x) => x.path === v.path)) versions.push(v); };
   if (miss) { addVersion({ path: miss.wrong_path, label: miss.wrong_label || miss.wrong_path.split(/[\\/]/).slice(-2).join('/') }); if (miss.fixed_path) addVersion({ path: miss.fixed_path, label: miss.fixed_label || miss.fixed_path.split(/[\\/]/).slice(-2).join('/') }); }
-  const ws = { shapes: [], tool: 'arrow', editing: null, draft: null, past: [], future: [], mirror: false };      // nothing is copied unless the admin ticks the box
-  const addMark = (shape) => setMarks([...ws.shapes, shape, ...(ws.mirror && state.fixed ? [{ ...shape, side: shape.side === 'wrong' ? 'fixed' : 'wrong' }] : [])]);
+  const ws = { shapes: [], tool: 'arrow', editing: null, draft: null, past: [], future: [] };      // every mark belongs to one frame (shape.fid); nothing is ever copied for you
+  const addMark = (shape) => setMarks([...ws.shapes, shape]);
   const syncHist = () => { undoBtn.disabled = !ws.past.length; redoBtn.disabled = !ws.future.length; };
   const setMarks = (next) => { ws.past.push(ws.shapes); if (ws.past.length > 200) ws.past.shift(); ws.shapes = next; ws.future = []; redrawAll(); syncHist(); };   // a new mark or a clear: one undoable step
   const resetMarks = (next) => { ws.shapes = next; ws.past = []; ws.future = []; redrawAll(); syncHist(); };                                                          // a fresh start (after a save, or an edit loaded)
@@ -149,59 +147,89 @@ export async function work(qs) {
     return miss;
   }
 
-  // ---- a player: the video with a canvas on top; marks are kept in the picture's own 0..1 coordinates
-  const mkPlayer = (side, text) => {
-    const video = h('video', { preload: 'auto', playsinline: true });
-    video.muted = true;
-    const cv = h('canvas', { class: 'pc', title: 'Draw here: ' + (side === 'wrong' ? 'red marks on the wrong video' : 'green marks on the right video') });
-    const wrap = h('div', { class: 'vwrap' }, video, cv);
-    const snd = h('button', { class: 'btn sm', onclick: () => { video.muted = !video.muted; snd.textContent = video.muted ? 'Sound off' : 'Sound on'; } }, 'Sound off');
-    const el = h('div', { class: 'player' }, h('div', { class: 'row', style: 'justify-content:space-between' }, h('div', { class: 'lab ' + (side === 'wrong' ? 'wrong' : 'right') }, text), snd), wrap);
-    return { side, video, cv, wrap, el };
-  };
-  const P = { wrong: mkPlayer('wrong', 'WRONG'), fixed: mkPlayer('fixed', 'RIGHT') };
-  const vW = P.wrong.video, vF = P.fixed.video;
-  const pic = (p) => {                       // where the picture really is inside the (letterboxed) video element
-    const cw = p.cv.clientWidth, ch = p.cv.clientHeight, vw = p.video.videoWidth, vh = p.video.videoHeight;
+  // ---- the frames: any number (two to start with), each from either video, each with its own time, each called WRONG or RIGHT by the admin.
+  // The marks are kept in the picture's own 0..1 coordinates and belong to one frame (shape.fid).
+  const COLOR = { wrong: '#ff2d2d', right: '#16a34a' };
+  const SRC_NAME = { wrong: 'Video A · as generated', fixed: 'Video B · correct version' };
+  const MAX_FRAMES = 12;
+  const frames = [];
+  let fseq = 0;
+  const playersBox = h('div', { class: 'players' });
+  const marksOf = (f) => ws.shapes.filter((x) => x.fid === f.id);
+  const pic = (f) => {                       // where the picture really is inside the (letterboxed) video element
+    const cw = f.cv.clientWidth, ch = f.cv.clientHeight, vw = f.video.videoWidth, vh = f.video.videoHeight;
     if (!vw || !vh) return { x: 0, y: 0, w: cw, h: ch };
-    const s = Math.min(cw / vw, ch / vh), w = vw * s, hh = vh * s;
+    const k = Math.min(cw / vw, ch / vh), w = vw * k, hh = vh * k;
     return { x: (cw - w) / 2, y: (ch - hh) / 2, w, h: hh };
   };
-  const redraw = (p) => {
-    const dpr = window.devicePixelRatio || 1, cw = p.cv.clientWidth, ch = p.cv.clientHeight;
-    if (p.cv.width !== Math.round(cw * dpr) || p.cv.height !== Math.round(ch * dpr)) { p.cv.width = Math.round(cw * dpr); p.cv.height = Math.round(ch * dpr); }
-    const c = p.cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, cw, ch);
-    const r = pic(p), col = COLORS[p.side], lw = Math.max(1.5, r.h / 480);
-    const mine = ws.shapes.filter((s) => s.side === p.side);
+  const redraw = (f) => {
+    const dpr = window.devicePixelRatio || 1, cw = f.cv.clientWidth, ch = f.cv.clientHeight;
+    if (f.cv.width !== Math.round(cw * dpr) || f.cv.height !== Math.round(ch * dpr)) { f.cv.width = Math.round(cw * dpr); f.cv.height = Math.round(ch * dpr); }
+    const c = f.cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, cw, ch);
+    const r = pic(f), col = COLOR[f.role], lw = Math.max(1.5, r.h / 480);
+    const mine = marksOf(f);
     c.save(); c.translate(r.x, r.y);
-    for (const s of ws.draft && ws.draft.side === p.side ? [...mine, ws.draft] : mine) drawShape(c, s, r.w, r.h, lw, col);
+    for (const m of ws.draft && ws.draft.fid === f.id ? [...mine, ws.draft] : mine) drawShape(c, m, r.w, r.h, lw, col);
     c.restore();
   };
-  const redrawAll = () => { redraw(P.wrong); redraw(P.fixed); };
-  for (const p of Object.values(P)) {
-    new ResizeObserver(() => redraw(p)).observe(p.wrap);
-    p.video.addEventListener('loadedmetadata', () => { redraw(p); if (p.side === 'wrong') range.max = rangeW.max = vW.duration || 10; else rangeR.max = vF.duration || 10; });
-    const norm = (ev) => { const b = p.cv.getBoundingClientRect(), r = pic(p); return [Math.min(1, Math.max(0, (ev.clientX - b.left - r.x) / r.w)), Math.min(1, Math.max(0, (ev.clientY - b.top - r.y) / r.h))]; };
+  const redrawAll = () => frames.forEach(redraw);
+
+  // ---- the transport: the top slider moves every frame together, keeping the gaps between them (a gap starts at zero: the same time);
+  // the slider, the 1-frame buttons and the time box of a frame move only that frame, so each frame has its own timestamp
+  const range = h('input', { type: 'range', min: 0, max: 10, step: 1 / FPS, value: 0, title: 'moves all the frames together, keeping the gaps between them; arrow keys step one frame' });
+  const parseT = (v) => { v = String(v).trim(); const m = v.match(/^(\d+):(\d+(?:\.\d+)?)$/); return m ? (+m[1]) * 60 + (+m[2]) : parseFloat(v); };
+  const clampT = (f, t) => Math.min(Math.max(0, +t || 0), f.video.duration || 1e9);
+  const refresh = () => {
+    if (frames[0]) range.value = frames[0].t;
+    for (const f of frames) { f.slider.value = f.t; if (document.activeElement !== f.stamp) f.stamp.value = fmtT(f.t); }
+  };
+  const pauseAll = () => { frames.forEach((f) => f.video.pause()); playAll.textContent = 'Play all'; };
+  const seekAll = (t) => {                 // every frame, keeping its gap to the first one
+    const f0 = frames[0], t0 = clampT(f0, t);
+    for (const f of frames) { f.t = f === f0 ? t0 : clampT(f, t0 + f.gap); f.video.currentTime = f.t; }
+    refresh();
+  };
+  const moveFrame = (f, t) => {            // this frame only; the gaps follow from where the frames now are
+    pauseAll(); f.t = clampT(f, t); f.video.currentTime = f.t;
+    const f0 = frames[0];
+    if (f === f0) frames.forEach((o) => { if (o !== f0) o.gap = o.t - f0.t; }); else f.gap = f.t - f0.t;
+    refresh();
+  };
+  const sameTime = () => { pauseAll(); frames.forEach((f) => { f.gap = 0; }); seekAll(frames[0].t); };
+  const step = (d) => { pauseAll(); seekAll(frames[0].t + d); };
+  const playAll = h('button', { class: 'btn sm', onclick: () => {
+    if (!frames.length) return;
+    if (frames[0].video.paused) { frames.forEach((f) => { f.video.currentTime = clampT(f, frames[0].t + f.gap); }); frames.forEach((f) => f.video.play()); playAll.textContent = 'Pause all'; } else pauseAll();
+  } }, 'Play all');
+  const tick = () => { if (frames.some((f) => !f.video.paused)) { frames.forEach((f) => { f.t = f.video.currentTime; }); refresh(); } };
+  range.addEventListener('input', () => { pauseAll(); seekAll(range.value); });
+  // ---- end of the transport
+
+  const wireDraw = (f) => {
+    f.ro = new ResizeObserver(() => redraw(f)); f.ro.observe(f.wrap);
+    f.video.addEventListener('loadedmetadata', () => { redraw(f); f.slider.max = f.video.duration || 10; if (f === frames[0]) range.max = f.video.duration || 10; });
+    f.video.addEventListener('timeupdate', tick);
+    const norm = (ev) => { const b = f.cv.getBoundingClientRect(), r = pic(f); return [Math.min(1, Math.max(0, (ev.clientX - b.left - r.x) / r.w)), Math.min(1, Math.max(0, (ev.clientY - b.top - r.y) / r.h))]; };
     let start = null;
-    p.cv.addEventListener('pointerdown', (ev) => {
-      ev.preventDefault(); pauseBoth();
+    f.cv.addEventListener('pointerdown', (ev) => {
+      ev.preventDefault(); pauseAll();
       const [x, y] = norm(ev);
       if (ws.tool === 'text') {
-        const r = pic(p), inp = h('input', { class: 'textin', placeholder: 'label…', style: `left:${r.x + x * r.w}px;top:${r.y + y * r.h}px;` });
+        const r = pic(f), inp = h('input', { class: 'textin', placeholder: 'label…', style: `left:${r.x + x * r.w}px;top:${r.y + y * r.h}px;` });
         let done = false;
-        const commit = () => { if (done) return; done = true; const v = inp.value.trim(); inp.remove(); if (v) addMark({ side: p.side, type: 'text', x, y, text: v }); };
+        const commit = () => { if (done) return; done = true; const v = inp.value.trim(); inp.remove(); if (v) addMark({ fid: f.id, type: 'text', x, y, text: v }); };
         inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') { done = true; inp.remove(); } });
         inp.addEventListener('blur', commit);
-        p.wrap.append(inp); setTimeout(() => inp.focus(), 0); return;
+        f.wrap.append(inp); setTimeout(() => inp.focus(), 0); return;
       }
-      start = [x, y]; p.cv.setPointerCapture(ev.pointerId);
+      start = [x, y]; f.cv.setPointerCapture(ev.pointerId);
     });
-    p.cv.addEventListener('pointermove', (ev) => {
+    f.cv.addEventListener('pointermove', (ev) => {
       if (!start) return; const [x, y] = norm(ev);
-      if (ws.tool === 'arrow') ws.draft = { side: p.side, type: 'arrow', x1: start[0], y1: start[1], x2: x, y2: y };
-      else if (ws.tool === 'rect') ws.draft = { side: p.side, type: 'rect', x1: start[0], y1: start[1], x2: x, y2: y };
-      else ws.draft = { side: p.side, type: 'circle', cx: (start[0] + x) / 2, cy: (start[1] + y) / 2, rx: Math.abs(x - start[0]) / 2, ry: Math.abs(y - start[1]) / 2 };
-      redraw(p);
+      if (ws.tool === 'arrow') ws.draft = { fid: f.id, type: 'arrow', x1: start[0], y1: start[1], x2: x, y2: y };
+      else if (ws.tool === 'rect') ws.draft = { fid: f.id, type: 'rect', x1: start[0], y1: start[1], x2: x, y2: y };
+      else ws.draft = { fid: f.id, type: 'circle', cx: (start[0] + x) / 2, cy: (start[1] + y) / 2, rx: Math.abs(x - start[0]) / 2, ry: Math.abs(y - start[1]) / 2 };
+      redraw(f);
     });
     const finish = () => {
       const d = ws.draft;
@@ -211,50 +239,79 @@ export async function work(qs) {
       }
       start = null; ws.draft = null; redrawAll();
     };
-    p.cv.addEventListener('pointerup', finish); p.cv.addEventListener('pointercancel', finish);
-  }
+    f.cv.addEventListener('pointerup', finish); f.cv.addEventListener('pointercancel', finish);
+  };
 
-  // ---- the transport: the top slider moves both videos together, keeping the gap between them (the gap starts at zero: the same frame);
-  // the slider under each video moves only that video, so the miss and the right version can be on different frames
-  const range = h('input', { type: 'range', min: 0, max: 10, step: 1 / FPS, value: 0, title: 'moves both videos together; arrow keys step one frame' });
-  const rangeW = h('input', { type: 'range', min: 0, max: 10, step: 1 / FPS, value: 0, title: 'moves only the wrong video', style: 'flex:1;min-width:60px' });
-  const rangeR = h('input', { type: 'range', min: 0, max: 10, step: 1 / FPS, value: 0, title: 'moves only the right video', style: 'flex:1;min-width:60px' });
-  const tl = h('span', { class: 'mono' }, '0:00.00');
-  const tW = h('span', { class: 'mono' }, '0:00.00'), tR = h('span', { class: 'mono' }, '0:00.00');
-  const gapLbl = h('span', { class: 'small', style: 'font-weight:600' });
-  let gap = 0;       // the right video's time minus the wrong video's time; 0 = both show the same frame
+  const styleFrame = (f) => {
+    f.btnWrong.classList.toggle('on', f.role === 'wrong'); f.btnRight.classList.toggle('on', f.role === 'right');
+    f.el.classList.toggle('role-wrong', f.role === 'wrong'); f.el.classList.toggle('role-right', f.role === 'right');
+    f.srcSel.value = f.src; f.srcSel.options[1].disabled = !state.fixed;
+  };
+  const loadFrame = (f) => { const path = state[f.src]; if (path) { f.video.src = videoUrl(path); f.video.currentTime = f.t; } else f.video.removeAttribute('src'); };
+  const mkFrame = (src, role, t) => {
+    const f = { id: ++fseq, src, role, t, gap: 0 };
+    f.video = h('video', { preload: 'auto', playsinline: true }); f.video.muted = true;
+    f.cv = h('canvas', { class: 'pc', title: 'Draw here: red marks on a frame called Wrong, green marks on a frame called Right' });
+    f.wrap = h('div', { class: 'vwrap' }, f.video, f.cv);
+    f.num = h('b', { class: 'fnum' });
+    f.btnWrong = h('button', { class: 'btn sm rolebtn wrong', title: 'This frame shows the miss', onclick: () => setRole(f, 'wrong') }, 'Wrong');
+    f.btnRight = h('button', { class: 'btn sm rolebtn right', title: 'This frame shows how it should be', onclick: () => setRole(f, 'right') }, 'Right');
+    f.srcSel = h('select', { class: 'srcsel', title: 'which video this frame is taken from' }, h('option', { value: 'wrong' }, SRC_NAME.wrong), h('option', { value: 'fixed' }, SRC_NAME.fixed));
+    f.srcSel.addEventListener('change', () => setFrameSrc(f, f.srcSel.value));
+    f.snd = h('button', { class: 'btn sm', onclick: () => { f.video.muted = !f.video.muted; f.snd.textContent = f.video.muted ? 'Sound off' : 'Sound on'; } }, 'Sound off');
+    f.rm = h('button', { class: 'btn sm danger', title: 'Remove this frame', onclick: () => removeFrame(f) }, '✕');
+    f.slider = h('input', { type: 'range', min: 0, max: 10, step: 1 / FPS, value: 0, title: 'moves only this frame', style: 'flex:1;min-width:60px' });
+    f.slider.addEventListener('input', () => moveFrame(f, f.slider.value));
+    f.stamp = h('input', { type: 'text', class: 'stamp mono', title: 'this frame’s own time: seconds or m:ss.ss, then Enter' });
+    f.stamp.value = fmtT(t);
+    f.stamp.addEventListener('change', () => { const v = parseT(f.stamp.value); if (isFinite(v)) moveFrame(f, v); else refresh(); });
+    f.el = h('div', { class: 'player' },
+      h('div', { class: 'row', style: 'justify-content:space-between;margin-bottom:6px' }, h('div', { class: 'row' }, f.num, f.btnWrong, f.btnRight), h('div', { class: 'row' }, f.srcSel, f.snd, f.rm)),
+      f.wrap,
+      h('div', { class: 'row', style: 'flex-wrap:nowrap;margin-top:8px' },
+        h('button', { class: 'btn sm', title: 'this frame one video frame back', onclick: () => moveFrame(f, f.t - 1 / FPS) }, '◀'), f.slider,
+        h('button', { class: 'btn sm', title: 'this frame one video frame forward', onclick: () => moveFrame(f, f.t + 1 / FPS) }, '▶'), f.stamp));
+    wireDraw(f);
+    styleFrame(f);
+    return f;
+  };
+  const syncCorrect = () => { const on = frames.some((x) => x.role === 'right'); correctLbl.style.display = on ? '' : 'none'; correct.style.display = on ? '' : 'none'; };
+  const drawPlayers = () => {
+    playersBox.replaceChildren(...frames.map((f) => f.el), noRightBox);
+    noRightBox.style.display = frames.length === 1 ? 'flex' : 'none';        // beside a lone frame: what is missing, or what to do next
+    playersBox.style.setProperty('--cols', String(Math.min(Math.max(frames.length + (frames.length === 1 ? 1 : 0), 1), 3)));
+    frames.forEach((f, i) => { f.num.textContent = 'Frame ' + (i + 1); f.rm.style.display = frames.length > 1 ? '' : 'none'; });
+    addBtn.disabled = frames.length >= MAX_FRAMES; sameBtn.style.display = frames.length > 1 ? '' : 'none';
+    syncCorrect(); syncRight();
+  };
+  const addFrame = (src, role, t) => {
+    const f = mkFrame(src, role, t);
+    frames.push(f); f.gap = f.t - frames[0].t;
+    loadFrame(f); drawPlayers(); refresh(); setTimeout(() => redraw(f), 250);
+    return f;
+  };
+  const dispose = (f) => { f.video.pause(); f.ro.disconnect(); f.video.removeAttribute('src'); f.video.load(); };
+  const removeFrame = (f) => {
+    if (frames.length < 2) { toast('A moment needs at least one frame', true); return; }
+    pauseAll();
+    if (marksOf(f).length) setMarks(ws.shapes.filter((x) => x.fid !== f.id));
+    dispose(f); frames.splice(frames.indexOf(f), 1);
+    frames.forEach((o) => { o.gap = o.t - frames[0].t; });
+    range.max = frames[0].video.duration || 10;
+    drawPlayers(); refresh();
+  };
+  const setRole = (f, role) => { f.role = role; styleFrame(f); redraw(f); syncCorrect(); };
+  const setFrameSrc = (f, src) => {
+    if (src === 'fixed' && !state.fixed) { toast('This report has no right version video yet: choose one above first', true); f.srcSel.value = f.src; return; }
+    f.src = src; loadFrame(f);
+  };
   let syncRight = () => {};
-  const setSources = () => { if (state.wrong) vW.src = videoUrl(state.wrong); if (state.fixed) vF.src = videoUrl(state.fixed); else vF.removeAttribute('src'); gap = 0; showTime(0, 0); syncRight(); loadSample(); };
-  const clampT = (v, t) => Math.min(Math.max(0, +t || 0), v.duration || 1e9);
-  const showTime = (w = vW.currentTime, r = vF.currentTime) => {
-    range.value = rangeW.value = w; rangeR.value = r;
-    tW.textContent = fmtT(w); tR.textContent = fmtT(r); tl.textContent = fmtT(w) + '  ·  right ' + fmtT(r);
-    const d = r - w;
-    gapLbl.textContent = Math.abs(d) < 0.5 / FPS ? 'Both videos are on the same frame' : `The right video is ${Math.abs(d).toFixed(2)} s ${d > 0 ? 'later' : 'earlier'} than the wrong one`;
+  const setSources = () => {      // the version pickers changed
+    if (!state.fixed) for (const f of frames.filter((x) => x.src === 'fixed')) { if (frames.length > 1) removeFrame(f); else f.src = 'wrong'; }      // frames of a video that is gone fall away
+    if (state.fixed && frames.length === 1 && !ws.shapes.length && !ws.editing && frames[0].src === 'wrong' && frames[0].role === 'wrong') addFrame('fixed', 'right', frames[0].t);      // two frames to start with
+    frames.forEach((f) => { styleFrame(f); loadFrame(f); });
+    drawPlayers(); loadSample();
   };
-  const seek = (t) => {                                    // both videos, keeping the gap
-    const w = clampT(vW, t), r = clampT(vF, w + gap);
-    vW.currentTime = w; if (state.fixed) vF.currentTime = r; showTime(w, state.fixed ? r : 0);
-  };
-  const moveW = (t) => { pauseBoth(); const w = clampT(vW, t), r = vF.currentTime; vW.currentTime = w; if (state.fixed) gap = r - w; showTime(w, r); };       // the wrong video only
-  const moveR = (t) => { pauseBoth(); const r = clampT(vF, t), w = vW.currentTime; vF.currentTime = r; gap = r - w; showTime(w, r); };                       // the right video only
-  const sameFrame = () => { pauseBoth(); gap = 0; seek(vW.currentTime); };
-  const tick = () => { if (!vW.paused || !vF.paused) showTime(); };
-  vW.addEventListener('timeupdate', tick); vF.addEventListener('timeupdate', tick);
-  range.addEventListener('input', () => { pauseBoth(); seek(range.value); });
-  rangeW.addEventListener('input', () => moveW(rangeW.value));
-  rangeR.addEventListener('input', () => moveR(rangeR.value));
-  const pauseBoth = () => { vW.pause(); vF.pause(); playBoth.textContent = 'Play both'; };
-  const step = (d) => { pauseBoth(); seek(vW.currentTime + d); };
-  const playBoth = h('button', { class: 'btn sm', onclick: () => { if (vW.paused) { if (state.fixed) vF.currentTime = clampT(vF, vW.currentTime + gap); vW.play(); if (state.fixed) vF.play(); playBoth.textContent = 'Pause both'; } else pauseBoth(); } }, 'Play both');
-  const ownFrame = (rng, ts, move, getT, which) => h('div', {},
-    h('div', { class: 'small', style: 'color:#9aa;margin-top:8px' }, `Frame of the ${which} video only`),
-    h('div', { class: 'row', style: 'flex-wrap:nowrap;margin-top:4px' },
-      h('button', { class: 'btn sm', title: `${which} video back one frame`, onclick: () => move(getT() - 1 / FPS) }, '◀'), rng,
-      h('button', { class: 'btn sm', title: `${which} video forward one frame`, onclick: () => move(getT() + 1 / FPS) }, '▶'), ts));
-  P.wrong.el.append(ownFrame(rangeW, tW, moveW, () => vW.currentTime, 'wrong'));
-  P.fixed.el.append(ownFrame(rangeR, tR, moveR, () => vF.currentTime, 'right'));
-  setSources();
 
   // ---- tools
   const undoBtn = h('button', { class: 'btn sm', title: 'Ctrl+Z', disabled: true, onclick: undo }, 'Undo'), redoBtn = h('button', { class: 'btn sm', title: 'Ctrl+Y or Ctrl+Shift+Z', disabled: true, onclick: redo }, 'Redo');
@@ -267,14 +324,17 @@ export async function work(qs) {
   const cancelEdit = h('button', { class: 'btn', style: 'display:none', onclick: () => leaveEdit() }, 'Cancel edit');
   const leaveEdit = () => { ws.editing = null; saveBtn.textContent = 'Mark this moment'; cancelEdit.style.display = 'none'; };
   async function saveMoment() {
-    pauseBoth();
+    pauseAll();
     const text = details.value.trim();
     // never blocks: with no title it is cut from the explanation, and with neither it is named by the video and the second
-    if (!title.value.trim()) title.value = text ? text.split(/(?<=[.!?])\s/)[0].slice(0, 90) : `Video ${qs.video || ''} at ${fmtT(vW.currentTime)}`;
+    if (!title.value.trim()) title.value = text ? text.split(/(?<=[.!?])\s/)[0].slice(0, 90) : `Video ${qs.video || ''} at ${fmtT(frames[0].t)}`;
     saveBtn.disabled = true; saveBtn.textContent = 'Building the image…';
     try {
       if (!(await saveReport())) return;
-      const body = { t_wrong: vW.currentTime, t_fixed: state.fixed ? vF.currentTime : vW.currentTime, shapes: ws.shapes, details: text, correct_note: correct.value, kinds: kinds.get() };
+      const idx = new Map(frames.map((f, i) => [f.id, i]));
+      const body = { frames: frames.map((f) => ({ src: f.src, role: f.role, t: f.t })),
+        shapes: ws.shapes.filter((x) => idx.has(x.fid)).map(({ fid, ...rest }) => ({ ...rest, frame: idx.get(fid) })),
+        details: text, correct_note: frames.some((f) => f.role === 'right') ? correct.value : '', kinds: kinds.get() };
       const r = ws.editing ? await api('PATCH', '/api/moments/' + ws.editing.moment_id, body) : await api('POST', `/api/misses/${miss.id}/moments`, body);
       await refreshMiss();
       const src = r.moment.image_url + '&v=' + Date.now();
@@ -282,7 +342,7 @@ export async function work(qs) {
         h('div', {}, h('b', {}, `${r.moment.id} saved`), h('span', { class: 'muted small' }, '  this is the one image the QC phase will see')),
         h('button', { class: 'btn sm', onclick: () => result.replaceChildren() }, 'Close')),
         h('img', { src, style: 'max-width:100%;max-height:78vh;display:block;margin:10px auto 0;border-radius:10px;border:1px solid var(--line);cursor:zoom-in', onclick: () => lightbox(src) })));
-      resetMarks([]); details.value = ''; correct.value = ''; leaveEdit();     // ready for the next moment; the title and kinds stay
+      resetMarks([]); details.value = ''; correct.value = ''; leaveEdit();     // ready for the next moment; the frames, the title and kinds stay
       result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     } catch (_) { /* toasted */ } finally { saveBtn.disabled = state.fixed === null; saveBtn.textContent = ws.editing ? 'Update moment' : 'Mark this moment'; }
   }
@@ -290,41 +350,40 @@ export async function work(qs) {
   // ---- the moments saved so far
   const moments = h('div');
   const refreshMiss = async () => { miss = (await api('GET', '/api/misses/' + miss.id)).miss; drawMoments(); };
-  const loadMoment = (m) => {              // an existing moment comes back into the same workspace
-    pauseBoth(); ws.editing = m; resetMarks(JSON.parse(JSON.stringify(m.shapes)).map((s) => ({ side: 'wrong', ...s })));
-    gap = m.has_right ? m.t_fixed - m.t_wrong : 0; seek(m.t_wrong); details.value = m.details || ''; correct.value = m.correct_note || '';
-    saveBtn.textContent = 'Update moment'; cancelEdit.style.display = ''; setTimeout(redrawAll, 250); window.scrollTo({ top: 0, behavior: 'smooth' });
+  const loadMoment = (m) => {              // an existing moment comes back into the same workspace: its frames, their own times and roles, its marks, its text
+    pauseAll(); ws.editing = m;
+    frames.splice(0).forEach(dispose);
+    for (const fr of m.frames) frames.push(mkFrame(fr.src === 'fixed' && !state.fixed ? 'wrong' : fr.src, fr.role, fr.t));
+    frames.forEach((f) => { f.gap = f.t - frames[0].t; loadFrame(f); });
+    range.max = frames[0].video.duration || 10;
+    resetMarks(JSON.parse(JSON.stringify(m.shapes)).map((x) => ({ ...x, fid: frames[Math.min(x.frame || 0, frames.length - 1)].id })));
+    drawPlayers(); refresh(); setTimeout(redrawAll, 250);
+    details.value = m.details || ''; correct.value = m.correct_note || '';
+    saveBtn.textContent = 'Update moment'; cancelEdit.style.display = ''; window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+  const framesText = (m) => m.frames.map((f) => `${f.role} @ ${fmtT(f.t)}`).join(' · ') + (m.has_right ? '' : ' · miss example, no right frame');
   const drawMoments = () => {
     moments.replaceChildren(miss && miss.moments.length ? h('div', { class: 'grid g3' }, miss.moments.map((m) => h('div', { class: 'card' },
       h('img', { src: m.image_url + '&v=' + encodeURIComponent(m.updated), style: 'width:100%;height:240px;object-fit:cover;object-position:top;border-radius:8px;cursor:zoom-in', onclick: () => lightbox(m.image_url + '&v=' + encodeURIComponent(m.updated)) }),
-      h('div', { class: 'small', style: 'margin-top:6px' }, h('b', {}, m.id), m.has_right ? ` · wrong @ ${fmtT(m.t_wrong)} · right @ ${fmtT(m.t_fixed)}` : ` · wrong @ ${fmtT(m.t_wrong)} · miss example, no right version`), h('div', { class: 'small' }, m.details),
+      h('div', { class: 'small', style: 'margin-top:6px' }, h('b', {}, m.id), ' · ' + framesText(m)), h('div', { class: 'small' }, m.details),
       h('div', { class: 'row', style: 'margin-top:6px' }, h('button', { class: 'btn sm', onclick: () => loadMoment(m) }, 'Edit'),
-        h('button', { class: 'btn sm danger', onclick: async () => { if (confirmBox('Delete this sample?')) { await api('DELETE', '/api/moments/' + m.moment_id); await refreshMiss(); } } }, 'Delete'))))) : h('div', { class: 'muted' }, 'No moment saved yet. Pause on the place where the miss shows, draw on the videos, explain it, and press “Mark this moment”.'));
+        h('button', { class: 'btn sm danger', onclick: async () => { if (confirmBox('Delete this sample?')) { await api('DELETE', '/api/moments/' + m.moment_id); await refreshMiss(); } } }, 'Delete'))))) : h('div', { class: 'muted' }, 'No moment saved yet. Pause on the frames that show the miss (and the right look), draw on them, explain it, and press “Mark this moment”.'));
   };
   drawMoments();
 
-  const mirrorLbl = h('label', { class: 'small', style: 'display:inline-flex;gap:4px;align-items:center;margin-left:6px' },
-    h('input', { type: 'checkbox', checked: false, onchange: (e) => { ws.mirror = e.target.checked; } }), 'also copy each new mark to the other video');
-  const gapRow = h('div', { class: 'row' },
-    h('button', { class: 'btn sm', title: 'moves the right video to the frame the wrong video is on', onclick: sameFrame }, 'Put the right video on the wrong video\u2019s frame'), gapLbl,
-    h('span', { class: 'muted small' }, 'Both start on the same frame. The slider above moves both; the slider under each video moves only that video.'));
-  const correctLbl = h('label', { class: 'f' }, 'What the right version shows (optional)');
+  const addBtn = h('button', { class: 'btn sm primary', title: 'adds a frame after the last one (0.2 s later, same video, same role); change any of that on the new frame', onclick: () => { const l = frames[frames.length - 1]; addFrame(l.src, l.role, l.t + 0.2); } }, '+ Add a frame');
+  const sameBtn = h('button', { class: 'btn sm', title: 'puts every frame on the time of Frame 1', onclick: sameTime }, 'Same time on all frames');
+  const correctLbl = h('label', { class: 'f' }, 'What the right frame shows (optional)');
   const noRightTitle = h('b', {}), noRightText = h('div', { style: 'margin-top:6px;color:#aab;font-size:13px;max-width:320px' });
   const noRightBox = h('div', { class: 'player', style: 'display:none;align-items:center;justify-content:center;text-align:center;min-height:220px' }, h('div', {}, noRightTitle, noRightText));
   const saveNote = h('span', { class: 'small', style: 'color:var(--accent);font-weight:600' });
-  syncRight = () => {       // what needs a right version is shown only when one is chosen; nothing is saved before the user has chosen (a version, or none)
-    const decided = state.fixed !== null, on = !!state.fixed;
-    noRightTitle.textContent = decided ? 'No right version' : 'Right version not chosen yet';
-    noRightText.textContent = decided ? 'This miss stays as an example of what goes wrong. Mark it on the left. If a right version exists later, pick it above and the saved moments are rebuilt with it.'
-      : 'Pick the right version above, or say that none exists. The moment cannot be saved before you choose.';
+  syncRight = () => {       // nothing is saved before the user has chosen the right version (or said there is none)
+    const decided = state.fixed !== null;
+    noRightTitle.textContent = !decided ? 'Right version not chosen yet' : (state.fixed ? 'One frame' : 'No right version');
+    noRightText.textContent = !decided ? 'Pick the right version above, or say that none exists. The moment cannot be saved before you choose.'
+      : (state.fixed ? 'Add a frame to compare, from either video.' : 'This miss stays as an example of what goes wrong. You can still add a frame of the same video (for instance an earlier part where it was right) and call it Right.');
     saveBtn.disabled = !decided; saveNote.textContent = decided ? '' : 'Choose the right version above first (or say there is none).';
-    P.fixed.el.style.display = on ? '' : 'none'; noRightBox.style.display = on ? 'none' : 'flex';
-    mirrorLbl.style.display = on ? 'inline-flex' : 'none'; gapRow.style.display = on ? '' : 'none';
-    correctLbl.style.display = on ? '' : 'none'; correct.style.display = on ? '' : 'none';
-    redrawAll();
   };
-  syncRight();
   const onKey = (e) => {       // Ctrl+Z undoes, Ctrl+Y or Ctrl+Shift+Z redoes, unless the cursor is in a text field
     if (!root.isConnected) { window.removeEventListener('keydown', onKey); return; }
     if (e.target && e.target.closest && e.target.closest('input,textarea,select')) return;
@@ -334,23 +393,26 @@ export async function work(qs) {
     }
   };
   window.addEventListener('keydown', onKey);
+  addFrame('wrong', 'wrong', 0);
+  setSources();      // two frames when a right version is already chosen
   const root = h('div', {},
     h('div', { class: 'head' }, h('div', {}, h('h1', {}, miss ? `Report: ${miss.title}` : 'New report'),
       h('div', { class: 'muted' }, `${qs.run || ''} · video ${qs.video || ''}${runInfo ? ` · ${runInfo.model || ''} · ${runInfo.mode || ''}${runInfo.submode ? '/' + runInfo.submode : ''}` : ''}`)),
       h('a', { class: 'btn', href: '#/misses' }, '← Reports')),
     h('div', { class: 'card' },
       h('div', { class: 'grid g2' },
-        h('div', {}, h('label', { class: 'f', style: 'margin-top:0' }, 'Wrong version (as generated)'), wrongSel),
-        h('div', {}, h('label', { class: 'f', style: 'margin-top:0' }, 'Right version (the corrected take: QC fix, your feedback, or the client’s update)'), fixedSel,
+        h('div', {}, h('label', { class: 'f', style: 'margin-top:0' }, 'Video A: the version as generated (where the miss is)'), wrongSel),
+        h('div', {}, h('label', { class: 'f', style: 'margin-top:0' }, 'Video B: the right version (the corrected take: QC fix, your feedback, or the client’s update)'), fixedSel,
           h('div', { class: 'row', style: 'margin-top:6px' }, h('button', { class: 'btn sm', onclick: () => fileIn.click() }, 'Upload the right video…'), fileIn, prog, pathIn, addPath)))),
     h('div', { class: 'card' },
       h('div', { class: 'tools' }, tb('arrow', 'Arrow'), tb('circle', 'Circle'), tb('rect', 'Box'), tb('text', 'Text'),
-        undoBtn, redoBtn, mirrorLbl,
+        undoBtn, redoBtn,
         h('button', { class: 'btn sm', onclick: () => { if (ws.shapes.length) setMarks([]); } }, 'Clear marks'),
-        h('span', { class: 'muted small', style: 'margin-left:10px' }, 'Pause on the frame you want in each video (the slider under a video moves only that video), then draw straight on it: red on the wrong one, green on the right one. You mark each side yourself; nothing is copied unless you tick the box.')),
-      h('div', { class: 'players' }, P.wrong.el, P.fixed.el, noRightBox),
-      h('div', { class: 'scrub' }, playBoth, h('button', { class: 'btn sm', onclick: () => step(-1 / FPS) }, '◀ frame'), range, h('button', { class: 'btn sm', onclick: () => step(1 / FPS) }, 'frame ▶'), tl),
-      gapRow),
+        h('span', { class: 'muted small', style: 'margin-left:10px' }, 'You choose what each frame is: Wrong (red marks) or Right (green marks), which video it comes from, and its own time. Pause on it, then draw straight on it. Nothing is marked or copied for you.')),
+      playersBox,
+      h('div', { class: 'scrub' }, playAll, h('button', { class: 'btn sm', onclick: () => step(-1 / FPS) }, '◀ frame'), range, h('button', { class: 'btn sm', onclick: () => step(1 / FPS) }, 'frame ▶'),
+        h('span', { class: 'muted small' }, 'moves all frames together')),
+      h('div', { class: 'row' }, addBtn, sameBtn, h('span', { class: 'muted small' }, 'Every frame has its own slider, 1-frame buttons and time box (type 3.25 or 0:03.25 and press Enter). Two frames to start with; add as many as you need, from either video.'))),
     h('div', { class: 'card' },
       h('label', { class: 'f', style: 'margin-top:0' }, 'What was the miss?'), title,
       h('label', { class: 'f' }, 'Explain it (burned into the bottom centre of the image)'), details,
@@ -359,7 +421,7 @@ export async function work(qs) {
       h('details', { style: 'margin-top:8px' }, h('summary', { class: 'muted small', style: 'cursor:pointer' }, 'Model, mode, product'),
         h('div', { class: 'row', style: 'margin-top:6px' }, h('span', { class: 'muted small' }, 'model'), model, h('span', { class: 'muted small' }, 'mode'), mode, h('span', { class: 'muted small' }, 'product'), product)),
       h('div', { class: 'row', style: 'margin-top:14px' }, saveBtn, cancelEdit, saveNote,
-        h('span', { class: 'muted small' }, 'One click: saves the report, cuts both frames at these seconds, and builds one image: wrong | right with your marks, a zoom, and this text.'))),
+        h('span', { class: 'muted small' }, 'One click: saves the report, cuts every frame at its own time, and builds one image: the frames tagged WRONG or RIGHT with your marks, a zoom of each, and this text.'))),
     result,
     h('div', { class: 'card' }, h('h2', {}, 'Saved moments'), moments));
   return root;

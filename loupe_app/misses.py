@@ -373,7 +373,7 @@ def moment_view(r, miss: dict) -> dict:
     frames = frames_of(r, miss)
     return {"moment_id": mid, "frames": [dict(f, desc=FRAME_DESC[f["src"]]) for f in frames], "n_frames": len(frames), "has_right_version": miss.get("fixed_path") or "", "id": f"S{mid}", "miss_id": miss["id"], "title": miss["title"], "explanation": miss["explanation"], "details": r["details"],
             "correct_note": r["correct_note"], "kinds": kinds, "model": miss["model"], "mode": miss["mode"], "product": miss["product"],
-            "run": miss["run"], "video": miss["video"], "t_wrong": r["t_wrong"], "t_fixed": r["t_fixed"], "shapes": json.loads(r["shapes"] or "[]"),
+            "run": miss["run"], "video": miss["video"], "t_wrong": r["t_wrong"], "t_fixed": r["t_fixed"], "shapes": compose.clean_shapes(json.loads(r["shapes"] or "[]")),
             "status": r["status"], "miss_status": miss["status"], "created": r["created"], "updated": r["updated"],
             "has_right": any(f["role"] == "right" for f in frames), "image_url": f"/api/moments/{mid}/image?kind=composite", "zoom_url": f"/api/moments/{mid}/image?kind=zoom" if (d / "zoom.png").exists() else "",
             "composite_path": str(d / "composite.png")}

@@ -1,54 +1,57 @@
-// Runs the frame controls of web/v_misses.js (both-together slider, one slider per video, the gap) against fake videos: no browser, no login.  node tests/transport_check.js
+// Runs the frame controls of web/v_misses.js (the slider that moves every frame together, and each frame's own time) against fake videos: no browser, no login.
+// node tests/transport_check.js
 const fs = require('fs');
-const src = fs.readFileSync(require('path').join(__dirname, '..', 'web', 'v_misses.js'), 'utf8').split('\r\n').join('\n');
-const a = src.indexOf("  // ---- the transport:");
-const z = src.indexOf("  // ---- tools\n");
+const path = require('path');
+const src = fs.readFileSync(path.join(__dirname, '..', 'web', 'v_misses.js'), 'utf8').split('\r\n').join('\n');
+const a = src.indexOf('  // ---- the transport:');
+const z = src.indexOf('  // ---- end of the transport');
+if (a < 0 || z < 0) { console.log('FAIL the transport block was not found'); process.exit(1); }
 const block = src.slice(a, z);
 
-const mkEl = (tag, props, ...kids) => {
-  const el = { tag, props, kids: kids.flat(), listeners: {}, style: {}, textContent: '', value: '0',
-    addEventListener(n, f) { (this.listeners[n] = this.listeners[n] || []).push(f); },
-    append(...k) { this.kids.push(...k); }, removeAttribute() {} };
-  return el;
-};
-const mkVideo = (dur) => ({ currentTime: 0, duration: dur, paused: true, listeners: {}, addEventListener(n, f) { this.listeners[n] = f; }, pause() { this.paused = true; }, play() { this.paused = false; }, removeAttribute() {} });
+const mkEl = (tag, props, ...kids) => ({ tag, props, kids: kids.flat(), listeners: {}, style: {}, textContent: '', value: '0',
+  addEventListener(n, f) { (this.listeners[n] = this.listeners[n] || []).push(f); } });
+const mkFrame = (dur) => ({ t: 0, gap: 0, slider: { value: 0 }, stamp: { value: '' },
+  video: { currentTime: 0, duration: dur, paused: true, pause() { this.paused = true; }, play() { this.paused = false; } } });
+const fmtT = (t) => { t = Math.max(0, +t || 0); const m = Math.floor(t / 60); return `${m}:${(t - m * 60).toFixed(2).padStart(5, '0')}`; };
 
-const run = (hasRight) => {
-  const vW = mkVideo(10), vF = mkVideo(8);
-  const state = { wrong: 'w', fixed: hasRight ? 'f' : null };
-  const P = { wrong: { el: mkEl('div') }, fixed: { el: mkEl('div') } };
-  const body = block + "\n return { range, rangeW, rangeR, tW, tR, tl, gapLbl, getGap: () => gap, seek, moveW, moveR, sameFrame, step, setSources };";
-  const fn = new Function('h', 'vW', 'vF', 'state', 'P', 'FPS', 'fmtT', 'videoUrl', 'loadSample', 'api', body);
-  return { vW, vF, ...fn(mkEl, vW, vF, state, P, 30, (t) => t.toFixed(2), (x) => x, () => {}, null) };
+const run = (durations) => {
+  const frames = durations.map(mkFrame);
+  const body = block + '\n return { range, parseT, clampT, refresh, pauseAll, seekAll, moveFrame, sameTime, step, playAll, tick };';
+  const fn = new Function('h', 'frames', 'FPS', 'fmtT', 'document', body);
+  return { frames, ...fn(mkEl, frames, 30, fmtT, { activeElement: null }) };
 };
 
 let fails = 0;
 const ok = (name, cond, info = '') => { console.log((cond ? '  ok   ' : '  FAIL ') + name + (cond ? '' : '  ' + info)); if (!cond) fails++; };
 const near = (x, y) => Math.abs(x - y) < 1e-6;
 
-let t = run(true);
-ok('both start on the same frame', t.getGap() === 0 && /same frame/.test(t.gapLbl.textContent), t.gapLbl.textContent);
-t.seek(2);
-ok('the top slider moves both to the same time', near(t.vW.currentTime, 2) && near(t.vF.currentTime, 2));
-t.moveR(3.5);
-ok('moving only the right video leaves the wrong one', near(t.vW.currentTime, 2) && near(t.vF.currentTime, 3.5));
-ok('the gap is the difference', near(t.getGap(), 1.5) && /1\.50 s later/.test(t.gapLbl.textContent), t.gapLbl.textContent);
-t.seek(3);
-ok('the top slider afterwards moves both and keeps the gap', near(t.vW.currentTime, 3) && near(t.vF.currentTime, 4.5));
-t.moveW(1);
-ok('moving only the wrong video leaves the right one', near(t.vW.currentTime, 1) && near(t.vF.currentTime, 4.5) && near(t.getGap(), 3.5));
-ok('the labels show each side\'s own time', t.tW.textContent === '1.00' && t.tR.textContent === '4.50', t.tW.textContent + ' ' + t.tR.textContent);
-t.sameFrame();
-ok('"same frame" puts the right video on the wrong video\'s frame', near(t.vF.currentTime, 1) && t.getGap() === 0 && /same frame/.test(t.gapLbl.textContent));
-t.moveR(20);
-ok('a time past the end is held at the end of that video', near(t.vF.currentTime, 8));
-t.moveR(-5);
-ok('a time before the start is held at zero', near(t.vF.currentTime, 0));
-t.setSources();
-ok('picking another version resets to the same frame', t.getGap() === 0 && near(t.vW.currentTime, t.vW.currentTime));
+let t = run([10, 8, 9]);
+const [f1, f2, f3] = t.frames;
+t.seekAll(2);
+ok('the top slider moves every frame to the same time', [f1, f2, f3].every((f) => near(f.t, 2) && near(f.video.currentTime, 2)));
+t.moveFrame(f2, 3.5);
+ok('a frame moved on its own leaves the others where they were', near(f1.t, 2) && near(f2.t, 3.5) && near(f3.t, 2));
+ok('and its gap to the first frame follows', near(f2.gap, 1.5) && near(f3.gap, 0));
+t.seekAll(3);
+ok('the top slider afterwards moves all of them and keeps each gap', near(f1.t, 3) && near(f2.t, 4.5) && near(f3.t, 3));
+t.moveFrame(f1, 1);
+ok('moving the first frame on its own leaves the others at their own times', near(f1.t, 1) && near(f2.t, 4.5) && near(f3.t, 3) && near(f2.gap, 3.5) && near(f3.gap, 2));
+ok('each frame\'s slider and time box show its own time', f1.slider.value === 1 && f2.slider.value === 4.5 && f2.stamp.value === '0:04.50' && f3.stamp.value === '0:03.00', `${f1.slider.value} ${f2.stamp.value} ${f3.stamp.value}`);
+t.sameTime();
+ok('"same time" puts every frame on the time of the first', [f1, f2, f3].every((f) => near(f.t, 1) && f.gap === 0));
+t.moveFrame(f2, 20);
+ok('a time past the end is held at the end of that video', near(f2.t, 8));
+t.moveFrame(f3, -5);
+ok('a time before the start is held at zero', near(f3.t, 0));
+ok('typed times are read as seconds or minutes:seconds', near(t.parseT('3.25'), 3.25) && near(t.parseT('1:03.25'), 63.25) && Number.isNaN(t.parseT('abc')));
+t.moveFrame(f1, 0); t.step(1 / 30);
+ok('one video frame forward moves all frames by one frame', near(f1.t, 1 / 30));
+f1.video.paused = false; f1.video.currentTime = 2; f2.video.currentTime = 5;
+t.tick();
+ok('while playing, every frame\'s time follows its own video', near(f1.t, 2) && near(f2.t, 5));
 
-t = run(false);
-t.seek(2); t.moveW(3);
-ok('with no right version only the wrong video moves and the gap stays zero', near(t.vW.currentTime, 3) && t.getGap() === 0);
+t = run([6]);
+t.seekAll(2); t.moveFrame(t.frames[0], 3);
+ok('with one frame, nothing else moves and there is no gap to keep', near(t.frames[0].t, 3));
 console.log(fails ? `${fails} failed` : 'all passed');
 process.exit(fails ? 1 : 0);
