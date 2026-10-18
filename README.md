@@ -94,7 +94,7 @@ This folder is its own git repository; `origin` is the private GitHub repo `bulz
 
 ## Tests
 
-`python tests/selftest.py` (89 checks; `--keeper` adds the live keeper checks), `node tests/transport_check.js` (the frame controls against fake videos), `node tests/page_smoke.js` (the whole report page against a fake DOM and API), `node tests/flags_smoke.js` (the Flags page), `python tests/keeper_sync.py` (the keeper receives every change to the library, no model call) and `python tests/demo.py` (a demo instance on port
+`python tests/selftest.py` (89 checks; `--keeper` adds the live keeper checks), `node tests/transport_check.js` (the frame controls against fake videos), `node tests/page_smoke.js` (the whole report page against a fake DOM and API), `node tests/flags_smoke.js` (the Flags page), `python tests/keeper_sync.py` (the keeper receives every change to the library, including scenarios, Example frames, miss examples and marks, for QC and for planning; the database, the QC library, the digest and the brief agree; no model call) and `python tests/keeper_sync.py --live` (the same, read-only, on the real library: the images, what QC is served over HTTP and by each pipeline's `qc-brief`, and whether the keeper's remembered version is current) and `python tests/demo.py` (a demo instance on port
 8799 with throwaway data, passphrase `demo-passphrase`).
 
 ## Build prompt
