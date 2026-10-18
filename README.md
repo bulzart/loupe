@@ -54,7 +54,7 @@ and uploads go to the audit log (Settings page); consults are logged on the Keep
 `qc.py` starts `claude -p … --model claude-haiku-5-5 --tools Read --strict-mcp-config` as a session of its own (`--session-id`, then
 `--resume`), working in `data/keeper`, told the whole library digest. It can read the sample images and write nothing. After 30
 turns it is replaced by a fresh session rebuilt from the library (the library is the memory, so nothing is lost). If it cannot run,
-`qc-consult` falls back to the deterministic brief (`mode: fallback`). A consult costs about $0.001.
+`qc-consult` falls back to the deterministic brief (`mode: fallback`). A consult costs about 1 to 4 cents (it grows with the library and with the session's length); each consult's cost is kept in the `consults` table of the database.
 
 ## Planning hints (the keeper's second job)
 
