@@ -256,18 +256,17 @@ def _card_excerpt(doc: dict) -> str:
 
 def _prompts_of_requests() -> list[tuple[bool, set]]:
     """(flagged?, term set) of every known request prompt: ran/failed requests from the runs, plus the prompts of all flags."""
-    root = runs.runs_root()
+    dirs = sorted(x for r in runs.runs_roots() if r.is_dir() for x in r.iterdir())
     sig = []
-    if root.is_dir():
-        for d in root.iterdir():
-            sp = d / "state.json"
-            if sp.is_file():
-                sig.append((d.name, sp.stat().st_mtime_ns))
+    for d in dirs:
+        sp = d / "state.json"
+        if sp.is_file():
+            sig.append((str(d), sp.stat().st_mtime_ns))
     key = tuple(sig)
     if _corpus_cache.get("key") == key:
         return _corpus_cache["val"]
     out = []
-    for d in sorted(root.iterdir()) if root.is_dir() else []:
+    for d in dirs:
         st = runs._json(d / "state.json")
         if not isinstance(st, dict):
             continue

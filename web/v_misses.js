@@ -28,7 +28,7 @@ export async function pick() {
   const real = d.runs.filter((r) => r.kind === 'run');
   const out = h('div');
   const sel = h('select', { style: 'min-width:360px' }, h('option', { value: '' }, 'Select a run…'),
-    real.map((r) => h('option', { value: r.run }, `${r.run} · ${r.mode || ''}${r.submode ? '/' + r.submode : ''} · ${r.model || ''} · ${r.videos} videos`)));
+    real.map((r) => h('option', { value: r.run }, `${r.lib ? r.lib.toUpperCase() + ' · ' : ''}${r.run} · ${r.mode || ''}${r.submode ? '/' + r.submode : ''} · ${r.model || ''} · ${r.videos} videos`)));
   sel.addEventListener('change', async () => {
     if (!sel.value) { out.replaceChildren(); return; }
     const r = await api('GET', '/api/runs/' + encodeURIComponent(sel.value));

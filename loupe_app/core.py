@@ -1,6 +1,6 @@
 """Loupe core: paths, SQLite, admin login, sessions, API keys, audit.  Standard library only.
 
-Loupe is the local web app of the /analyze-then-pick pipeline: it keeps the Higgsfield flag record, the generation misses
+Loupe is the local web app of the video pipelines (/analyze-then-pick and /analyze-then-generate): it keeps the Higgsfield flag record, the generation misses
 with their wrong-vs-correct sample images, and serves those samples to the QC phase through an API key.
 """
 from __future__ import annotations
@@ -21,6 +21,8 @@ from pathlib import Path
 HOME = Path(os.environ.get("LOUPE_HOME") or Path(__file__).resolve().parent.parent)
 DATA = Path(os.environ.get("LOUPE_DATA") or HOME / "data")
 ATP = Path(os.environ.get("ATP_HOME") or Path.home() / ".claude" / "analyze-then-pick")
+ATG = Path(os.environ.get("ATG_HOME") or Path.home() / ".claude" / "analyze-then-generate")
+LIBS = (("atp", ATP), ("atg", ATG))          # the pipeline libraries whose runs Loupe can browse
 PORT = int(os.environ.get("LOUPE_PORT") or 8787)
 HOST = "127.0.0.1"
 

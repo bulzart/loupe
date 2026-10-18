@@ -12,8 +12,21 @@ from . import core, media
 VIDEO_NAMES = ("*.mp4", "*.mov", "*.webm", "*.mkv", "*.m4v")
 
 
+def runs_roots() -> list[Path]:
+    """The runs folder of every pipeline library, in the order of core.LIBS."""
+    return [lib / "runs" for _name, lib in core.LIBS]
+
+
 def runs_root() -> Path:
-    return core.ATP / "runs"
+    """The first library's runs folder (kept for callers that want one)."""
+    return runs_roots()[0]
+
+
+def lib_of(root: Path) -> str:
+    for name, lib in core.LIBS:
+        if root == lib / "runs":
+            return name
+    return ""
 
 
 def _json(p: Path):
@@ -26,8 +39,10 @@ def _json(p: Path):
 def run_dir(run: str) -> Path | None:
     if not run or "/" in run or "\\" in run or run.startswith("."):
         return None
-    d = runs_root() / run
-    return d if d.is_dir() else None
+    found = [r / run for r in runs_roots() if (r / run).is_dir()]
+    if not found:
+        return None
+    return max(found, key=lambda p: (p / "state.json").stat().st_mtime if (p / "state.json").is_file() else 0) if len(found) > 1 else found[0]
 
 
 def run_number(name: str) -> str:
@@ -43,22 +58,24 @@ def _mp4s(d: Path) -> list[Path]:
 
 
 def list_runs() -> list[dict]:
-    root = runs_root()
+    """Every run of every library, newest name first; `lib` says which library a run belongs to."""
     res = []
-    if not root.is_dir():
-        return res
-    for d in sorted(root.iterdir(), reverse=True):
-        if not d.is_dir() or d.name.startswith((".", "_")):
+    for root in runs_roots():
+        if not root.is_dir():
             continue
-        st = _json(d / "state.json")
-        if st is not None:
-            vids = st.get("videos") or []
-            res.append({"run": d.name, "kind": "run", "mode": st.get("mode"), "submode": st.get("analyze_submode"), "model": st.get("model"),
-                        "stage": st.get("stage"), "created": st.get("created"), "updated": st.get("updated"),
-                        "videos": len(vids) if isinstance(vids, list) else 0, "number": run_number(d.name)})
-        elif _mp4s(d):
-            res.append({"run": d.name, "kind": "library", "videos": len(_mp4s(d)), "number": "", "mode": "files", "model": "", "stage": ""})
-    return res
+        lib = lib_of(root)
+        for d in root.iterdir():
+            if not d.is_dir() or d.name.startswith((".", "_")):
+                continue
+            st = _json(d / "state.json")
+            if st is not None:
+                vids = st.get("videos") or []
+                res.append({"run": d.name, "lib": lib, "kind": "run", "mode": st.get("mode"), "submode": st.get("analyze_submode"), "model": st.get("model"),
+                            "stage": st.get("stage"), "created": st.get("created"), "updated": st.get("updated"),
+                            "videos": len(vids) if isinstance(vids, list) else 0, "number": run_number(d.name)})
+            elif _mp4s(d):
+                res.append({"run": d.name, "lib": lib, "kind": "library", "videos": len(_mp4s(d)), "number": "", "mode": "files", "model": "", "stage": ""})
+    return sorted(res, key=lambda r: r["run"], reverse=True)
 
 
 def _version(p: Path, label: str, kind: str) -> dict:
@@ -70,7 +87,8 @@ def library_matches(run: str, nn: str) -> list[dict]:
     """Loose files in the runs folder's non-run subfolders (client fixes) that name this run's number and video."""
     num = run_number(run)
     res = []
-    root = runs_root()
+    rd = run_dir(run)
+    root = rd.parent if rd else runs_root()
     if not num or not root.is_dir():
         return res
     pat = re.compile(rf"run0*{re.escape(num)}[-_]video[-_]0*{int(nn)}(?!\d)", re.I) if nn.isdigit() else None
@@ -306,7 +324,7 @@ def index_usage(force: bool = False, budget: float | None = None) -> int:
     n = 0
     t0 = time.time()
     try:
-        for d in sorted(runs_root().iterdir()) if runs_root().is_dir() else []:
+        for d in sorted(x for r in runs_roots() if r.is_dir() for x in r.iterdir()):
             if budget is not None and time.time() - t0 > budget:
                 break
             sp = d / "state.json"

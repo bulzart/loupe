@@ -34,7 +34,7 @@ def run(cmd: list[str], timeout: int = 90) -> subprocess.CompletedProcess:
 # ------------------------------------------------------------------ which files may be read
 def default_roots() -> list[Path]:
     home = Path.home()
-    roots = [core.ATP / "runs", core.DATA]
+    roots = [lib / "runs" for _name, lib in core.LIBS] + [core.DATA]
     for d in ("Documents", "Downloads", "Desktop", "Videos", "Pictures"):
         roots.append(home / d)
     return roots

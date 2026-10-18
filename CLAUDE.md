@@ -1,6 +1,6 @@
 # Loupe: working rules
 
-Loupe is a local web app for the /analyze-then-pick pipeline (Python standard library + SQLite + Pillow + ffmpeg, vanilla-JS UI): Higgsfield flags, generation-miss samples and a read-only QC keeper. `README.md` is the operating guide. This folder is its own git repository; `origin` is the private GitHub repo `bulzart/loupe`.
+Loupe is a local web app for the video pipelines /analyze-then-pick and /analyze-then-generate (Python standard library + SQLite + Pillow + ffmpeg, vanilla-JS UI): Higgsfield flags, generation-miss samples and a read-only QC keeper. `README.md` is the operating guide. This folder is its own git repository; `origin` is the private GitHub repo `bulzart/loupe`.
 
 ## Always commit changes
 
@@ -12,14 +12,14 @@ Loupe is a local web app for the /analyze-then-pick pipeline (Python standard li
 
 ## Keep the docs in step
 
-After every edit to Loupe (code, routes, UI, hooks, keys, the `atp.py` commands that call it), update in the same sitting:
+After every edit to Loupe (code, routes, UI, hooks, keys, the `atp.py` and `atg.py` commands that call it), update in the same sitting:
 
 - `README.md` in this folder.
 - The build prompt `C:\Users\Glaresquare1\Documents\prompts\loupe.txt` (outside this repo): copy it to `loupe.txt.bak-<date>-<why>` first, keep CRLF prose with no headings, keep every sentence true to the code.
 
 ## Running and restarting
 
-`python loupe.py serve` (or `python ~/.claude/analyze-then-pick/scripts/atp.py loupe ensure`) serves http://127.0.0.1:8787, localhost only. Restart it after changing Python code; `web/*.js` and the CSS are served live. A restart is: stop the process listening on port 8787, then run `atp.py loupe ensure`.
+`python loupe.py serve` (or `python ~/.claude/analyze-then-pick/scripts/atp.py loupe ensure`, or the same command in `analyze-then-generate/scripts/atg.py`) serves http://127.0.0.1:8787, localhost only. Restart it after changing Python code; `web/*.js` and the CSS are served live. A restart is: stop the process listening on port 8787, then run `atp.py loupe ensure`.
 
 ## Conventions
 

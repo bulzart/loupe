@@ -41,7 +41,7 @@ function loginView() {
   return h('div', { class: 'login' }, h('div', { class: 'card' },
     h('div', { class: 'brand' }, LOGO(), 'Loupe'),
     h('p', { class: 'muted' }, setup ? 'First run: choose the admin passphrase. It protects this app on your machine; API keys for the agents are created inside.'
-      : 'Flags, generation misses and the QC sample library of the /analyze-then-pick pipeline.'),
+      : 'Flags, generation misses and the QC sample library of the video pipelines.'),
     pw, h('div', { style: 'margin-top:12px' }, h('button', { class: 'btn primary', onclick: go }, setup ? 'Set passphrase and sign in' : 'Sign in'))));
 }
 

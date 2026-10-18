@@ -13,6 +13,7 @@ from pathlib import Path
 TMP = Path(tempfile.mkdtemp(prefix="loupe-test-"))
 os.environ["LOUPE_DATA"] = str(TMP / "data")
 os.environ["ATP_HOME"] = str(TMP / "atp")
+os.environ["ATG_HOME"] = str(TMP / "atg")
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from loupe_app import core, flags, media, runs, server  # noqa: E402
@@ -167,7 +168,18 @@ def main(with_keeper=False):
 
     print("\n[runs and media]")
     s, d, _ = req("GET", "/api/runs", key=kp)
-    check("runs are listed", s == 200 and d["runs"][0]["run"] == "20261001-000000-07" and d["runs"][0]["model"] == "wan3_0_prime")
+    check("runs are listed", s == 200 and d["runs"][0]["run"] == "20261001-000000-07" and d["runs"][0]["model"] == "wan3_0_prime" and d["runs"][0]["lib"] == "atp")
+    atg_run = TMP / "atg" / "runs" / "20261002-000000-03"
+    mkvideo(atg_run / "60-outputs" / "video-01" / "a1" / "raw.mp4", "0x305090", "red")
+    (atg_run / "state.json").write_text(json.dumps({"run_id": atg_run.name, "mode": "analyze", "analyze_submode": "create", "model": "seedance_2_5", "stage": "production",
+                                                    "videos": [{"video": "01", "status": "done", "qc": "ok"}]}))
+    s, d, _ = req("GET", "/api/runs", key=kp)
+    libs = {r["run"]: r["lib"] for r in d["runs"]}
+    check("runs of both pipeline libraries are listed, newest name first", s == 200 and libs.get("20261002-000000-03") == "atg" and libs.get("20261001-000000-07") == "atp"
+          and [r["run"] for r in d["runs"]][:2] == ["20261002-000000-03", "20261001-000000-07"], str(libs))
+    s, d, _ = req("GET", "/api/runs/20261002-000000-03", key=kp)
+    check("a run of the second library resolves with its video versions", s == 200 and d["videos"][0]["versions"] and d["videos"][0]["versions"][0]["label"] == "a1 · raw.mp4", str(d)[:200])
+    check("both libraries' runs folders are readable media roots", all(Path(str(lib / "runs")).resolve() in media.allowed_roots() for _n, lib in core.LIBS))
     s, d, _ = req("GET", "/api/runs/20261001-000000-07", key=kp)
     vers = d["videos"][0]["versions"]
     check("a video's versions (attempts) are found", [v["label"] for v in vers] == ["a1 · raw.mp4", "a2 · raw.mp4"], str([v["label"] for v in vers]))

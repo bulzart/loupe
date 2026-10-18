@@ -1,6 +1,6 @@
 # Loupe
 
-The web app of the `/analyze-then-pick` pipeline. It does three things:
+The web app of the video pipelines (`/analyze-then-pick` and `/analyze-then-generate`; the runs of both can be browsed here). It does three things:
 
 1. **Flag record.** Every prompt and video Higgsfield flagged, refused, withheld or rerouted, with the evidence the pipeline could
    gather (the request, each input with its file, thumbnail and file facts, the same file in earlier runs, the raw answer the
@@ -27,7 +27,7 @@ Standard library Python + SQLite + Pillow + ffmpeg. The UI is plain JavaScript (
 python C:/Users/Glaresquare1/.claude/loupe/loupe.py serve         # http://127.0.0.1:8787
 ```
 
-`atp.py loupe ensure` starts it detached when a pipeline command needs it. The first time you open the page it asks you to **set
+`atp.py loupe ensure` (or `atg.py loupe ensure`) starts it detached when a pipeline command needs it. The first time you open the page it asks you to **set
 the admin passphrase yourself** (8+ characters). Agents never get that passphrase.
 
 ## Who may do what
@@ -35,15 +35,15 @@ the admin passphrase yourself** (8+ characters). Agents never get that passphras
 | Who | How | Scopes |
 |---|---|---|
 | You | passphrase login (12 h session cookie, CSRF header, Host check, 5 wrong tries lock the login for a minute) | everything |
-| The pipeline (`atp.py`, hooks) | `Authorization: Bearer lk_…` from `data/keys/pipeline.key` | `flags:write`, `flags:read`, `runs:read` |
-| The QC phase (`atp.py qc-consult`, MCP) | `data/keys/qc.key` | `qc:read`, `flags:read` |
+| The pipeline (`atp.py`, `atg.py`, hooks) | `Authorization: Bearer lk_…` from `data/keys/pipeline.key` | `flags:write`, `flags:read`, `runs:read` |
+| The QC phase (`qc-consult` of either script, MCP) | `data/keys/qc.key` | `qc:read`, `flags:read` |
 
 Keys are shown once, stored hashed, revocable, with a last-used time and a use counter; logins, key changes, flag and miss edits, settings
 and uploads go to the audit log (Settings page); consults are logged on the Keeper page. Make more with `python loupe.py key-create --name N --scopes a,b [--file NAME]`.
 
 ## How agents reach it
 
-- **CLI (primary):** `atp.py caught-flag add|set|list|reconcile|open`, `atp.py qc-consult`, `atp.py qc-brief`, `atp.py plan-hints`, `atp.py loupe ensure|status|open`.
+- **CLI (primary):** `caught-flag add|set|list|reconcile|open`, `qc-consult`, `qc-brief`, `plan-hints` and `loupe ensure|status|open`, with the same arguments in `atp.py` and in `atg.py` (each writes the runs of its own library).
 - **MCP (optional):** `mcp_server.py` offers `qc_search`, `qc_get_sample` (text + the image), `qc_brief`, `qc_consult`, `flags_search`.
   Register once with `claude mcp add --scope user loupe -- python C:/Users/Glaresquare1/.claude/loupe/mcp_server.py`
   (it reads `data/keys/qc.key`, or `LOUPE_API_KEY` if you pass `-e LOUPE_API_KEY=<key>`).
@@ -58,12 +58,12 @@ turns it is replaced by a fresh session rebuilt from the library (the library is
 
 ## Planning hints (the keeper's second job)
 
-The first request of each video asks the keeper once, in text only, which past misses could matter for its plan (`atp.py plan-hints --beats …`).
+The first request of each video asks the keeper once, in text only, which past misses could matter for its plan (`plan-hints --beats …`).
 The keeper is told to be sparse: the default answer is no hints, a hint needs a beat of that plan that matches the sample's trigger and a
 compatible model, at most three, each a risk plus a positive lever (what the right version shows and which of the writer's own tools to use at
 that beat), never a wording to paste. Loupe enforces the same in code (real ids, high or medium confidence, model family must fit unless the
 miss is model-independent, three at most, short fields, no images, nothing at all when the keeper is unavailable). The writer's rules are in the
-`atp-write-request` skill: apply only to the matching beat, smallest change, positive wording, at most two per video, record the decisions.
+`atp-write-request` and `atg-write-request` skills: apply only to the matching beat, smallest change, positive wording, at most two per video, record the decisions.
 
 The keeper matches by mechanism: both consult kinds carry the product's details (shape, size, opening, natural posture, from its registry row,
 `--product-details`), a sample is relevant when it and the video share a product detail and a scene mechanism, and its answers are conditions
@@ -73,11 +73,15 @@ product's details, not only its name, so samples can be matched this way.
 ## Hooks (in `~/.claude/settings.json`, scripts in `~/.claude/hooks/`)
 
 - `atp_flag_watch.py` — PostToolUse and PostToolUseFailure of the Higgsfield generation tools: a flag-like answer is saved to Loupe as a
-  *capture* the moment it returns; the agent gets a one-line reminder to record the flag before changing the request.
+  *capture* the moment it returns; the agent gets a one-line reminder to record the flag before changing the request, naming the toolkit script of the run (in either library) that changed last.
   Loupe down: the capture waits in `data/outbox/`.
-- `atp_resume_note.py` — SessionStart after a compaction or resume: names the run in progress and its `next_skill`.
-- `atp_read_guard.py` — PreToolUse of Read: refuses a whole-file read of `atp.py`, `models/index.json`, the catalog snapshot and the
+- `atp_resume_note.py` — SessionStart after a compaction or resume: names the run in progress (of either library, the one that changed last) and its `next_skill`.
+- `atp_read_guard.py` — PreToolUse of Read: refuses a whole-file read of `atp.py`, `atg.py`, `models/index.json`, the catalog snapshots and the
   backups (a read with offset/limit passes).
+
+## Runs
+
+The run browser, the product sample finder, the usage index and the evidence for a flag read `runs/` of every library in `core.LIBS` (`ATP_HOME`, default `~/.claude/analyze-then-pick`, and `ATG_HOME`, default `~/.claude/analyze-then-generate`); each run is listed with its library (`lib`: `atp` or `atg`) and the media of both are readable. A run name that exists in both libraries resolves to the one whose `state.json` changed last.
 
 ## Data (not in git)
 
@@ -90,7 +94,7 @@ This folder is its own git repository; `origin` is the private GitHub repo `bulz
 
 ## Tests
 
-`python tests/selftest.py` (73 checks; `--keeper` adds 5 that call the real keeper), `node tests/transport_check.js` (the frame controls against fake videos), `node tests/page_smoke.js` (the whole report page against a fake DOM and API), `node tests/flags_smoke.js` (the Flags page), `python tests/keeper_sync.py` (the keeper receives every change to the library, no model call) and `python tests/demo.py` (a demo instance on port
+`python tests/selftest.py` (89 checks; `--keeper` adds the live keeper checks), `node tests/transport_check.js` (the frame controls against fake videos), `node tests/page_smoke.js` (the whole report page against a fake DOM and API), `node tests/flags_smoke.js` (the Flags page), `python tests/keeper_sync.py` (the keeper receives every change to the library, no model call) and `python tests/demo.py` (a demo instance on port
 8799 with throwaway data, passphrase `demo-passphrase`).
 
 ## Build prompt
