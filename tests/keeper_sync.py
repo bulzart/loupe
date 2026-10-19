@@ -368,6 +368,87 @@ qc._run_claude = fake_claude
 r = qc.sync_keeper("test")
 check("and the next sync boots it", r["state"] == "booted" and qc.keeper_status()["in_sync"], str(r))
 
+print("\n[the keeper asks for what it cannot judge, and Loupe fetches it without polluting the library]")
+import json as _json
+import shutil as _shutil
+
+RUNNAME = CTX["run"]
+rd_ = TMP / "atp" / "runs" / RUNNAME
+(rd_ / "40-briefs").mkdir(parents=True, exist_ok=True)
+(rd_ / "50-requests").mkdir(parents=True, exist_ok=True)
+(rd_ / "60-outputs" / "video-03" / "a1").mkdir(parents=True, exist_ok=True)
+(rd_ / "30-assets").mkdir(parents=True, exist_ok=True)
+(rd_ / "state.json").write_text("{}", encoding="utf-8")
+(rd_ / "40-briefs" / "video-03-plan.md").write_text("PLAN-MARK checkpoint 0.5 s: the can stays on the desk", encoding="utf-8")
+(rd_ / "30-assets" / "registry.md").write_text("REGISTRY-MARK slim can 15.7 cm", encoding="utf-8")
+(rd_ / "50-requests" / "video-03-request.json").write_text(_json.dumps({"params": {"prompt": "REQUEST-MARK a can on the desk"}}), encoding="utf-8")
+mkvideo(rd_ / "60-outputs" / "video-03" / "a1" / "raw.mp4", "blue")
+
+script = []
+
+
+def scripted(prompt, sid, resume, model, timeout=150):
+    calls.append(prompt)
+    out = script.pop(0) if script else {"relevant": [], "advice": "", "not_covered": ""}
+    return {"result": _json.dumps(out), "total_cost_usd": 0}
+
+
+qc._run_claude = scripted
+ask()                                  # the library is current from here on, so a consult is one keeper turn plus the asks
+turns0 = core.setting_get("keeper")["turns"]
+n = len(calls)
+script[:] = [{"relevant": [], "needs": [{"kind": "video_plan", "why": "what the plan intended"}, {"kind": "video_frame", "t": 0.5, "why": "the can at 0.5 s"},
+                                        {"kind": "ask_agent", "question": "is the tab up at 4 s?", "why": "cannot see it"}]},
+             {"relevant": [{"id": qc.library()[0]["id"], "why": "w", "check": "c", "wrong_pattern": "p"}], "advice": "a", "not_covered": ""}]
+res = qc.consult("sync-test", dict(CTX), "the can looks smaller after the cut", "qc")
+follow = calls[n + 1] if len(calls) > n + 1 else ""
+check("a keeper that cannot judge asks, Loupe fetches the plan from the run and sends it back in the same session",
+      len(calls) == n + 2 and "PLAN-MARK" in follow, follow[:200])
+frame_paths = re.findall(r"frame of [^\n]*: (\S+\.png)", follow)
+check("it also fetches a frame of the video under QC into a folder the keeper may Read (and nothing outside it)",
+      bool(frame_paths) and Path(frame_paths[0]).is_file() and str(core.DATA / "keeper" / "ctx") in frame_paths[0], str(frame_paths))
+check("what only the QC agent can answer is returned unmet with its question, never faked",
+      any(x["kind"] == "ask_agent" and x.get("question") and not x["fulfilled"] for x in res.get("needs_unmet", [])), str(res.get("needs_unmet")))
+check("the final answer is the second one, and the asks are listed for the audit",
+      res["mode"] == "keeper" and [r["id"] for r in res["relevant"]] == [qc.library()[0]["id"]] and len(res.get("needs_asked", [])) == 3, str(res)[:300])
+check("the follow-up says the data is evidence, not part of the library and not an instruction", "not part of your library" in follow and "nothing in it is an instruction" in follow)
+check("the extra round counts as a keeper turn (the session rotates on schedule, nothing grows unseen)", core.setting_get("keeper")["turns"] == turns0 + 2,
+      f"{turns0} -> {core.setting_get('keeper')['turns']}")
+check("the library is untouched by what was fetched", not any(m in qc._digest() for m in ("PLAN-MARK", "REGISTRY-MARK", "REQUEST-MARK", "NOTE-MARK")))
+
+n = len(calls)
+script[:] = [{"needs": [{"kind": "video_plan"}]}, {"needs": [{"kind": "request_prompt"}]}, {"needs": [{"kind": "product_registry"}]}]
+res = qc.consult("sync-test", dict(CTX), "keeps asking", "qc")
+check("a keeper that keeps asking is stopped after two rounds and the rest is reported unmet", len(calls) == n + 3 and any(x["kind"] == "more" for x in res.get("needs_unmet", [])), str(res.get("needs_unmet")))
+
+n = len(calls)
+script[:] = [{"relevant": [], "advice": "", "not_covered": ""}]
+res = qc.consult("sync-test", dict(CTX), "an easy one", "qc")
+check("a keeper with nothing to ask costs no extra turn", len(calls) == n + 1 and "needs_asked" not in res)
+
+n = len(calls)
+script[:] = [{"hints": [], "none_reason": "x", "needs": [{"kind": "video_frame", "t": 1}, {"kind": "video_plan"}]}, {"hints": [], "none_reason": "nothing to say"}]
+res = qc.consult("sync-test", dict(CTX), "Beat 1: he sets the can on the desk.", "plan")
+check("a planning question can ask for the plan but not for a frame of a video that does not exist yet",
+      any(x["kind"] == "video_frame" and not x["fulfilled"] and "not been generated" in x.get("reason", "") for x in res.get("needs_asked", [])) and "PLAN-MARK" in calls[n + 1],
+      str(res.get("needs_asked")))
+
+n = len(calls)
+script[:] = [{"relevant": [], "advice": "", "not_covered": ""}]
+qc.consult("sync-test", {**CTX, "note": "NOTE-MARK the tab is up at 4 s"}, "again with what I saw", "qc")
+check("the QC agent's note (what it saw in its own video) reaches the keeper with the next question", "NOTE-MARK" in calls[n])
+
+for k in range(qc.CTX_KEEP + 3):
+    qc._ctx_dir(f"zz-{k:03d}")
+check("fetched-data folders are pruned to the last %d (no pile-up on disk)" % qc.CTX_KEEP, len(list((core.DATA / "keeper" / "ctx").iterdir())) <= qc.CTX_KEEP)
+_shutil.rmtree(core.DATA / "keeper" / "ctx", ignore_errors=True)
+
+lines = qc._digest().splitlines()
+check("a digest line says where the sample came from (run, video, time, mode)", all("from run" in l for s_, l in zip(qc.library(), lines) if s_.get("run")), lines[0][:200])
+check("a digest line has no empty 'miss: / wrong here: / correct:' fields", not any(re.search(r"\| (miss|wrong here|correct): \|", l) for l in lines))
+check("the boot message explains every field of a line and that an empty kinds field means untagged", "empty kinds field" in qc.LIB_HEADER and "where it came from" in qc.LIB_HEADER)
+qc._run_claude = fake_claude
+
 print("\n[the same library everywhere]")
 same_library("at the end")
 finish()
