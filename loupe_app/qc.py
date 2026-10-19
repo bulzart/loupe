@@ -213,7 +213,48 @@ def keeper_status() -> dict:
     st["model"] = core.setting_get("keeper_model", DEFAULT_MODEL)
     st["library"] = _sig()
     st["claude_found"] = bool(_claude())
+    st["in_sync"] = bool(st.get("session_id")) and st.get("library_sig") == st["library"] and st.get("turns", 0) < ROT_TURNS and st.get("model") == st["model"]
     return st
+
+
+def sync_keeper(actor: str = "system") -> dict:
+    """Make the keeper hold the library as it is now, without asking it a question: boots a session when there is none (or it is worn out or the model
+    changed), sends the full current list when the library changed since its last digest, does nothing when it is current. One cheap model call at most.
+    Answers {state: empty | in_sync | booted | synced | failed, library_size, cost}. Never raises."""
+    lib = library()
+    if not lib:
+        return {"state": "empty", "library_size": 0, "cost": 0.0}
+    with _keeper_lock:
+        try:
+            core.ensure_dirs()
+            model = core.setting_get("keeper_model", DEFAULT_MODEL)
+            st = core.setting_get("keeper", {}) or {}
+            sig = _sig()
+            state, cost = "in_sync", 0.0
+            if not st.get("session_id") or st.get("turns", 0) >= ROT_TURNS or st.get("model") != model:
+                sid = str(uuid.uuid4())
+                boot = (f"LIBRARY ({len(lib)} samples; version {sig}). One line per sample: id | kinds | model | title | the admin's words | image path.\n\n"
+                        f"{_digest()}\n\nYou now hold this library. Reply with the single word: ready.")
+                d = _run_claude(boot, sid, False, model)
+                cost = float(d.get("total_cost_usd") or 0)
+                st = {"session_id": sid, "created": core.now(), "turns": 1, "model": model, "library_sig": sig, "bootstrapped": core.now()}
+                state = "booted"
+            elif st.get("library_sig") != sig:
+                msg = ("The library changed since your last digest (a sample added, edited, archived or deleted; an image may have been rebuilt). Full current list:\n"
+                       + _digest() + "\nAn image you looked at before may have changed: read it again before you rely on what you remember of it.\n"
+                       "You now hold this library. Reply with the single word: ready.")
+                d = _run_claude(msg, st["session_id"], True, st["model"])
+                cost = float(d.get("total_cost_usd") or 0)
+                st["turns"] = st.get("turns", 0) + 1
+                st["library_sig"] = sig
+                state = "synced"
+            if state != "in_sync":
+                st["last_synced"] = core.now()
+                core.setting_set("keeper", st)
+                core.audit(actor, "keeper.sync", state, f"{len(lib)} samples, cost {cost:.4f}")
+            return {"state": state, "library_size": len(lib), "cost": cost}
+        except Exception as e:  # noqa: BLE001
+            return {"state": "failed", "library_size": len(lib), "cost": 0.0, "error": str(e)[:300]}
 
 
 def keeper_reset(actor: str = "admin"):

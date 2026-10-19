@@ -56,6 +56,8 @@ and uploads go to the audit log (Settings page); consults are logged on the Keep
 turns it is replaced by a fresh session rebuilt from the library (the library is the memory, so nothing is lost). If it cannot run,
 `qc-consult` falls back to the deterministic brief (`mode: fallback`). A consult costs about 1 to 4 cents (it grows with the library and with the session's length); each consult's cost is kept in the `consults` table of the database.
 
+**Always current.** The keeper is not left to wake at the first question: `POST /api/qc/keeper/sync` (what `atp.py|atg.py loupe ensure` calls when a run is created, resumed or about to spawn its agents) boots it, or sends it the whole current library, when there is no session, the session is worn out or the library changed since its last digest, and does nothing (no model call) when it is current. The server also boots it at start-up and a watcher re-reads the library about 25 seconds after the admin's last edit (a run of edits costs one call), retrying a failure after five minutes. `GET /api/qc/keeper` and the Keeper page show `in_sync`. Each sync is in the audit log (`keeper.sync`, with its cost). A consult still checks the version itself, so a question never meets an outdated keeper.
+
 ## Planning hints (the keeper's second job)
 
 The first request of each video asks the keeper once, in text only, which past misses could matter for its plan (`plan-hints --beats …`).

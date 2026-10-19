@@ -661,6 +661,11 @@ def keeper_get(h):
     h.send_json({"ok": True, "keeper": qc.keeper_status(), "consults": cons})
 
 
+@route("POST", "/api/qc/keeper/sync", scope="qc:read")
+def keeper_sync(h):
+    h.send_json({"ok": True, **qc.sync_keeper(h.pr.name)})
+
+
 @route("POST", "/api/qc/keeper/reset", scope="admin")
 def keeper_reset(h):
     qc.keeper_reset(h.pr.name)
@@ -677,6 +682,30 @@ def _background():
         time.sleep(20)
 
 
+KEEPER_QUIET = 25     # seconds a library must stay unchanged before the keeper is told (a run of edits costs one call, not one each)
+
+
+def _keeper_watch():
+    """Keeps the keeper current: it boots with the server when a library exists, and re-reads the library a little after the admin's last edit."""
+    last, stable, retry_at = None, 0, 0.0
+    first = True
+    while True:
+        try:
+            sig = qc._sig()
+            stable = stable + 1 if sig == last else 0
+            last = sig
+            if (first or (stable * 10 >= KEEPER_QUIET and not qc.keeper_status().get("in_sync"))) and time.time() >= retry_at:
+                first = False
+                r = qc.sync_keeper("watcher")
+                if r.get("state") in ("booted", "synced", "failed"):
+                    print("keeper:", r, flush=True)
+                if r.get("state") == "failed":
+                    retry_at = time.time() + 300           # the claude CLI may be missing or signed out: try again in five minutes, not every tick
+        except Exception:  # noqa: BLE001
+            traceback.print_exc()
+        time.sleep(10)
+
+
 def _warm():
     while True:
         try:
@@ -691,6 +720,7 @@ def serve(port: int | None = None):
     core.db().close()
     threading.Thread(target=_background, daemon=True).start()
     threading.Thread(target=_warm, daemon=True).start()
+    threading.Thread(target=_keeper_watch, daemon=True).start()
     httpd = ThreadingHTTPServer((core.HOST, port or core.PORT), Handler)
     httpd.daemon_threads = True
     (core.DATA / "server.json").write_text(json.dumps({"port": httpd.server_port, "pid": __import__("os").getpid(), "started": core.now()}), encoding="utf-8")
