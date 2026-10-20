@@ -43,11 +43,15 @@ and uploads go to the audit log (Settings page); consults are logged on the Keep
 
 ## How agents reach it
 
-- **CLI (primary):** `caught-flag add|set|list|reconcile|open`, `qc-consult`, `qc-brief`, `plan-hints` and `loupe ensure|status|open`, with the same arguments in `atp.py` and in `atg.py` (each writes the runs of its own library).
+- **CLI (primary):** `caught-flag add|set|list|reconcile|open`, `qc-consult`, `qc-brief`, `plan-hints` and `loupe ensure|status|open`, with the same arguments in `atp.py`, `atg.py` and `awl.py` (each writes the runs of its own library). `awl.py` also reads the keeper's state (`GET /api/qc/keeper/state`, qc key) in its `status` and `doctor`, and uploads from a capture (`hf-put --capture`).
 - **MCP (optional):** `mcp_server.py` offers `qc_search`, `qc_get_sample` (text + the image), `qc_brief`, `qc_consult`, `flags_search`.
   Register once with `claude mcp add --scope user loupe -- python C:/Users/Glaresquare1/.claude/loupe/mcp_server.py`
   (it reads `data/keys/qc.key`, or `LOUPE_API_KEY` if you pass `-e LOUPE_API_KEY=<key>`).
 - **HTTP:** the same JSON API the web page uses (`/api/...`, listed in `loupe_app/server.py`).
+
+**Kinds suggested, confirmed by the admin.** `GET /api/misses/suggest-kinds?text=…` returns the kinds of the vocabulary whose own words occur in a text (a prefix match on the vocabulary's words, nothing weighed); the report form's button "Suggest kinds from the words" ticks them and the admin unticks what does not fit; nothing is saved without the admin.
+
+**The composite says what its tags mean.** When the frames come from two videos, the bottom band opens with a legend (frames tagged "as generated" are from video A, "correct version" from video B, a different video); when the admin's marks cover more than 60 % of the frame, no zoom row is drawn (it would repeat the panel) and the band says so. Existing samples keep their images until they are regenerated.
 
 ## The keeper
 
@@ -55,6 +59,10 @@ and uploads go to the audit log (Settings page); consults are logged on the Keep
 `--resume`), working in `data/keeper`, told the whole library digest. It can read the sample images and write nothing. After 30
 turns it is replaced by a fresh session rebuilt from the library (the library is the memory, so nothing is lost). If it cannot run,
 `qc-consult` falls back to the deterministic brief (`mode: fallback`). A consult costs about 1 to 4 cents (it grows with the library and with the session's length); each consult's cost is kept in the `consults` table of the database.
+
+**What an answer carries (since 2026-10-20).** Every `relevant[]` item names the sample's `title` (the admin's words), `details`, `correct_note`, `idea`, `better`, `missed`, where it came from (`model`, `run`, `video`, `t_wrong`, `kinds`), the composite's path and the keeper's `why`, `check` and `wrong_pattern`. Every field is whole or cut at a sentence end with an ellipsis (`_clip`), never mid-word; `needs_unmet` lists only what Loupe could not fetch, and its `more` item names the kinds and times the keeper still wanted. A run that is not under Loupe's run folders is named as such in the fetch reason.
+
+**One call at a time, never stuck.** The keeper runs in its own process group and is ended whole when its call times out (on Windows `claude.cmd` starts node; killing only the shell left node holding the pipes and the lock, and one real consult waited 63 minutes). The lock around every keeper call is acquired with a timeout (`LOUPE_KEEPER_LOCK_WAIT`, default 120 s; a sync waits `LOUPE_KEEPER_SYNC_LOCK_WAIT`, 20 s): a consult that cannot get it answers from the brief with `mode: busy`, a sync reports `state: busy` and the watcher tries again. `GET /api/qc/keeper/state` (qc:read) returns in_sync, turns, the library version, the model and the sync times, without the consult log or the session id.
 
 **Always current.** The keeper is not left to wake at the first question: `POST /api/qc/keeper/sync` (what `atp.py|atg.py loupe ensure` calls when a run is created, resumed or about to spawn its agents) boots it, or sends it the whole current library, when there is no session, the session is worn out or the library changed since its last digest, and does nothing (no model call) when it is current. The server also boots it at start-up and a watcher re-reads the library about 25 seconds after the admin's last edit (a run of edits costs one call), retrying a failure after five minutes. `GET /api/qc/keeper` and the Keeper page show `in_sync`. Each sync is in the audit log (`keeper.sync`, with its cost). A consult still checks the version itself, so a question never meets an outdated keeper.
 
@@ -66,8 +74,8 @@ The first request of each video asks the keeper once, in text only, which past m
 The keeper is told to be sparse: the default answer is no hints, a hint needs a beat of that plan that matches the sample's trigger and a
 compatible model, at most three, each a risk plus a positive lever (what the right version shows and which of the writer's own tools to use at
 that beat), never a wording to paste. Loupe enforces the same in code (real ids, high or medium confidence, model family must fit unless the
-miss is model-independent, three at most, short fields, no images, nothing at all when the keeper is unavailable). The writer's rules are in the
-`atp-write-request` and `atg-write-request` skills: apply only to the matching beat, smallest change, positive wording, at most two per video, record the decisions.
+miss is model-independent, three at most, fields cut at a sentence end (600 characters for the trigger and the outcome, 700 for the lever, 500 for the caveat: the condition that decides whether a hint applies stays whole), no images, nothing at all when the keeper is unavailable or busy). `held_back_why` says why each offered hint was set aside. The writer's rules are in the
+`atp-write-request`, `atg-write-request` and `awl-write-request` skills: apply only to the matching beat, smallest change, positive wording, at most two per video, record the decisions.
 
 The keeper matches by mechanism: both consult kinds carry the product's details (shape, size, opening, natural posture, from its registry row,
 `--product-details`), a sample is relevant when it and the video share a product detail and a scene mechanism, and its answers are conditions
@@ -98,7 +106,7 @@ This folder is its own git repository; `origin` is the private GitHub repo `bulz
 
 ## Tests
 
-`python tests/selftest.py` (89 checks; `--keeper` adds the live keeper checks), `node tests/transport_check.js` (the frame controls against fake videos), `node tests/page_smoke.js` (the whole report page against a fake DOM and API), `node tests/flags_smoke.js` (the Flags page), `python tests/keeper_sync.py` (the keeper receives every change to the library, including scenarios, Example frames, miss examples and marks, for QC and for planning; the database, the QC library, the digest and the brief agree; no model call) and `python tests/keeper_sync.py --live` (the same, read-only, on the real library: the images, what QC is served over HTTP and by each pipeline's `qc-brief`, and whether the keeper's remembered version is current) and `python tests/demo.py` (a demo instance on port
+`python tests/selftest.py` (93 checks; `--keeper` adds the live keeper checks), `node tests/transport_check.js` (the frame controls against fake videos), `node tests/page_smoke.js` (the whole report page against a fake DOM and API), `node tests/flags_smoke.js` (the Flags page), `python tests/keeper_sync.py` (75 checks: the keeper receives every change to the library, the answer's fields and reasons, the busy fallback, a hung subprocess ended, the composite's zoom rule; including scenarios, Example frames, miss examples and marks, for QC and for planning; the database, the QC library, the digest and the brief agree; no model call) and `python tests/keeper_sync.py --live` (the same, read-only, on the real library: the images, what QC is served over HTTP and by each pipeline's `qc-brief`, and whether the keeper's remembered version is current) and `python tests/demo.py` (a demo instance on port
 8799 with throwaway data, passphrase `demo-passphrase`).
 
 ## Build prompt
