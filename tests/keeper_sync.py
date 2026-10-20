@@ -450,6 +450,81 @@ check("a digest line has no empty 'miss: / wrong here: / correct:' fields", not 
 check("the boot message explains every field of a line and that an empty kinds field means untagged", "empty kinds field" in qc.LIB_HEADER and "where it came from" in qc.LIB_HEADER)
 qc._run_claude = fake_claude
 
+print("\n[the consult answer carries the admin's words, honest reasons, fields cut at a sentence]")
+qc._run_claude = scripted
+n = len(calls)
+sid0 = qc.library()[0]["id"]
+script[:] = [{"relevant": [{"id": sid0, "why": "w. " * 300, "check": "c", "wrong_pattern": "p"}], "advice": "a", "not_covered": ""}]
+res = qc.consult("sync-test", dict(CTX), "the words", "qc")
+r0 = res["relevant"][0]
+check("a relevant sample carries its title, model, run, video, time and kinds (on the real library the admin's words are in the title)",
+      all(k in r0 for k in ("title", "model", "run", "video", "t_wrong", "kinds")) and r0["title"] == qc.library()[0]["title"], str(sorted(r0))[:200])
+check("a long keeper field is cut at a sentence end and says so", r0["why"].endswith(". …") and len(r0["why"]) <= 603, r0["why"][-30:])
+check("_clip keeps a short text whole and cuts a long one at a sentence end", qc._clip("short text", 50) == "short text" and qc._clip("a" * 40 + ". " + "b" * 100, 80) == "a" * 40 + ". …")
+script[:] = [{"relevant": [], "needs": [{"kind": "video_frame", "t": 0.5, "why": "the can"}]}, {"relevant": [], "advice": "", "not_covered": ""}]
+res = qc.consult("sync-test", {**CTX, "run": "20269999-000000-99"}, "a run Loupe does not hold", "qc")
+check("a run that Loupe cannot find is named as such in the fetch reason (not 'no run named')",
+      any("not under Loupe's run folders" in x.get("reason", "") for x in res.get("needs_asked", [])), str(res.get("needs_asked"))[:200])
+script[:] = [{"needs": [{"kind": "video_plan"}]}, {"needs": [{"kind": "request_prompt"}]}, {"needs": [{"kind": "video_frame", "t": 2.5, "why": "the cut"}]}]
+res = qc.consult("sync-test", dict(CTX), "keeps asking", "qc")
+check("needs_unmet lists only what is unmet, and 'more' names the kinds and times still wanted, not a cut JSON string",
+      all(x.get("fulfilled") is False or x["kind"] == "more" for x in res["needs_unmet"]) and any(x["kind"] == "more" and "video_frame at 2.5 s" in x["why"] for x in res["needs_unmet"]), str(res.get("needs_unmet"))[:300])
+script[:] = [{"hints": [{"id": sid0, "trigger": "never let the can move", "right_outcome": "x", "lever": "y", "caveat": "", "confidence": "high", "model_independent": False},
+                        {"id": "S999", "trigger": "t", "right_outcome": "x", "lever": "y", "caveat": "", "confidence": "high", "model_independent": True},
+                        {"id": sid0, "trigger": "Beat 2: the can stands on the desk after the cut. " * 20, "right_outcome": "r", "lever": "l",
+                         "caveat": "Does not apply when a hand lifts it. " * 20, "confidence": "medium", "model_independent": False}], "none_reason": ""}]
+res = qc.consult("sync-test", dict(CTX), "Beat 1: the can on the desk.\nBeat 2: a cut.", "plan")
+check("held_back_why says why each hint was held back (a universal, an unknown id)",
+      res.get("held_back") == 2 and {w["reason"][:12] for w in res.get("held_back_why", [])} == {"worded as a ", "not a sample"}, str(res.get("held_back_why")))
+h0 = res["hints"][0] if res.get("hints") else {}
+check("a hint's trigger and caveat are cut at a sentence end, never mid-word", h0.get("trigger", "").endswith(". …") and h0.get("caveat", "").endswith(". …") and len(h0.get("trigger", "")) <= 603, str(h0)[:200])
+
+print("\n[a keeper call that hangs does not hold every later consult]")
+import threading as _threading  # noqa: E402
+import time as _time  # noqa: E402
+qc.LOCK_WAIT, qc.SYNC_LOCK_WAIT = 1, 1
+qc._keeper_lock.acquire(timeout=1)          # as if a keeper call were running in another thread
+t0 = _time.time()
+res = qc.consult("sync-test", dict(CTX), "while the keeper is busy", "qc")
+el = _time.time() - t0
+check("a QC consult while another keeper call runs answers from the brief within the lock wait, mode busy", res["mode"] == "busy" and el < 6 and "samples" in res, f"{res['mode']} {el:.1f}s")
+res = qc.consult("sync-test", dict(CTX), "Beat 1: x.", "plan")
+check("a planning consult while busy gives no hints and says busy", res["mode"] == "busy" and res["hints"] == [] and res.get("keeper_error", "").startswith("busy"))
+check("a sync while busy reports busy and costs nothing", qc.sync_keeper("test")["state"] == "busy")
+qc._keeper_lock.release()
+qc.LOCK_WAIT, qc.SYNC_LOCK_WAIT = 120, 20
+n = len(calls)
+script[:] = [{"relevant": [], "advice": "", "not_covered": ""}]
+res = qc.consult("sync-test", dict(CTX), "after the lock is free", "qc")
+check("once the lock is free the keeper answers again", res["mode"] == "keeper" and len(calls) == n + 1)
+import importlib as _importlib  # noqa: E402
+wrapper = TMP / "slow-claude.cmd"
+wrapper.write_text('@echo off\r\n"%s" -c "import time; time.sleep(30)"\r\n' % sys.executable, encoding="utf-8")
+_saved = sys.modules.pop("loupe_app.qc")
+qc2 = _importlib.import_module("loupe_app.qc")
+sys.modules["loupe_app.qc"] = _saved
+qc2._claude = lambda: str(wrapper)
+qc2.ROLE = "role"          # the wrapper is a .cmd: keep pipes and quotes out of its arguments (the real claude.cmd gets the full role)
+t0 = _time.time()
+try:
+    qc2._run_claude("x", "00000000-0000-0000-0000-000000000000", False, "m", timeout=2)
+    msg = "no error"
+except RuntimeError as e:
+    msg = str(e)
+el = _time.time() - t0
+check("a keeper subprocess that hangs is ended with its process tree after the timeout and reported", "timed out" in msg and el < 12, f"{msg[:80]} {el:.1f}s")
+
+print("\n[the composite says what its tags mean and skips a zoom that would repeat the panel]")
+from PIL import Image as _Image  # noqa: E402
+from loupe_app import compose as _compose  # noqa: E402
+frs = [{"img": _Image.new("RGB", (360, 640), (90, 90, 90)), "role": "wrong", "desc": "as generated", "t": 1.0, "shapes": [{"type": "rect", "frame": 0, "x1": 0.0, "y1": 0.1, "x2": 0.9, "y2": 1.0}]},
+       {"img": _Image.new("RGB", (360, 640), (120, 120, 120)), "role": "right", "desc": "correct version", "t": 1.2, "shapes": []}]
+c1, z1, _a = _compose.build(frs, {"title": "t"}, "d", "")
+frs[0]["shapes"] = [{"type": "rect", "frame": 0, "x1": 0.4, "y1": 0.4, "x2": 0.6, "y2": 0.7}]
+c2, z2, _a = _compose.build(frs, {"title": "t"}, "d", "")
+check("marks that cover most of the frame give no zoom (it would repeat the panel); small marks do", z1 is None and z2 is not None and c1.height < c2.height, f"{c1.height} {c2.height}")
+qc._run_claude = fake_claude
+
 print("\n[the same library everywhere]")
 same_library("at the end")
 finish()

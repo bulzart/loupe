@@ -117,6 +117,14 @@ export async function work(qs) {
   const better = h('textarea', { placeholder: 'What could have been better (optional)', style: 'min-height:48px' });
   const missed = h('textarea', { placeholder: 'What the AI agents missed or could not understand while generating this (optional)', style: 'min-height:48px' });
   const kinds = chipPicker(settings.kinds, miss ? miss.kinds : []);
+  const suggestBtn = h('button', { class: 'btn sm', type: 'button', title: 'ticks the kinds of the vocabulary whose words occur in what you wrote; untick any that do not fit', onclick: async () => {
+    const text = [title.value, details.value, idea.value, better.value, missed.value].join(' ');
+    try {
+      const d = await api('GET', '/api/misses/suggest-kinds?text=' + encodeURIComponent(text));
+      if (d.suggested && d.suggested.length) { kinds.set(d.suggested); toast('Suggested from your words: ' + d.suggested.join(', ') + ' (untick any that do not fit)'); }
+      else toast('No kind of the vocabulary occurs in the words yet');
+    } catch (e) { toast(e.message, true); }
+  } }, 'Suggest kinds from the words');
   const model = h('input', { value: miss ? miss.model : (runInfo ? runInfo.model || '' : ''), size: 18 });
   const mode = h('input', { value: miss ? miss.mode : (runInfo ? [runInfo.mode, runInfo.submode].filter(Boolean).join('-') : ''), size: 18 });
   const product = h('input', { value: miss ? miss.product : ((runInfo && runInfo.products && runInfo.products[0]) || ''), size: 22, placeholder: 'the product and its details: form, size, opening, natural posture' });
@@ -422,7 +430,7 @@ export async function work(qs) {
       h('label', { class: 'f' }, 'What the AI agents missed or could not understand (optional)'), missed,
       h('label', { class: 'f' }, 'Explain it, if there is more to say (burned into the bottom of the image)'), details,
       correctLbl, correct, sampleBox,
-      h('label', { class: 'f' }, 'Kinds (for the QC search)'), kinds.el,
+      h('label', { class: 'f' }, 'Kinds (for the QC search)'), kinds.el, suggestBtn,
       h('details', { style: 'margin-top:8px' }, h('summary', { class: 'muted small', style: 'cursor:pointer' }, 'Model, mode, product'),
         h('div', { class: 'row', style: 'margin-top:6px' }, h('span', { class: 'muted small' }, 'model'), model, h('span', { class: 'muted small' }, 'mode'), mode, h('span', { class: 'muted small' }, 'product'), product)),
       h('div', { class: 'row', style: 'margin-top:14px' }, saveBtn, cancelEdit, saveNote,

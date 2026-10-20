@@ -20,9 +20,53 @@ from pathlib import Path
 
 from . import core, facts, media, misses, runs
 
-_keeper_lock = threading.Lock()
+LOCK_WAIT = int(os.environ.get("LOUPE_KEEPER_LOCK_WAIT") or 120)     # seconds a consult waits for a running keeper call before it answers from the brief (mode busy)
+SYNC_LOCK_WAIT = int(os.environ.get("LOUPE_KEEPER_SYNC_LOCK_WAIT") or 20)
+
+
+class KeeperBusy(RuntimeError):
+    """Another keeper call holds the lock longer than the caller may wait."""
+
+
+class _TimedLock:
+    """The one lock around every keeper call, acquired with a timeout so that a dead or slow call never holds every later consult for its whole HTTP timeout."""
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self.wait = None            # seconds for the next acquire (None = LOCK_WAIT)
+
+    def acquire(self, timeout=None):
+        return self._lock.acquire(timeout=LOCK_WAIT if timeout is None else timeout)
+
+    def release(self):
+        self._lock.release()
+
+    def __enter__(self):
+        w = LOCK_WAIT if self.wait is None else self.wait
+        self.wait = None
+        if not self._lock.acquire(timeout=w):
+            raise KeeperBusy(f"busy: another keeper call has been running for more than {w} s")
+
+    def __exit__(self, *a):
+        self._lock.release()
+
+
+_keeper_lock = _TimedLock()
 ROT_TURNS = 30           # a keeper session this long is replaced by a fresh one rebuilt from the library (nothing is lost: the library is the memory)
 DEFAULT_MODEL = "claude-haiku-5-5"
+
+
+def _clip(text, n: int) -> str:
+    """At most n characters, cut at the end of a sentence when one lies in the second half, else at a word, never mid-word; a cut text ends with an ellipsis."""
+    t = str(text or "").strip()
+    if len(t) <= n:
+        return t
+    head = t[:n]
+    cut = max(head.rfind(". "), head.rfind("; "), head.rfind("! "), head.rfind("? "))
+    if cut >= n // 2:
+        return head[:cut + 1].rstrip() + " …"
+    cut = head.rfind(" ")
+    return (head[:cut] if cut > 0 else head).rstrip(" ,;:") + " …"
 
 
 # ------------------------------------------------------------------ the library
@@ -225,6 +269,19 @@ def _claude() -> str | None:
     return shutil.which("claude") or shutil.which("claude.exe") or shutil.which("claude.cmd")
 
 
+def _kill_tree(proc):
+    """End the keeper process and its children: on Windows `claude.cmd` starts node, and killing only the shell leaves node holding the pipes and the lock."""
+    try:
+        if os.name == "nt":
+            subprocess.run(["taskkill", "/PID", str(proc.pid), "/T", "/F"], capture_output=True, timeout=30, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    except Exception:  # noqa: BLE001
+        pass
+    try:
+        proc.kill()
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def _run_claude(prompt: str, sid: str, resume: bool, model: str, timeout: int = 150) -> dict:
     exe = _claude()
     if not exe:
@@ -232,8 +289,14 @@ def _run_claude(prompt: str, sid: str, resume: bool, model: str, timeout: int = 
     cmd = [exe, "-p", prompt, "--model", model, "--tools", "Read", "--allowedTools", "Read", "--strict-mcp-config", "--output-format", "json",
            "--max-turns", "6", "--append-system-prompt", ROLE, "--add-dir", str(core.DATA / "samples")]
     cmd += ["--resume", sid] if resume else ["--session-id", sid]
-    kw = {"capture_output": True, "timeout": timeout, "cwd": str(core.DATA / "keeper"), "creationflags": getattr(subprocess, "CREATE_NO_WINDOW", 0)}
-    cp = subprocess.run(cmd, **kw)
+    flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL, cwd=str(core.DATA / "keeper"), creationflags=flags)
+    try:
+        so, se = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        _kill_tree(proc)
+        raise RuntimeError(f"keeper session timed out after {timeout} s; its process tree was ended so the next call is not held")
+    cp = subprocess.CompletedProcess(cmd, proc.returncode, so, se)
     raw = cp.stdout.decode("utf-8", "replace").strip()
     try:
         d = json.loads(raw.splitlines()[-1]) if raw else {}
@@ -242,6 +305,27 @@ def _run_claude(prompt: str, sid: str, resume: bool, model: str, timeout: int = 
     if cp.returncode != 0 or d.get("is_error") or not d:
         raise RuntimeError("keeper session failed: " + (d.get("result") or cp.stderr.decode("utf-8", "replace") or raw)[:300])
     return d
+
+
+class _Nothing:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+
+class _Held:
+    """Releases a lock that was already acquired, whatever happens inside."""
+
+    def __init__(self, lock):
+        self.lock = lock
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        self.lock.release()
 
 
 def keeper_status() -> dict:
@@ -260,7 +344,9 @@ def sync_keeper(actor: str = "system") -> dict:
     lib = library()
     if not lib:
         return {"state": "empty", "library_size": 0, "cost": 0.0}
-    with _keeper_lock:
+    if not _keeper_lock.acquire(timeout=SYNC_LOCK_WAIT):
+        return {"state": "busy", "library_size": len(lib), "cost": 0.0, "note": f"another keeper call has been running for more than {SYNC_LOCK_WAIT} s; the watcher syncs later"}
+    with _Held(_keeper_lock):
         try:
             core.ensure_dirs()
             model = core.setting_get("keeper_model", DEFAULT_MODEL)
@@ -313,10 +399,15 @@ def _json_of(text: str):
     return None
 
 
+def _why(why, sid, reason):
+    if why is not None:
+        why.append({"id": sid, "reason": reason})
+
+
 UNIVERSAL = re.compile(r"\b(never|always|must not|must|should not|shouldn'?t|do not|don'?t|avoid)\b", re.I)     # a hint is a condition for this plan, not a command
 
 
-def plan_hints_from(parsed, ctx: dict, lib: dict, cap: int = 3) -> tuple[list[dict], int]:
+def plan_hints_from(parsed, ctx: dict, lib: dict, cap: int = 3, why: list | None = None) -> tuple[list[dict], int]:
     """The keeper's planning answer, held to the rules in code too: only real ids, no universal wording, only high or medium confidence, only a compatible model
     (unless the keeper says the miss is model-independent), a trigger and a lever present, three at most, short fields.  (hints, held_back)"""
     out, held = [], 0
@@ -324,6 +415,7 @@ def plan_hints_from(parsed, ctx: dict, lib: dict, cap: int = 3) -> tuple[list[di
     for r in (raw or [])[:8]:
         if not isinstance(r, dict) or r.get("id") not in lib:
             held += 1
+            _why(why, str(r.get("id", "?"))[:12] if isinstance(r, dict) else "?", "not a sample of the library")
             continue
         s = lib[r["id"]]
         conf = str(r.get("confidence", "")).strip().lower()
@@ -331,14 +423,25 @@ def plan_hints_from(parsed, ctx: dict, lib: dict, cap: int = 3) -> tuple[list[di
         indep = bool(r.get("model_independent"))
         if UNIVERSAL.search(" ".join(str(r.get(k, "")) for k in ("trigger", "right_outcome", "lever"))):
             held += 1
+            _why(why, s["id"], "worded as a universal (never/always/must/avoid): a hint is a condition for this plan, not a command")
             continue
-        if conf not in ("high", "medium") or not str(r.get("trigger", "")).strip() or not str(r.get("lever", "")).strip() \
-                or (sm and cm and _family(sm) != _family(cm) and not indep):
+        if conf not in ("high", "medium"):
             held += 1
+            _why(why, s["id"], f"confidence {conf or 'missing'}")
             continue
-        out.append({"id": s["id"], "trigger": str(r["trigger"]).strip()[:220], "right_outcome": str(r.get("right_outcome", "")).strip()[:220],
-                    "lever": str(r["lever"]).strip()[:260], "caveat": str(r.get("caveat", "")).strip()[:180], "confidence": conf, "model_independent": indep})
+        if not str(r.get("trigger", "")).strip() or not str(r.get("lever", "")).strip():
+            held += 1
+            _why(why, s["id"], "no trigger or no lever")
+            continue
+        if sm and cm and _family(sm) != _family(cm) and not indep:
+            held += 1
+            _why(why, s["id"], f"another model family ({sm}) and not model-independent")
+            continue
+        out.append({"id": s["id"], "trigger": _clip(r["trigger"], 600), "right_outcome": _clip(r.get("right_outcome", ""), 600),
+                    "lever": _clip(r["lever"], 700), "caveat": _clip(r.get("caveat", ""), 500), "confidence": conf, "model_independent": indep})
     out.sort(key=lambda h: 0 if h["confidence"] == "high" else 1)
+    for extra in out[cap:]:
+        _why(why, extra["id"], f"beyond the cap of {cap} hints")
     held += max(0, len(out) - cap)
     return out[:cap], held
 
@@ -357,11 +460,6 @@ def _ctx_dir(tag: str) -> Path:
     d = base / tag
     d.mkdir(parents=True, exist_ok=True)
     return d
-
-
-def _clip(text: str, n: int) -> str:
-    text = (text or "").strip()
-    return text if len(text) <= n else text[:n] + " ...(cut)"
 
 
 def _read_text(p: Path, n: int) -> str:
@@ -419,8 +517,10 @@ def _fulfil(n: dict, ctx: dict, d: Path, plan: bool) -> dict:
             else:
                 lines.append("its run folder is not available")
             return {"ok": True, "text": "\n".join(lines), "why_not": ""}
-        if not rd or not video:
+        if not run or not video:
             return no("no run or video was named in the question")
+        if not rd:
+            return no(f"run {run} is not under Loupe's run folders ({', '.join(str(r) for r in runs.runs_roots())}): a run of a temp or foreign library cannot be fetched")
         if kind == "video_plan":
             txt = _read_text(rd / "40-briefs" / f"video-{video}-plan.md", 6000)
             return {"ok": True, "text": "the plan of this video:\n" + txt, "why_not": ""} if txt else no("this video has no plan file")
@@ -499,10 +599,18 @@ def consult(key_name: str, ctx: dict, question: str, purpose: str = "qc") -> dic
     cost = 0.0
     if not lib_now:                      # nothing to hold: no keeper session is started for an empty library
         res = {"mode": "empty", "purpose": purpose, "hints": [], "relevant": [], "samples": [], "library_size": 0, "text": "The library is empty."}
-    with _keeper_lock:
+    busy = ""
+    try:
+        if res is None:
+            _keeper_lock.__enter__()
+    except KeeperBusy as e:
+        busy = str(e)
+    with (_Held(_keeper_lock) if not busy and res is None else _Nothing()):
         try:
             if res is not None:
                 raise StopIteration
+            if busy:
+                raise RuntimeError(busy)
             core.ensure_dirs()
             model = core.setting_get("keeper_model", DEFAULT_MODEL)
             st = core.setting_get("keeper", {}) or {}
@@ -542,34 +650,40 @@ def consult(key_name: str, ctx: dict, question: str, purpose: str = "qc") -> dic
                 core.setting_set("keeper", st)
             ids = {s["id"]: s for s in library()}
             if plan:
-                hints, held = plan_hints_from(parsed, ctx, ids)
-                res = {"mode": "keeper", "purpose": "plan", "hints": hints, "held_back": held, "library_size": len(ids),
-                       "none_reason": str((parsed or {}).get("none_reason", ""))[:160] if isinstance(parsed, dict) and not hints else ""}
+                why = []
+                hints, held = plan_hints_from(parsed, ctx, ids, why=why)
+                res = {"mode": "keeper", "purpose": "plan", "hints": hints, "held_back": held, "held_back_why": why, "library_size": len(ids),
+                       "none_reason": _clip((parsed or {}).get("none_reason", ""), 300) if isinstance(parsed, dict) and not hints else ""}
             else:
                 rel = []
                 for r in (parsed or {}).get("relevant", []) if isinstance(parsed, dict) else []:
                     if isinstance(r, dict) and r.get("id") in ids:      # only samples that exist
                         s = ids[r["id"]]
-                        rel.append({"id": s["id"], "why": str(r.get("why", ""))[:400], "check": str(r.get("check", ""))[:400],
-                                    "wrong_pattern": str(r.get("wrong_pattern", ""))[:200], "composite_path": s["composite_path"], "image_url": s["image_url"],
+                        rel.append({"id": s["id"], "why": _clip(r.get("why", ""), 600), "check": _clip(r.get("check", ""), 600),
+                                    "wrong_pattern": _clip(r.get("wrong_pattern", ""), 300), "composite_path": s["composite_path"], "image_url": s["image_url"],
+                                    "title": _clip(s.get("title", ""), 600), "model": s.get("model", ""), "run": s.get("run", ""), "video": s.get("video", ""),
+                                    "t_wrong": s.get("t_wrong"), "kinds": s.get("kinds", []),
                                     "details": s["details"], "correct_note": s["correct_note"], "has_right": s.get("has_right", True),
                                     "idea": s.get("idea", ""), "better": s.get("better", ""), "missed": s.get("missed", ""), "sample_kind": s.get("sample_kind", "pair"),
                                     "frames": s.get("frames", []), "n_frames": s.get("n_frames", 0)})
-                res = {"mode": "keeper", "purpose": "qc", "relevant": rel, "advice": str((parsed or {}).get("advice", ""))[:600] if isinstance(parsed, dict) else str(d.get("result", ""))[:600],
-                       "not_covered": str((parsed or {}).get("not_covered", ""))[:400] if isinstance(parsed, dict) else "", "library_size": len(ids)}
+                res = {"mode": "keeper", "purpose": "qc", "relevant": rel, "advice": _clip((parsed or {}).get("advice", ""), 700) if isinstance(parsed, dict) else _clip(d.get("result", ""), 700),
+                       "not_covered": _clip((parsed or {}).get("not_covered", ""), 500) if isinstance(parsed, dict) else "", "library_size": len(ids)}
             if asked:
                 res["needs_asked"] = [{k: x[k] for k in ("kind", "why", "fulfilled", "question", "reason") if k in x} for x in asked]
-                res["needs_unmet"] = [x for x in asked if not x.get("fulfilled")]
+                res["needs_unmet"] = [{k: x[k] for k in ("kind", "why", "fulfilled", "question", "reason") if k in x} for x in asked if not x.get("fulfilled")]
                 if isinstance(parsed, dict) and parsed.get("needs"):
-                    res["needs_unmet"].append({"kind": "more", "why": "the keeper still wanted: " + json.dumps(parsed["needs"], ensure_ascii=False)[:300]})
+                    still = [n for n in parsed["needs"] if isinstance(n, dict)]
+                    res["needs_unmet"].append({"kind": "more", "why": "after its two rounds the keeper still wanted: " + "; ".join(
+                        f"{str(n.get('kind'))[:20]}" + (f" at {n.get('t')} s" if n.get("t") not in (None, "") else "") + (f" ({_clip(n.get('why', ''), 160)})" if n.get("why") else "") for n in still)[:900]})
         except StopIteration:
             pass
         except Exception as e:  # noqa: BLE001
             err = str(e)[:300]
     if res is None:
         # no keeper: QC still gets the plain best-match list; planning gets NOTHING (without the keeper's judgement a raw list would over-steer a plan)
-        res = ({"mode": "unavailable", "purpose": "plan", "hints": [], "library_size": len(lib_now), "keeper_error": err} if plan
-               else {**fallback, "mode": "fallback", "purpose": "qc", "keeper_error": err})
+        mode = "busy" if err.startswith("busy") else ("unavailable" if plan else "fallback")
+        res = ({"mode": mode, "purpose": "plan", "hints": [], "library_size": len(lib_now), "keeper_error": err} if plan
+               else {**fallback, "mode": mode, "purpose": "qc", "keeper_error": err})
     ms = int((time.time() - t0) * 1000)
     ids_used = ",".join(x["id"] for x in (res.get("hints") if plan else res.get("relevant", res.get("samples", []))) or [])
     con = core.db()

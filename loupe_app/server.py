@@ -550,6 +550,12 @@ def misses_list(h):
     h.send_json({"ok": True, "misses": misses.listing(h.q.get("run", ""), h.q.get("status", ""))})
 
 
+@route("GET", "/api/misses/suggest-kinds", scope="admin")
+def misses_suggest_kinds(h):
+    """The kinds of the vocabulary whose own words occur in the admin's text: a suggestion the admin confirms in the form, never saved by itself."""
+    h.send_json({"ok": True, "suggested": misses.suggest_kinds(h.q.get("text", ""))})
+
+
 @route("POST", "/api/misses", scope="admin")
 def misses_create(h):
     h.send_json({"ok": True, "miss": misses.create(h.body_json(), h.pr.name)})
@@ -659,6 +665,13 @@ def keeper_get(h):
     finally:
         con.close()
     h.send_json({"ok": True, "keeper": qc.keeper_status(), "consults": cons})
+
+
+@route("GET", "/api/qc/keeper/state", scope="qc:read")
+def keeper_state(h):
+    """What a pipeline's status or doctor command may know about the keeper without the admin's rights: in sync or not, turns, the library version, the model."""
+    st = qc.keeper_status()
+    h.send_json({"ok": True, **{k: st[k] for k in ("in_sync", "turns", "library", "library_sig", "last_synced", "last_used", "model", "claude_found", "created") if k in st}})
 
 
 @route("POST", "/api/qc/keeper/sync", scope="qc:read")

@@ -221,7 +221,8 @@ def build(frames: list[dict], meta: dict, details: str, correct_note: str, inclu
     annotated = [draw_shapes(f["img"], f["shapes"], colr(f["role"])) if f["shapes"] else f["img"].copy() for f in fr]      # the full-size files
     nbox = region_norm([s for f in fr for s in f["shapes"]])           # the place that matters: every mark on every frame
     has_right = any(f["role"] == "right" for f in fr)
-    has_zoom = bool(include_zoom and nbox)
+    big = bool(nbox) and (nbox[2] - nbox[0]) * (nbox[3] - nbox[1]) > 0.6      # the marks cover most of the frame: a close range would show the same picture again
+    has_zoom = bool(include_zoom and nbox and not big)
     cols = max(1, n) if n <= 2 else 3
 
     PW, M = 560, 24
@@ -295,6 +296,14 @@ def build(frames: list[dict], meta: dict, details: str, correct_note: str, inclu
             cap.append((f_cap, col, _wrap(scratch, label + text.strip(), f_cap, cap_w)))
     if correct_note.strip() and has_right:
         cap.append((f_cap, (150, 235, 185), _wrap(scratch, "Right: " + correct_note.strip(), f_cap, cap_w)))
+    legend = []        # what the tags mean, said in the image itself: the QC keeper and the agents see only this file
+    if len({str(f.get("desc") or "") for f in fr}) > 1:
+        legend.append("Frames tagged 'as generated' are from video A (the version as generated); frames tagged 'correct version' are from video B (the right version, a different video).")
+    if big:
+        legend.append("The marks cover most of the frame, so no close range is shown: compare the whole panels.")
+    f_leg = font(19)
+    for t in reversed(legend):          # the legend reads first, above the admin's words
+        cap.insert(0, (f_leg, (170, 174, 184), _wrap(scratch, t, f_leg, cap_w)))
     text_h = 36 + sum(len(ls) * (f.size + 9) + 12 for f, _c, ls in cap) if cap else 0
     cap_h = max(text_h, 300) if ps else text_h        # the product needs some height to be recognised
 

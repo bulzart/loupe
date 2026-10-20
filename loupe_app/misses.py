@@ -15,6 +15,20 @@ KINDS = ["counts", "openings-use", "preparation", "persistent-state", "permanenc
          "product-missing", "continuity", "other"]
 
 
+def suggest_kinds(text: str) -> list[str]:
+    """The kinds of KINDS whose own words (split on the hyphen) occur in the text, matched on a common prefix of four letters (so "opening" and
+    "opens" both find openings-use, "sizes" finds scale-size).  Nothing is weighed or ranked: a suggestion for the admin to confirm or untick."""
+    words = {w for w in re.findall(r"[a-z]{3,}", str(text or "").lower())}
+    out = []
+    for k in KINDS:
+        if k == "other":
+            continue
+        parts = [x for x in k.split("-") if len(x) >= 4]
+        if any(w[:4] == x[:4] for x in parts for w in words):
+            out.append(k)
+    return out
+
+
 def _kinds(v) -> str:
     items = v if isinstance(v, list) else str(v or "").replace(";", ",").split(",")
     out = []

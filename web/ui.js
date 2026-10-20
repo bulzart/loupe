@@ -52,7 +52,7 @@ export function chipPicker(options, selected, onChange, describe) {       // des
     box.append(add);
   };
   draw();
-  return { el: box, get: () => [...sel] };
+  return { el: box, get: () => [...sel], set: (vals) => { (vals || []).forEach((v) => sel.add(v)); draw(); onChange && onChange([...sel]); } };
 }
 
 export function copyText(text) {
