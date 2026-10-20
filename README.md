@@ -95,7 +95,17 @@ product's details, not only its name, so samples can be matched this way.
 
 The run browser, the product sample finder, the usage index and the evidence for a flag read `runs/` of every library in `core.LIBS` (`ATP_HOME`, `ATG_HOME`, `AWL_HOME`; `ATP_HOME` default `~/.claude/analyze-then-pick`, and `ATG_HOME`, default `~/.claude/analyze-then-generate`); each run is listed with its library (`lib`: `atp` or `atg`) and the media of both are readable. A run name that exists in both libraries resolves to the one whose `state.json` changed last.
 
-## Data (not in git)
+## Data: what travels with the repo and what never does
+
+`data/samples/` (every sample's composite, frames and meta), `data/uploads/` (the right-version videos the admin uploaded), `data/flags/` (the flag evidence) and
+`data/seed/` are tracked, so a clone opens with the whole sample library: `python loupe.py seed export` writes `data/seed/loupe-seed.db` (an online copy of the
+database with the misses, moments, flags and flag inputs only; the sessions, API keys, settings with the passphrase hash and the keeper session, captures, audit,
+usage and file indexes and the consult log are dropped, and signed URLs are scrubbed from the flag records) beside `seed.json` (what it holds). A data folder
+with no `loupe.db` starts from the seed at the first `core.db()` (the server start, any command); the admin then sets a passphrase and creates the keys.
+Run the export after the library changed and commit it with the samples. The misses' video paths in the seed are those of the exporting machine: the
+sample images and the keeper need none of them, only a regenerate does.
+
+## Data that never goes in
 
 `data/loupe.db` (SQLite), `data/samples/<id>/{wrong,fixed,annotated,composite,zoom}.png`, `data/flags/` (thumbnails), `data/captures/`,
 `data/keys/`, `data/keeper/`, `data/cache/`, `data/outbox/`. Back up the `data` folder to keep the record.

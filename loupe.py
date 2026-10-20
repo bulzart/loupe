@@ -29,6 +29,8 @@ def main():
     s = sp.add_parser("key-revoke"); s.add_argument("id", type=int)
     s = sp.add_parser("import-flags"); s.add_argument("path")
     sp.add_parser("status")
+    s = sp.add_parser("seed", help="export: write data/seed/loupe-seed.db (misses, moments, flags; no secrets) for a clone; import: start an empty data folder from it")
+    s.add_argument("action", choices=["export", "import"])
     a = ap.parse_args()
     if a.cmd == "serve":
         from loupe_app import server
@@ -47,6 +49,12 @@ def main():
     elif a.cmd == "key-revoke":
         core.key_revoke(a.id)
         print("revoked", a.id)
+    elif a.cmd == "seed":
+        from loupe_app import seed
+        if a.action == "export":
+            print(json.dumps(seed.export(), indent=1))
+        else:
+            print("imported from the seed" if seed.import_if_empty() else "nothing imported: the database exists already, or there is no seed")
     elif a.cmd == "import-flags":
         from loupe_app import flags
         print("imported", flags.import_legacy(Path(a.path)), "entries")

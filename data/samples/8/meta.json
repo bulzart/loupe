@@ -1,0 +1,29 @@
+{
+ "moment": 8,
+ "miss": 6,
+ "title": "First the person is seen drinking water (where we could've just put him drinking our Celsius energy drink) and then after the scene cut out Celsius is seen in the background making sense of the meme \"3hours of sleep don't affect me\" i.e in the original video he was imagining drinking water but he wasn't instead the water was in the background (where is our Celsius can instead now) but he was just tripping due to the lack amount of sleep",
+ "model": "wan3_0",
+ "run": "20261013-230824-13",
+ "video": "08",
+ "t_wrong": 5.033,
+ "t_fixed": 5.033,
+ "sample": "S8",
+ "frames": [
+  {
+   "n": 1,
+   "role": "wrong",
+   "from": "as generated",
+   "t": 5.033
+  }
+ ],
+ "shapes": [
+  {
+   "type": "rect",
+   "frame": 0,
+   "x1": 0.6411995826803711,
+   "y1": 0.42300884280584555,
+   "x2": 0.9904620715416051,
+   "y2": 0.6938052894794835
+  }
+ ]
+}

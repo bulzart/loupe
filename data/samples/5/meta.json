@@ -1,0 +1,50 @@
+{
+ "moment": 5,
+ "miss": 5,
+ "title": "The can proportions are good but it doesnt look like a real actual real can/tin that actually was in the video,, rather it looks like a video edit or image placement, i looks a bit 3d and doesnt blend",
+ "model": "wan3_0_prime",
+ "run": "20261014-220106-13",
+ "video": "05",
+ "t_wrong": 0.0,
+ "t_fixed": 0.0,
+ "sample": "S5",
+ "frames": [
+  {
+   "n": 1,
+   "role": "wrong",
+   "from": "as generated",
+   "t": 0.0
+  },
+  {
+   "n": 2,
+   "role": "right",
+   "from": "correct version",
+   "t": 0.0
+  }
+ ],
+ "product_samples": [
+  {
+   "asset": "A44",
+   "label": "CELSIUS Watermelon can, sealed",
+   "file": "watermelon front - cans usa.png"
+  }
+ ],
+ "shapes": [
+  {
+   "type": "rect",
+   "frame": 0,
+   "x1": 0.02763026114644788,
+   "y1": 0.6300886373604293,
+   "x2": 0.5342182170676621,
+   "y2": 1.0
+  },
+  {
+   "type": "rect",
+   "frame": 1,
+   "x1": 0.011110919063421827,
+   "y1": 0.5044248125194448,
+   "x2": 0.4767943975848082,
+   "y2": 0.9805309666996509
+  }
+ ]
+}

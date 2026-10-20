@@ -1,0 +1,50 @@
+{
+ "moment": 10,
+ "miss": 7,
+ "title": "The can size changes drastically all unexpectedly without any logical reasoning,it wasn't pushed that far so it may had become this small due to the distance thus it was incorrect and unlogical,and difference from the correct version is big whithin few frames in the video",
+ "model": "wan3_0_prime",
+ "run": "20261014-220106-13",
+ "video": "08",
+ "t_wrong": 11.033,
+ "t_fixed": 11.3,
+ "sample": "S10",
+ "frames": [
+  {
+   "n": 1,
+   "role": "wrong",
+   "from": "as generated",
+   "t": 11.033
+  },
+  {
+   "n": 2,
+   "role": "right",
+   "from": "correct version",
+   "t": 11.3
+  }
+ ],
+ "product_samples": [
+  {
+   "asset": "A40",
+   "label": "CELSIUS Peach Vibe can, sealed",
+   "file": "peach vibe front - cans usa.png"
+  }
+ ],
+ "shapes": [
+  {
+   "type": "rect",
+   "frame": 0,
+   "x1": 0.0,
+   "y1": 0.1880531142243242,
+   "x2": 0.870894860611787,
+   "y2": 1.0
+  },
+  {
+   "type": "rect",
+   "frame": 1,
+   "x1": 0.004817996404867256,
+   "y1": 0.2553098054058784,
+   "x2": 0.8260571265056538,
+   "y2": 1.0
+  }
+ ]
+}

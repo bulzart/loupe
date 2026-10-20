@@ -1,0 +1,36 @@
+{
+ "moment": 1,
+ "miss": 2,
+ "title": "The person seems like it is eating from the our product (Neurogum pouch) like it was a snack, meanwhile it is not supposed to be like that, they are focus gums and not chips",
+ "model": "wan3_0_prime",
+ "run": "20261014-220030-13",
+ "video": "01",
+ "t_wrong": 0.0,
+ "t_fixed": 0.0,
+ "sample": "S1",
+ "frames": [
+  {
+   "n": 1,
+   "role": "wrong",
+   "from": "as generated",
+   "t": 0.0
+  }
+ ],
+ "product_samples": [
+  {
+   "asset": "A140",
+   "label": "Extra Strength 90-piece pouch, Spearmint",
+   "file": "NG_XE_SMB90 front ver2.png"
+  }
+ ],
+ "shapes": [
+  {
+   "type": "rect",
+   "frame": 0,
+   "x1": 0.439822936831674,
+   "y1": 0.43362835234245367,
+   "x2": 0.8111111351170722,
+   "y2": 0.7362833276259161
+  }
+ ]
+}

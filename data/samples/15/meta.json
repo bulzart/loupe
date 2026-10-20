@@ -1,0 +1,26 @@
+{
+ "moment": 15,
+ "miss": 11,
+ "title": "Pops the energy drink can lid open without even touching it, ilogical and incorrect, every actions has to have a logical cause",
+ "model": "seedance_2_5",
+ "run": "20261015-215200-08",
+ "video": "08",
+ "t_wrong": 4.233,
+ "t_fixed": 4.233,
+ "sample": "S15",
+ "frames": [
+  {
+   "n": 1,
+   "role": "wrong",
+   "from": "as generated",
+   "t": 4.233
+  },
+  {
+   "n": 2,
+   "role": "wrong",
+   "from": "as generated",
+   "t": 4.367
+  }
+ ],
+ "shapes": []
+}

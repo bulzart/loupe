@@ -309,6 +309,30 @@ def main(with_keeper=False):
           s == 200 and set(d.get("suggested", [])) >= {"scale-size", "openings-use", "label-orientation"} and "counts" not in d.get("suggested", []), str(d))
     s, d, _ = req("GET", "/api/misses/suggest-kinds?text=")
     check("no words, no suggestion", s == 200 and d.get("suggested") == [])
+    import shutil as _shutil, sqlite3 as _sqlite3, tempfile as _tempfile
+    from loupe_app import seed as _seed
+    man = _seed.export()
+    sdb = _seed.seed_path()
+    scon = _sqlite3.connect(f"file:{sdb.as_posix()}?mode=ro", uri=True)
+    try:
+        empty = {t: scon.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0] for t in ("sessions", "api_keys", "settings", "captures", "audit", "consults", "usage", "filehash")}
+        kept = scon.execute("SELECT COUNT(*) FROM misses").fetchone()[0]
+    finally:
+        scon.close()
+    check("the seed export keeps the misses and moments and drops every session, key, setting, capture, audit row and consult", kept == man["tables"]["misses"] >= 1 and set(empty.values()) == {0} and (sdb.parent / "seed.json").is_file(), str(empty))
+    check("a signed URL loses its query string before it is seeded", _seed._scrub("see https://s3.x/a.png?X-Amz-Signature=abc&x=1 and https://cdn.x/b.png") == "see https://s3.x/a.png?<signed-query-removed> and https://cdn.x/b.png")
+    fresh = Path(_tempfile.mkdtemp(prefix="loupe-seed-"))
+    (fresh / "seed").mkdir()
+    _shutil.copyfile(sdb, fresh / "seed" / "loupe-seed.db")
+    old_data = core.DATA
+    core.DATA = fresh
+    try:
+        c2 = core.db()
+        n_seeded = c2.execute("SELECT COUNT(*) FROM misses").fetchone()[0]
+        c2.close()
+    finally:
+        core.DATA = old_data
+    check("a data folder with no database starts from the seed, so a clone opens with the samples", n_seeded == kept and (fresh / "loupe.db").is_file())
     s, d, _ = req("PATCH", f"/api/moments/1", {"status": "active"})
     long_title = ("The can size changes drastically and unexpectedly without any logical reasoning, " * 8).strip()
     s, d, _ = req("POST", "/api/misses", {"run": "20261001-000000-07", "video": "04", "title": long_title, "model": "wan3_0_prime", "wrong_path": wrong})

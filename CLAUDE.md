@@ -7,7 +7,7 @@ Loupe is a local web app for the video pipelines /analyze-then-pick, /analyze-th
 - Commit every change in this repo as soon as it is done and tested. One commit per logical change. Never end a task or a session with uncommitted edits.
 - Write a descriptive message (what changed and why, never just "update"). When Claude made the change, end the message with `Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>`.
 - After committing, push to `origin` (`git push`) so GitHub always holds the latest. Never force-push.
-- Check `git status` before committing. Never commit `data/` (the database, API keys, the admin passphrase hash, caches, uploads) or anything secret. `.gitignore` keeps `data/` out; do not weaken it.
+- Check `git status` before committing. Never commit the live database, the API keys, the admin passphrase hash, sessions, captures, caches or the keeper session, or anything secret. `.gitignore` keeps `data/` out except `data/samples/`, `data/uploads/`, `data/flags/` and `data/seed/` (the seed is `python loupe.py seed export`: misses, moments and flags with every secret stripped; run it after the library changed); do not weaken it.
 - Run the tests first and commit when they pass: `python tests/selftest.py` (add `--keeper` for the live keeper checks), `node tests/transport_check.js`, `node tests/page_smoke.js`. If a failure is known and accepted, say so in the commit message.
 
 ## Keep the docs in step

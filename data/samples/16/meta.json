@@ -1,0 +1,50 @@
+{
+ "moment": 16,
+ "miss": 12,
+ "title": "The character stays stale for too long without any necessary or logic means until it starts actioning, that could've been reasonable if the script required a bit of a pause in order to make the video scenario make sense, but not just stale for multiple seconds and do nothing because in this specific video theres no point and no necessarity to do so",
+ "model": "seedance_2_5",
+ "run": "20261015-215200-08",
+ "video": "11",
+ "t_wrong": 0.0,
+ "t_fixed": 0.0,
+ "sample": "S16",
+ "frames": [
+  {
+   "n": 1,
+   "role": "wrong",
+   "from": "as generated",
+   "t": 0.0
+  },
+  {
+   "n": 2,
+   "role": "wrong",
+   "from": "as generated",
+   "t": 0.867
+  },
+  {
+   "n": 3,
+   "role": "wrong",
+   "from": "as generated",
+   "t": 2.933
+  },
+  {
+   "n": 4,
+   "role": "wrong",
+   "from": "as generated",
+   "t": 3.633
+  },
+  {
+   "n": 5,
+   "role": "wrong",
+   "from": "as generated",
+   "t": 4.8
+  },
+  {
+   "n": 6,
+   "role": "wrong",
+   "from": "as generated",
+   "t": 7.533
+  }
+ ],
+ "shapes": []
+}

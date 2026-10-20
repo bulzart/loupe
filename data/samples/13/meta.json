@@ -1,0 +1,99 @@
+{
+ "moment": 13,
+ "miss": 9,
+ "title": "The guy opens the can/tin with one finger, meanwhile the can normally cannot be opened like that, it takes one hand to hold and the other to open",
+ "model": "seedance_2_5",
+ "run": "20261015-215200-08",
+ "video": "06",
+ "t_wrong": 3.867,
+ "t_fixed": 5.367,
+ "sample": "S13",
+ "frames": [
+  {
+   "n": 1,
+   "role": "wrong",
+   "from": "as generated",
+   "t": 3.867
+  },
+  {
+   "n": 2,
+   "role": "wrong",
+   "from": "as generated",
+   "t": 3.9
+  },
+  {
+   "n": 3,
+   "role": "wrong",
+   "from": "as generated",
+   "t": 4.167
+  },
+  {
+   "n": 4,
+   "role": "wrong",
+   "from": "as generated",
+   "t": 4.467
+  },
+  {
+   "n": 5,
+   "role": "wrong",
+   "from": "as generated",
+   "t": 5.3
+  },
+  {
+   "n": 6,
+   "role": "right",
+   "from": "correct version",
+   "t": 5.367
+  }
+ ],
+ "shapes": [
+  {
+   "type": "rect",
+   "frame": 5,
+   "x1": 0.19242890394542778,
+   "y1": 0.3063053029828367,
+   "x2": 0.8469029429387904,
+   "y2": 0.6337389313014208
+  },
+  {
+   "type": "rect",
+   "frame": 0,
+   "x1": 0.19872170657417654,
+   "y1": 0.3477876249667817,
+   "x2": 0.8972466842966444,
+   "y2": 0.5690265630198791
+  },
+  {
+   "type": "rect",
+   "frame": 1,
+   "x1": 0.26007866273353003,
+   "y1": 0.3318584281786353,
+   "x2": 0.7918387894081858,
+   "y2": 0.5796460050397214
+  },
+  {
+   "type": "rect",
+   "frame": 2,
+   "x1": 0.21760107469886925,
+   "y1": 0.3495575432228831,
+   "x2": 0.8563425669862339,
+   "y2": 0.5955752355862508
+  },
+  {
+   "type": "rect",
+   "frame": 3,
+   "x1": 0.1829891598681785,
+   "y1": 0.3434734850858165,
+   "x2": 0.8437561215200958,
+   "y2": 0.6213495372670942
+  },
+  {
+   "type": "rect",
+   "frame": 4,
+   "x1": 0.2411996546982547,
+   "y1": 0.3204645815148818,
+   "x2": 0.8107177974434611,
+   "y2": 0.7063052759761304
+  }
+ ]
+}

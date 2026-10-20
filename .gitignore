@@ -1,5 +1,11 @@
-# Loupe's own data: the database, API keys, the admin passphrase hash, caches, uploads, the keeper session. Never commit.
-data/
+# Loupe's own data: the live database, API keys, the admin passphrase hash, sessions, captures, caches and the keeper session never go in.
+# What travels with the repo so a clone opens with the sample library: the sample images, the admin's uploads, the flag evidence and the seed
+# (data/seed/loupe-seed.db, written by `python loupe.py seed export`: misses, moments and flags with every secret stripped).
+data/*
+!data/samples/
+!data/uploads/
+!data/flags/
+!data/seed/
 
 __pycache__/
 *.pyc

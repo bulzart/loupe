@@ -1,0 +1,26 @@
+{
+ "moment": 14,
+ "miss": 10,
+ "title": "the character just pops the energy drink's can lid open with one finger in a split of a second like it was nothing, typical ai generation miss, should've holded the can with one hand and open it with the other",
+ "model": "seedance_2_5",
+ "run": "20261015-215200-08",
+ "video": "07",
+ "t_wrong": 4.867,
+ "t_fixed": 4.867,
+ "sample": "S14",
+ "frames": [
+  {
+   "n": 1,
+   "role": "wrong",
+   "from": "as generated",
+   "t": 4.867
+  },
+  {
+   "n": 2,
+   "role": "wrong",
+   "from": "as generated",
+   "t": 4.967
+  }
+ ],
+ "shapes": []
+}

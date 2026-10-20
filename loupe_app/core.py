@@ -12,6 +12,7 @@ import json
 import os
 import re
 import secrets
+import shutil
 import sqlite3
 import threading
 import time
@@ -82,6 +83,9 @@ _inited = False
 def db() -> sqlite3.Connection:
     global _inited
     ensure_dirs()
+    if not (DATA / "loupe.db").exists() and (DATA / "seed" / "loupe-seed.db").exists():        # a fresh clone: the seeded sample library
+        (DATA / "loupe.db").parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(DATA / "seed" / "loupe-seed.db", DATA / "loupe.db")
     con = sqlite3.connect(str(DATA / "loupe.db"), timeout=30)
     con.row_factory = sqlite3.Row
     if not _inited:
