@@ -78,9 +78,102 @@ def list_runs() -> list[dict]:
     return sorted(res, key=lambda r: r["run"], reverse=True)
 
 
-def _version(p: Path, label: str, kind: str) -> dict:
+def _version(p: Path, label: str, kind: str, **extra) -> dict:
     st = p.stat()
-    return {"path": str(p), "label": label, "kind": kind, "mtime": st.st_mtime, "size": st.st_size}
+    return {"path": str(p), "label": label, "kind": kind, "mtime": st.st_mtime, "size": st.st_size, **extra}
+
+
+def is_video_request(req) -> bool:
+    """True when a request file asked for a video.  A still (a start frame, a guide plate) is asked in its own request file named like the video's
+    (video-03-frame-a2-request.json, video-03-g1-request.json): its `tool` says it is an image call, or it has no duration and carries an image model's own
+    parameter (a resolution tier such as 2k, a quality).  Anything else is taken for a video."""
+    if not isinstance(req, dict):
+        return False
+    tool = str(req.get("tool") or "").lower()
+    if tool:
+        return "video" in tool
+    prm = req.get("params") if isinstance(req.get("params"), dict) else req
+    if prm.get("duration") not in (None, ""):
+        return True
+    return not (re.fullmatch(r"\d+k", str(prm.get("resolution") or "").lower()) or prm.get("quality"))
+
+
+def video_request_files(rd: Path, video: str) -> list[Path]:
+    """The request files of a video that asked for a video, by name (the stills asked for beside it are left out)."""
+    rq = rd / "50-requests"
+    if not rq.is_dir():
+        return []
+    return [f for f in sorted(rq.glob(f"video-{core.nn(video)}*request.json")) if is_video_request(_json(f))]
+
+
+def _attempt_in_name(name: str) -> int:
+    """The attempt a request file is for: video-03-a2-request.json is the second, a name with no attempt tag is the first."""
+    m = re.search(r"-a(\d+)-", name)
+    return int(m.group(1)) if m else 1
+
+
+def _attempt_dirs(vd: Path) -> list[Path]:
+    return sorted((x for x in vd.iterdir() if x.is_dir() and re.fullmatch(r"a\d+", x.name)), key=lambda x: int(x.name[1:])) if vd.is_dir() else []
+
+
+def _identical_attempt(rd: Path, nn: str, p: Path) -> int:
+    """The highest attempt that holds a file byte for byte equal to p (a clean video or a deliverable is a copy of one attempt's finished file, whatever
+    its name says), else 0.  Sizes are compared first; a hash is read only for a file of the same size."""
+    try:
+        size = p.stat().st_size
+    except OSError:
+        return 0
+    best, sha = 0, ""
+    for ad in _attempt_dirs(rd / "60-outputs" / f"video-{core.nn(nn)}"):
+        for f in _mp4s(ad):
+            try:
+                if f.stat().st_size != size:
+                    continue
+                sha = sha or media.sha1_file(p)
+                if media.sha1_file(f) == sha:
+                    best = max(best, int(ad.name[1:]))
+            except OSError:
+                continue
+    return best
+
+
+def delivered_attempt(rd: Path, nn: str) -> int:
+    """The attempt whose finished file is the video's clean deliverable, byte for byte (0 when none is): the take its clean video and preview come from."""
+    for clean in (rd / "60-outputs" / f"video-{core.nn(nn)}" / "clean.mp4", rd / "deliverables" / f"video-{core.nn(nn)}-clean.mp4"):
+        if clean.is_file():
+            n = _identical_attempt(rd, nn, clean)
+            if n:
+                return n
+    return 0
+
+
+def attempt_of_path(rd: Path, nn: str, path: str) -> int:
+    """The attempt (1, 2 ...) a picked file of a video belongs to, or 0 when it cannot be told: the attempt folder it sits in (60-outputs/video-NN/a2/raw.mp4),
+    else the attempt it is a copy of."""
+    if not path:
+        return 0
+    p = Path(path)
+    for part in reversed(p.parts[:-1]):
+        m = re.fullmatch(r"a(\d+)", part)
+        if m:
+            return int(m.group(1))
+    return _identical_attempt(rd, nn, p) if p.is_file() else 0
+
+
+def attempt_for(rd: Path, nn: str, hint: str) -> int:
+    """The attempt a picked version belongs to.  A path is read as a path (its folder, or the attempt it is a copy of: never from a word in its name, so
+    clean-prev-before-a3.mp4 is not attempt 3); a label such as 'a2 · raw.mp4' by its attempt word.  0 when unknown."""
+    hint = str(hint or "")
+    try:
+        is_file = Path(hint).is_file()
+    except OSError:
+        is_file = False
+    if is_file or any(s in hint for s in ("\\", "/")):
+        n = attempt_of_path(rd, nn, hint)
+        if n or is_file:
+            return n
+    m = re.search(r"\ba(\d+)\b", hint.replace("\\", " ").replace("/", " "), re.I)
+    return int(m.group(1)) if m else 0
 
 
 def library_matches(run: str, nn: str) -> list[dict]:
@@ -101,6 +194,9 @@ def library_matches(run: str, nn: str) -> list[dict]:
 
 
 def video_versions(run: str, nn: str) -> list[dict]:
+    """Every file of one video a report can be made from.  `role` says what a file is: 'generated' (the video as the service returned it, raw.mp4 of an attempt:
+    its clean video and preview are made from it), 'processed' (conformed, trimmed, with the original audio, copies, previews), 'deliverable' or 'client-fix';
+    `attempt` is the attempt folder a file sits in; `delivered` marks the attempt whose finished file is the run's clean video, byte for byte."""
     d = run_dir(run)
     if not d:
         return []
@@ -108,21 +204,28 @@ def video_versions(run: str, nn: str) -> list[dict]:
     vd = d / "60-outputs" / f"video-{nn}"
     if vd.is_dir():
         for p in sorted(vd.glob("*.mp4")):
-            out.append(_version(p, p.name, "output"))
-        for ad in sorted(x for x in vd.iterdir() if x.is_dir() and re.match(r"^a\d+$", x.name)):
-            for p in sorted(ad.glob("*.mp4")):
-                out.append(_version(p, f"{ad.name} · {p.name}", "attempt"))
+            out.append(_version(p, p.name, "output", role="processed"))
+        for ad in _attempt_dirs(vd):
+            n = int(ad.name[1:])
+            top = sorted(ad.glob("*.mp4"))
+            gen = next((p for p in top if p.name == "raw.mp4"), None) or (min(top, key=lambda p: p.stat().st_mtime) if top else None)
+            for p in top:
+                out.append(_version(p, f"{ad.name} · {p.name}", "attempt", attempt=n, role="generated" if p == gen else "processed"))
             for sub in sorted(x for x in ad.iterdir() if x.is_dir()):
                 for p in sorted(sub.glob("*.mp4")):
-                    out.append(_version(p, f"{ad.name} · {sub.name}/{p.name}", "attempt"))
+                    out.append(_version(p, f"{ad.name} · {sub.name}/{p.name}", "attempt", attempt=n, role="processed"))
         for cd in sorted(x for x in vd.iterdir() if x.is_dir() and re.match(r"^c\d+$", x.name)):
             for p in sorted(cd.rglob("*.mp4")):
-                out.append(_version(p, f"{cd.name}/{p.relative_to(cd).as_posix()}", "clip"))
+                out.append(_version(p, f"{cd.name}/{p.relative_to(cd).as_posix()}", "clip", role="generated" if p.name == "raw.mp4" else "processed"))
     dd = d / "deliverables"
     if dd.is_dir():
         for p in sorted(dd.glob(f"video-{nn}-*.mp4")):
-            out.append(_version(p, f"deliverables/{p.name}", "deliverable"))
-    out += library_matches(run, nn)
+            out.append(_version(p, f"deliverables/{p.name}", "deliverable", role="deliverable"))
+    out += [dict(v, role="client-fix") for v in library_matches(run, nn)]
+    n_del = delivered_attempt(d, nn)
+    for v in out:
+        if v.get("attempt"):
+            v["delivered"] = bool(n_del) and v["attempt"] == n_del
     return out
 
 
@@ -197,13 +300,12 @@ def _registry_products(st: dict) -> dict:
 
 
 def _request_files(rd: Path, video: str, attempt: int) -> list[Path]:
-    files = sorted((rd / "50-requests").glob(f"video-{core.nn(video)}*request.json"))
+    """The video requests of a video, the attempt's own first; with no attempt known, the latest attempt first."""
+    files = video_request_files(rd, video)
     if attempt:
-        want = [f for f in files if f"-a{attempt}-" in f.name]
-        if attempt == 1:
-            want += [f for f in files if not re.search(r"-a\d+-", f.name) and f not in want]
-        files = want + [f for f in files if f not in want]
-    return files
+        want = [f for f in files if _attempt_in_name(f.name) == attempt]
+        return want + [f for f in files if f not in want]
+    return sorted(files, key=lambda f: (_attempt_in_name(f.name), f.name), reverse=True)
 
 
 def product_samples(run: str, video: str, wrong: str = "") -> list[dict]:
@@ -219,8 +321,7 @@ def product_samples(run: str, video: str, wrong: str = "") -> list[dict]:
     id_owner = {i: k for k, v in prods.items() for i in v["ids"]}
     inv = {it["id"]: it for it in ((_json(rd / "30-assets" / "project" / "asset-inventory.json") or {}).get("items") or []) if isinstance(it, dict) and it.get("id")}
     roots = [Path(x) for x in (st.get("assets_paths") or []) if isinstance(x, str)]
-    m = re.search(r"\ba(\d+)\b", str(wrong or "").replace("\\", " ").replace("/", " "), re.I)
-    attempt = int(m.group(1)) if m else 0
+    attempt = attempt_for(rd, video, wrong)
 
     def file_of(aid: str):
         it = inv.get(aid) or {}
@@ -264,14 +365,14 @@ def product_samples(run: str, video: str, wrong: str = "") -> list[dict]:
 
 
 def request_prompt_for(run: str, video: str, hint: str = "") -> dict:
-    """The prompt of the request file a version of a video came from: the attempt named in the version's path or label (a1, a2 ...) picks the request, an
-    output or deliverable with no attempt takes the first request file.  Read only: the report form fills a prompt field with it and the admin keeps or changes
+    """The prompt of the request file a version of a video came from: the attempt the version belongs to picks the request (its attempt folder, or the attempt it
+    is a copy of, or the attempt word of a label such as 'a2 · raw.mp4'); a file whose attempt cannot be told takes the latest attempt's request.  Requests for stills
+    (start frames, guide plates) are never taken.  Read only: the report form fills a prompt field with it and the admin keeps or changes
     it.  {prompt, request, attempt} or {} when nothing was found."""
     rd = run_dir(run)
     if not rd or not video:
         return {}
-    m = re.search(r"\ba(\d+)\b", str(hint or "").replace("\\", " ").replace("/", " "), re.I)
-    attempt = int(m.group(1)) if m else 0
+    attempt = attempt_for(rd, video, hint)
     for rf in _request_files(rd, video, attempt):
         req = _json(rf) or {}
         pr = (req.get("params") or {}).get("prompt") if isinstance(req.get("params"), dict) else None
@@ -283,6 +384,7 @@ def request_prompt_for(run: str, video: str, hint: str = "") -> dict:
 
 # ------------------------------------------------------------------ usage index (which input went into which request, and what happened)
 ROLE_LABEL = {"image_references": "Image", "video_references": "Video", "audio_references": "Audio"}
+USAGE_INDEX_VERSION = 2      # bumped when the index reads the request files differently: every run is then indexed again once
 
 
 def _uploads(rd: Path) -> dict:
@@ -348,7 +450,7 @@ def index_usage(force: bool = False, budget: float | None = None) -> int:
             sp = d / "state.json"
             if not sp.is_file():
                 continue
-            sig = f"{sp.stat().st_mtime_ns}"
+            sig = f"{sp.stat().st_mtime_ns}:v{USAGE_INDEX_VERSION}"
             key = f"usage_sig:{d.name}"
             if not force and core.setting_get(key) == sig:
                 continue
@@ -360,8 +462,8 @@ def index_usage(force: bool = False, budget: float | None = None) -> int:
                 req = _json(rf)
                 if not isinstance(req, dict):
                     continue
-                m = re.match(r"^video-(\d+)(?:-(a\d+))?", rf.name)
-                video, attempt = (m.group(1), m.group(2) or "a1") if m else ("", "")
+                m = re.match(r"^video-(\d+)(?:-([a-z]\d+))?", rf.name)
+                video, attempt = (m.group(1), m.group(2) or ("a1" if is_video_request(req) else "image")) if m else ("", "")
                 sub = subs.get(rf.name, {})
                 prm = req.get("params") if isinstance(req.get("params"), dict) else req
                 for it in request_inputs(d, req):

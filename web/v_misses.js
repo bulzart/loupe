@@ -34,7 +34,7 @@ export async function pick() {
     const r = await api('GET', '/api/runs/' + encodeURIComponent(sel.value));
     out.replaceChildren(h('div', { class: 'grid g4' }, r.videos.map((v) => h('a', { class: 'card', style: 'color:inherit;text-decoration:none', href: `#/misses/work?run=${encodeURIComponent(r.run)}&video=${v.video}` },
       h('b', {}, 'Video ' + v.video), ' ', v.status ? status(v.status) : null,
-      h('div', { class: 'muted small' }, `${v.versions.length} version(s)` + (v.capcut_project ? ` · ${v.capcut_project}` : '') + (v.credits ? ` · ${v.credits} cr` : '')),
+      h('div', { class: 'muted small' }, `${v.versions.some((x) => x.role === 'generated') ? v.versions.filter((x) => x.role === 'generated').length + ' generated take(s)' : v.versions.length + ' version(s)'}` + (v.capcut_project ? ` · ${v.capcut_project}` : '') + (v.credits ? ` · ${v.credits} cr` : '')),
       v.qc ? h('div', { class: 'small', style: 'margin-top:4px' }, v.qc.slice(0, 120)) : null))));
   });
   return h('div', {}, head('New report', 'Choose the run that was executed by the pipeline, then the video the report is about. A report can also be in words only: the idea, what could have been better, what the AI agents missed.',
@@ -45,10 +45,10 @@ export async function pick() {
 // ------------------------------------------------------------------------------------------ the workspace
 // One page, one step: any number of frames side by side (two to start with), each from either video, each with its own time and called WRONG or RIGHT by the
 // admin, marks drawn straight on any of them, and one button that saves the moment as a single image (the frames, the marks, a zoom, the explanation burned in).
-function guessVersions(versions) {       // only the wrong version is guessed (the first attempt); the right one is always the user's choice
+function guessVersions(versions) {       // only the wrong version is guessed (the first attempt's generated take); the right one is always the user's choice
   const attempts = versions.filter((v) => v.kind === 'attempt');
   const clean = (v) => /with-original-audio\.mp4$|clean\.mp4$|trimmed\.mp4$/.test(v.label);
-  const firstA = attempts.find((v) => /^a1 ·/.test(v.label) && clean(v)) || attempts.find((v) => /^a1 ·/.test(v.label)) || versions[0];
+  const firstA = versions.find((v) => v.role === 'generated' && v.attempt === 1) || attempts.find((v) => /^a1 ·/.test(v.label) && clean(v)) || attempts.find((v) => /^a1 ·/.test(v.label)) || versions[0];
   return { wrong: firstA };
 }
 
@@ -76,6 +76,11 @@ export async function work(qs) {
   const state = { wrong: miss ? miss.wrong_path : (g.wrong ? g.wrong.path : ''), fixed: miss ? miss.fixed_path : '' };     // neither video is required: '' = none, else its path (the right version is never guessed)
   const addVersion = (v) => { if (!versions.some((x) => x.path === v.path)) versions.push(v); };
   if (miss) { if (miss.wrong_path) addVersion({ path: miss.wrong_path, label: miss.wrong_label || miss.wrong_path.split(/[\\/]/).slice(-2).join('/') }); if (miss.fixed_path) addVersion({ path: miss.fixed_path, label: miss.fixed_label || miss.fixed_path.split(/[\\/]/).slice(-2).join('/') }); }
+  // By default only the video each attempt generated at Higgsfield is listed: its clean video and preview are made from it, and the prompt is filled from that
+  // attempt's request. Every other file of the video (conformed, trimmed, copies, previews, deliverables) is one tick away.
+  const hasGenerated = versions.some((v) => v.role === 'generated');
+  let showAll = !hasGenerated;      // a video with no recognisable generated take (an older run, a folder of files) lists every file
+  const isShown = (v) => showAll || !v.role || v.role === 'generated' || v.role === 'client-fix' || v.path === state.wrong || v.path === state.fixed;
   const ws = { shapes: [], tool: 'arrow', editing: null, draft: null, past: [], future: [] };      // every mark belongs to one frame (shape.fid); nothing is ever copied for you
   const addMark = (shape) => setMarks([...ws.shapes, shape]);
   const syncHist = () => { undoBtn.disabled = !ws.past.length; redoBtn.disabled = !ws.future.length; };
@@ -85,9 +90,11 @@ export async function work(qs) {
   const redo = () => { if (!ws.future.length) return; ws.past.push(ws.shapes); ws.shapes = ws.future.pop(); redrawAll(); syncHist(); };
 
   // ---- the two versions
-  const label = (v) => v.label + (v.kind === 'fixed-lib' ? '  (client fix)' : '');
+  const label = (v) => v.role === 'generated'
+    ? `${v.label.replace(/\s*[·/]?\s*raw\.mp4$/, '')} · generated at Higgsfield${v.delivered ? ' · delivered (its clean video and preview)' : ''}`
+    : v.label + (v.kind === 'fixed-lib' ? '  (client fix)' : '');
   const mkSel = (key) => {
-    const opts = versions.map((v) => h('option', { value: v.path, selected: v.path === state[key] }, label(v)));
+    const opts = versions.filter(isShown).map((v) => h('option', { value: v.path, selected: v.path === state[key] }, label(v)));
     opts.unshift(h('option', { value: '', selected: !state[key] }, key === 'fixed' ? 'No right version (optional)' : 'No video (a report in words only)'));
     const sel = h('select', { style: 'max-width:100%' }, opts);
     sel.addEventListener('change', () => { state[key] = sel.value; setSources(); });
@@ -95,6 +102,8 @@ export async function work(qs) {
   };
   let wrongSel = mkSel('wrong'), fixedSel = mkSel('fixed');
   const rebuildSelects = () => { const a = mkSel('wrong'), b = mkSel('fixed'); wrongSel.replaceWith(a); fixedSel.replaceWith(b); wrongSel = a; fixedSel = b; };
+  const allBox = h('input', { type: 'checkbox', checked: showAll, disabled: !hasGenerated });
+  allBox.addEventListener('change', () => { showAll = allBox.checked; rebuildSelects(); });
   const fileIn = h('input', { type: 'file', accept: 'video/*,image/*', style: 'display:none' });
   const prog = h('span', { class: 'muted small' });
   fileIn.addEventListener('change', async () => {
@@ -115,7 +124,7 @@ export async function work(qs) {
   const wrongPrompt = h('textarea', { placeholder: 'The prompt that produced Video A (as generated). Optional.', style: mono }, miss ? miss.wrong_prompt || '' : '');
   const fixedPrompt = h('textarea', { placeholder: 'The prompt of Video B (the corrected take). Optional.', style: mono }, miss ? miss.fixed_prompt || '' : '');
   const promptNote = h('input', { value: miss ? miss.prompt_note || '' : '', placeholder: 'What in the prompt made the difference, in your words (optional, one line)', style: 'width:100%' });
-  const fillPrompt = (key, ta) => h('button', { class: 'btn sm', type: 'button', title: 'reads the prompt from the request file of the version picked above (the attempt in its path, a1, a2 …, picks the request); you keep or change it', onclick: async () => {
+  const fillPrompt = (key, ta) => h('button', { class: 'btn sm', type: 'button', title: 'reads the prompt from the request file of the attempt the version picked above belongs to (the attempt folder it sits in, or the attempt it is a copy of); you keep or change it', onclick: async () => {
     if (!qs.run || !qs.video) { toast('This report has no run and video: paste the prompt', true); return; }
     const path = state[key];
     if (!path) { toast(key === 'wrong' ? 'Pick Video A first' : 'Pick Video B first', true); return; }
@@ -156,7 +165,7 @@ export async function work(qs) {
   const sampleBox = h('div', { class: 'small', style: 'margin-top:12px' });
   const loadSample = async () => {      // the product image(s) this video's request used, straight from the reference folder
     if (!qs.run || !qs.video) { sampleBox.replaceChildren(); return; }
-    const wl = (versions.find((v) => v.path === state.wrong) || {}).label || state.wrong || '';
+    const wl = state.wrong || '';      // the path: the server reads the attempt from it
     try {
       const d = await api('GET', `/api/product-sample?run=${encodeURIComponent(qs.run)}&video=${encodeURIComponent(qs.video)}&wrong=${encodeURIComponent(wl)}`, undefined, true);
       sampleBox.replaceChildren(...(d.samples.length ? [h('div', { class: 'row', style: 'gap:12px;align-items:center' },
@@ -438,6 +447,7 @@ export async function work(qs) {
         h('div', {}, h('label', { class: 'f', style: 'margin-top:0' }, 'Video A: the version as generated (optional)'), wrongSel),
         h('div', {}, h('label', { class: 'f', style: 'margin-top:0' }, 'Video B: the right version (optional: the corrected take, a QC fix, your feedback, or the client’s update)'), fixedSel,
           h('div', { class: 'row', style: 'margin-top:6px' }, h('button', { class: 'btn sm', onclick: () => fileIn.click() }, 'Upload the right video…'), fileIn, prog, pathIn, addPath))),
+      hasGenerated ? h('div', { class: 'muted small', style: 'margin-top:6px' }, h('label', {}, allBox, ' Also list the other files of this video (conformed, trimmed, copies, previews, deliverables). Normally only the video each attempt generated at Higgsfield is listed: its clean video and preview are made from it, and the prompt below is filled from that attempt’s request.')) : null,
       promptsBox),
     h('div', { class: 'card' },
       h('div', { class: 'tools' }, tb('arrow', 'Arrow'), tb('circle', 'Circle'), tb('rect', 'Box'), tb('text', 'Text'),

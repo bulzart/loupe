@@ -320,10 +320,40 @@ def main(with_keeper=False):
     check("one sample with ?prompts=1 carries both prompts whole (the agent reads them and judges what changed; nothing is diffed here)", s == 200 and d["sample"]["wrong_prompt"].startswith("PROMPT-A") and d["sample"]["fixed_prompt"].startswith("PROMPT-B") and "diff" not in d["sample"] and "prompt_change" not in d["sample"])
     s, d, _ = req("POST", "/api/qc/brief", {"model": "wan3_0_prime"}, key=kq)
     check("the brief says the prompts are kept and where to read them, without their text", "prompts of both takes are kept" in d["text"] and "?prompts=1" in d["text"] and "PROMPT-A" not in d["text"], d["text"][:300])
+    # a still asked for beside the video (a guide plate, a start frame) and a second attempt: neither is taken for the first attempt's prompt
+    atp_run = TMP / "atp" / "runs" / "20261001-000000-07"
+    (atp_run / "50-requests" / "video-03-g1-request.json").write_text(json.dumps({"tool": "generate_image", "params": {"model": "an_image_model", "prompt": "PLATE: the empty scene with a real can.", "medias": [{"role": "image_references", "value": "m1"}]}}))
+    (atp_run / "50-requests" / "video-03-frame-a2-request.json").write_text(json.dumps({"params": {"model": "an_image_model", "prompt": "FRAME: edit the start frame.", "resolution": "2k", "medias": [{"role": "image_references", "value": "m1"}]}}))
+    (atp_run / "50-requests" / "video-03-a2-request.json").write_text(json.dumps({"params": {"model": "wan3_0_prime", "duration": 5, "prompt": "Show the can, second attempt.", "medias": [{"role": "image_references", "value": "m1"}]}}))
+    shutil.copyfile(atp_run / "60-outputs" / "video-03" / "a2" / "raw.mp4", atp_run / "60-outputs" / "video-03" / "clean.mp4")
+    mkvideo(atp_run / "deliverables" / "video-03-preview.mp4", "0x502020", "blue")
     s, d, _ = req("GET", f"/api/request-prompt?run=20261001-000000-07&video=03&path={quote(wrong)}")
     check("the form can fill a prompt from the run's request file of the version picked (read, not judged)", s == 200 and d.get("prompt", "").startswith("Show the can.") and d.get("request") == "video-03-request.json", str(d)[:200])
     s, d, _ = req("GET", "/api/request-prompt?run=20261001-000000-07&video=09&path=x")
     check("no request file: an empty prompt, no error", s == 200 and d.get("prompt") == "")
+    print("\n[a picked version fills the prompt of its own attempt]")
+    vs = {v["label"]: v for v in runs.video_versions("20261001-000000-07", "03")}
+    check("the versions say which file the service generated, its attempt, and which attempt is the delivered one",
+          vs["a1 · raw.mp4"]["role"] == "generated" and vs["a2 · raw.mp4"]["role"] == "generated" and vs["clean.mp4"]["role"] == "processed" and vs["deliverables/video-03-preview.mp4"]["role"] == "deliverable"
+          and vs["a2 · raw.mp4"]["attempt"] == 2 and vs["a2 · raw.mp4"]["delivered"] is True and vs["a1 · raw.mp4"]["delivered"] is False, str({k: (v["role"], v.get("attempt"), v.get("delivered")) for k, v in vs.items()}))
+    fill = lambda p: req("GET", f"/api/request-prompt?run=20261001-000000-07&video=03&path={quote(p)}")[1]
+    d = fill(vs["a1 · raw.mp4"]["path"])
+    check("the first attempt's pick fills the first attempt's prompt, never a guide plate's or a start frame's", d.get("request") == "video-03-request.json" and d["prompt"].startswith("Show the can. Holding") and d["attempt"] == 1, str(d)[:160])
+    d = fill(vs["a2 · raw.mp4"]["path"])
+    check("the second attempt's pick fills the second attempt's request", d.get("request") == "video-03-a2-request.json" and d["prompt"].startswith("Show the can, second") and d["attempt"] == 2, str(d)[:160])
+    d = fill(vs["clean.mp4"]["path"])
+    check("a clean video with no attempt in its name fills the request of the attempt it is a copy of", d.get("request") == "video-03-a2-request.json" and d["attempt"] == 2, str(d)[:160])
+    d = fill(vs["deliverables/video-03-preview.mp4"]["path"])
+    check("a file whose attempt cannot be told (a preview with its caption burned in) takes the latest attempt's request", d.get("request") == "video-03-a2-request.json" and d["attempt"] == 0, str(d)[:160])
+    d = req("GET", "/api/request-prompt?run=20261001-000000-07&video=03&path=" + quote("a1 · raw.mp4"))[1]
+    check("a label with an attempt word still picks that attempt", d.get("request") == "video-03-request.json", str(d)[:160])
+    runs.index_usage(force=True)
+    con = core.db()
+    try:
+        att = {r["attempt"] for r in con.execute("SELECT attempt FROM usage WHERE video='03'")}
+    finally:
+        con.close()
+    check("the usage index reads a guide plate and a start frame as what they are, not as the first attempt", att == {"a1", "a2", "g1", "image"}, str(att))
     s, d, _ = req("PATCH", "/api/misses/1", {"fixed_prompt": ""})
     check("clearing one prompt leaves the other (the prompt of the wrong take only)", s == 200 and d["miss"]["prompts"] == "wrong")
     s, d, _ = req("PATCH", "/api/misses/1", {"fixed_prompt": "PROMPT-B the can on the desk, as tall as the mug."})

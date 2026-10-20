@@ -22,7 +22,8 @@ const api = async (method, url, body) => {
   if (url === '/api/moments/5' && method === 'PATCH') return { moment: savedMoment };
   if (withMoment && url.startsWith('/api/misses/1') && method === 'GET') return { miss: { id: 1, title: 'T', explanation: '', kinds: [], model: 'm', mode: 'x', product: '', wrong_path: 'A.mp4', fixed_path: noRight ? '' : 'B.mp4', moments: [savedMoment], product_sample: true } };
   if (url.startsWith('/api/runs/')) return { model: 'wan3_0_prime', mode: 'analyze', submode: 'recreate', products: [], videos: [{ video: '03', versions: [
-    { path: 'A.mp4', label: 'a1 · raw.mp4', kind: 'attempt' }, { path: 'B.mp4', label: 'capcut-preview.mp4', kind: 'fixed' }] }] };
+    { path: 'A.mp4', label: 'a1 · raw.mp4', kind: 'attempt', attempt: 1, role: 'generated', delivered: false }, { path: 'A2.mp4', label: 'a2 · raw.mp4', kind: 'attempt', attempt: 2, role: 'generated', delivered: true },
+    { path: 'A2c.mp4', label: 'a2 · with-original-audio.mp4', kind: 'attempt', attempt: 2, role: 'processed' }, { path: 'B.mp4', label: 'capcut-preview.mp4', kind: 'output', role: 'processed' }] }] };
   if (url === '/api/settings') return { kinds: [] };
   if (url.startsWith('/api/misses/1') && method === 'GET') return { miss: { id: 1, title: 'T', explanation: '', kinds: [], model: 'm', mode: 'x', product: '', wrong_path: 'A.mp4', fixed_path: noRight ? '' : 'B.mp4', moments: [], product_sample: true } };
   if (url.startsWith('/api/misses/1') && method === 'PATCH') return { miss: { id: 1, title: 'T', explanation: '', kinds: [], wrong_path: 'A.mp4', fixed_path: noRight ? '' : 'B.mp4', moments: [], product_sample: true } };
@@ -111,6 +112,17 @@ const ok = (name, cond, info = '') => { console.log((cond ? '  ok   ' : '  FAIL 
   const players4 = walk(root4, (e) => e.className === 'players')[0];
   ok('a report with no run and no video opens with no frame, a card, and nothing to add a frame from', players4.children.filter((e) => walk(e, (x) => x.tag === 'canvas').length).length === 0
     && walk(root4, (e) => e.tag === 'button' && e.text === '+ Add a frame')[0].disabled === true);
+  // the picker lists the video each attempt generated at Higgsfield (its clean video and preview are made from it); every other file is one tick away
+  const root5 = await work({ run: 'R', video: '03' });
+  const selects5 = () => walk(root5, (e) => e.tag === 'select');
+  const optTexts = (s) => s.options.map((o) => o.text).join(' | ');
+  ok('a new report lists only the generated take of each attempt, the delivered one named', optTexts(selects5()[0]) === 'No video (a report in words only) | a1 · generated at Higgsfield | a2 · generated at Higgsfield · delivered (its clean video and preview)', optTexts(selects5()[0]));
+  ok('Video A starts on the first attempt', selects5()[0].options.find((o) => o.selected).text.startsWith('a1 ·'));
+  const allLabel = walk(root5, (e) => e.tag === 'label' && e.text.includes('Also list the other files'))[0];
+  ok('a tick offers the other files of the video', !!allLabel);
+  const allBox5 = walk(allLabel, (e) => e.tag === 'input')[0];
+  allBox5.checked = true; (allBox5.listeners.change || []).forEach((f) => f());
+  ok('ticking it lists every file, the generated ones still named as such', selects5()[0].options.length === 5 && optTexts(selects5()[0]).includes('a2 · with-original-audio.mp4') && optTexts(selects5()[0]).includes('capcut-preview.mp4'), optTexts(selects5()[0]));
   console.log(fails ? `${fails} failed` : 'all passed');
   process.exit(fails ? 1 : 0);
 })().catch((e) => { console.log('FAIL the page threw: ' + (e && e.stack || e)); process.exit(1); });

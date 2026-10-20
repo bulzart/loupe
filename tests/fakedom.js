@@ -20,6 +20,7 @@ class El {
   addEventListener(n, f) { (this.listeners[n] = this.listeners[n] || []).push(f); }
   append(...k) { for (const c of k) { if (c && typeof c === 'object') c.parentNode = this; this.children.push(c); } }
   replaceChildren(...k) { this.children = []; this.append(...k); }
+  replaceWith(n) { const p = this.parentNode; if (!p) return; const i = p.children.indexOf(this); n.parentNode = p; if (i >= 0) p.children[i] = n; this.parentNode = null; }
   remove() { if (this.parentNode) this.parentNode.children = this.parentNode.children.filter((c) => c !== this); }
   insertBefore(n, ref) { n.parentNode = this; const i = this.children.indexOf(ref); i < 0 ? this.children.push(n) : this.children.splice(i, 0, n); }
   getContext() { return new Proxy({}, { get: (_t, k) => (k === 'measureText' ? () => ({ width: 10 }) : () => {}), set: () => true }); }

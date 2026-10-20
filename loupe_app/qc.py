@@ -497,7 +497,7 @@ def _read_text(p: Path, n: int) -> str:
 
 
 def _request_prompt(rd: Path, video: str, n: int) -> str:
-    files = sorted((rd / "50-requests").glob(f"video-{core.nn(video)}*request.json"), key=lambda p: p.stat().st_mtime)
+    files = sorted(runs.video_request_files(rd, video), key=lambda p: p.stat().st_mtime)
     for f in reversed(files):
         try:
             j = json.loads(f.read_bytes().decode("utf-8"))
