@@ -263,6 +263,24 @@ def product_samples(run: str, video: str, wrong: str = "") -> list[dict]:
     return []
 
 
+def request_prompt_for(run: str, video: str, hint: str = "") -> dict:
+    """The prompt of the request file a version of a video came from: the attempt named in the version's path or label (a1, a2 ...) picks the request, an
+    output or deliverable with no attempt takes the first request file.  Read only: the report form fills a prompt field with it and the admin keeps or changes
+    it.  {prompt, request, attempt} or {} when nothing was found."""
+    rd = run_dir(run)
+    if not rd or not video:
+        return {}
+    m = re.search(r"\ba(\d+)\b", str(hint or "").replace("\\", " ").replace("/", " "), re.I)
+    attempt = int(m.group(1)) if m else 0
+    for rf in _request_files(rd, video, attempt):
+        req = _json(rf) or {}
+        pr = (req.get("params") or {}).get("prompt") if isinstance(req.get("params"), dict) else None
+        pr = pr or req.get("prompt")
+        if pr:
+            return {"prompt": str(pr), "request": rf.name, "attempt": attempt}
+    return {}
+
+
 # ------------------------------------------------------------------ usage index (which input went into which request, and what happened)
 ROLE_LABEL = {"image_references": "Image", "video_references": "Video", "audio_references": "Audio"}
 

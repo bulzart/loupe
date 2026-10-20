@@ -13,7 +13,7 @@ export async function reports() {
       h('a', { class: 'btn primary', href: '#/misses/new' }, 'New report')),
     d.misses.length ? d.misses.map((m) => h('div', { class: 'card' },
       h('div', { class: 'row', style: 'justify-content:space-between' },
-        h('div', {}, h('b', {}, m.title), ' ', status(m.status), h('div', { class: 'muted small' }, `${m.run || 'no run'} · video ${m.video || '-'} · ${m.model || 'any model'} · ${fmtDate(m.created)}${!m.wrong_path && !m.fixed_path ? ' · no video' : (m.fixed_path ? '' : ' · no right version')}`)),
+        h('div', {}, h('b', {}, m.title), ' ', status(m.status), h('div', { class: 'muted small' }, `${m.run || 'no run'} · video ${m.video || '-'} · ${m.model || 'any model'} · ${fmtDate(m.created)}${!m.wrong_path && !m.fixed_path ? ' · no video' : (m.fixed_path ? '' : ' · no right version')}${m.prompts === 'pair' ? ' · prompts of both takes kept' : m.prompts === 'wrong' ? ' · prompt of the wrong take kept' : m.prompts === 'fixed' ? ' · prompt of the corrected take kept' : ''}`)),
         h('div', { class: 'row' }, h('a', { class: 'btn sm', href: `#/misses/work?run=${encodeURIComponent(m.run)}&video=${m.video}&miss=${m.id}` }, 'Open'),
           h('button', { class: 'btn sm', onclick: async () => { await api('PATCH', '/api/misses/' + m.id, { status: m.status === 'active' ? 'archived' : 'active' }); reload(); } }, m.status === 'active' ? 'Archive' : 'Restore'),
           h('button', { class: 'btn sm danger', onclick: async () => { if (confirmBox(`Delete the report “${m.title}” and its ${m.moments.length} sample(s)?`)) { await api('DELETE', '/api/misses/' + m.id); reload(); } } }, 'Delete'))),
@@ -109,6 +109,29 @@ export async function work(qs) {
     try { await api('GET', '/api/probe?path=' + encodeURIComponent(pathIn.value)); addVersion({ path: pathIn.value, label: pathIn.value.split(/[\\/]/).slice(-2).join('/') + ' (path)' }); state.fixed = pathIn.value; rebuildSelects(); setSources(); }
     catch (_) { /* toasted: outside the folders Loupe may read? add it in Settings */ } } }, 'Use');
 
+  // ---- the prompts of the two takes: kept in the record and read whole by the keeper and the prompt writers on request; never burned into the image, never
+  // compared by the app (the agents judge what changed). Each can be filled from the run's request file of the version picked above, or pasted.
+  const mono = 'min-height:110px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px';
+  const wrongPrompt = h('textarea', { placeholder: 'The prompt that produced Video A (as generated). Optional.', style: mono }, miss ? miss.wrong_prompt || '' : '');
+  const fixedPrompt = h('textarea', { placeholder: 'The prompt of Video B (the corrected take). Optional.', style: mono }, miss ? miss.fixed_prompt || '' : '');
+  const promptNote = h('input', { value: miss ? miss.prompt_note || '' : '', placeholder: 'What in the prompt made the difference, in your words (optional, one line)', style: 'width:100%' });
+  const fillPrompt = (key, ta) => h('button', { class: 'btn sm', type: 'button', title: 'reads the prompt from the request file of the version picked above (the attempt in its path, a1, a2 …, picks the request); you keep or change it', onclick: async () => {
+    if (!qs.run || !qs.video) { toast('This report has no run and video: paste the prompt', true); return; }
+    const path = state[key];
+    if (!path) { toast(key === 'wrong' ? 'Pick Video A first' : 'Pick Video B first', true); return; }
+    try {
+      const d = await api('GET', `/api/request-prompt?run=${encodeURIComponent(qs.run)}&video=${encodeURIComponent(qs.video)}&path=${encodeURIComponent(path)}`);
+      if (d.prompt) { ta.value = d.prompt; toast('Filled from ' + d.request + (d.attempt ? ' (attempt a' + d.attempt + ')' : '')); } else toast('No request file with a prompt was found for that version: paste it', true);
+    } catch (e) { toast(e.message, true); }
+  } }, key === 'wrong' ? 'Fill from the run (Video A)' : 'Fill from the run (Video B)');
+  const promptsBox = h('details', { style: 'margin-top:10px', open: !!(miss && (miss.wrong_prompt || miss.fixed_prompt || miss.prompt_note)) },
+    h('summary', { class: 'muted small', style: 'cursor:pointer' }, 'The prompts of the two takes (optional: kept in the record for the QC keeper and the prompt writers, never burned into the image)'),
+    h('div', { class: 'grid g2', style: 'margin-top:6px' },
+      h('div', {}, h('label', { class: 'f', style: 'margin-top:0' }, 'Prompt of Video A (as generated)'), wrongPrompt, h('div', { class: 'row', style: 'margin-top:4px' }, fillPrompt('wrong', wrongPrompt))),
+      h('div', {}, h('label', { class: 'f', style: 'margin-top:0' }, 'Prompt of Video B (the corrected take)'), fixedPrompt, h('div', { class: 'row', style: 'margin-top:4px' }, fillPrompt('fixed', fixedPrompt)))),
+    h('label', { class: 'f' }, 'What in the prompt made the difference (optional, your words)'), promptNote,
+    h('div', { class: 'muted small', style: 'margin-top:4px' }, 'Nothing is compared or diffed by the app: the keeper reads both prompts whole when it asks for them, the prompt writers read them for a sample they judged relevant, and each decides what changed. The lists only say that the prompts are kept, with your note.'));
+
   // ---- the report fields (the title and the explanation are burned into the saved image)
   const title = h('input', { value: miss ? miss.title : '', placeholder: 'One line or a paragraph: what went wrong, or what this scenario is about (e.g. “the third capsule disappears after the hand leaves”)', style: 'width:100%' });
   const details = h('textarea', { placeholder: 'Explain this miss: what is wrong at the marked place and why. This text is burned into the bottom centre of the image, and the QC phase reads it.' });
@@ -146,7 +169,8 @@ export async function work(qs) {
 
   async function saveReport() {
     const body = { run: qs.run || '', video: qs.video || '', title: title.value, explanation: miss ? miss.explanation : details.value, kinds: kinds.get(), model: model.value, mode: mode.value, product: product.value, product_sample: useSample.checked,
-      wrong_path: state.wrong, fixed_path: state.fixed, wrong_label: (versions.find((v) => v.path === state.wrong) || {}).label || '', fixed_label: (versions.find((v) => v.path === state.fixed) || {}).label || '' };
+      wrong_path: state.wrong, fixed_path: state.fixed, wrong_label: (versions.find((v) => v.path === state.wrong) || {}).label || '', fixed_label: (versions.find((v) => v.path === state.fixed) || {}).label || '',
+      wrong_prompt: wrongPrompt.value, fixed_prompt: fixedPrompt.value, prompt_note: promptNote.value };
     const wasNoRight = !!miss && !miss.fixed_path, nSaved = miss ? miss.moments.length : 0;
     miss = miss ? (await api('PATCH', '/api/misses/' + miss.id, body)).miss : (await api('POST', '/api/misses', body)).miss;
     if (wasNoRight && miss.fixed_path && nSaved) toast(`The right version was attached to ${nSaved} saved moment(s) at the same seconds: open Edit on each to line it up and mark the right side.`);
@@ -413,7 +437,8 @@ export async function work(qs) {
       h('div', { class: 'grid g2' },
         h('div', {}, h('label', { class: 'f', style: 'margin-top:0' }, 'Video A: the version as generated (optional)'), wrongSel),
         h('div', {}, h('label', { class: 'f', style: 'margin-top:0' }, 'Video B: the right version (optional: the corrected take, a QC fix, your feedback, or the client’s update)'), fixedSel,
-          h('div', { class: 'row', style: 'margin-top:6px' }, h('button', { class: 'btn sm', onclick: () => fileIn.click() }, 'Upload the right video…'), fileIn, prog, pathIn, addPath)))),
+          h('div', { class: 'row', style: 'margin-top:6px' }, h('button', { class: 'btn sm', onclick: () => fileIn.click() }, 'Upload the right video…'), fileIn, prog, pathIn, addPath))),
+      promptsBox),
     h('div', { class: 'card' },
       h('div', { class: 'tools' }, tb('arrow', 'Arrow'), tb('circle', 'Circle'), tb('rect', 'Box'), tb('text', 'Text'),
         undoBtn, redoBtn,

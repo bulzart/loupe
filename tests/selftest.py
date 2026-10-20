@@ -304,6 +304,30 @@ def main(with_keeper=False):
     s, d, _ = req("GET", "/api/qc/keeper/state", key=kq)
     check("the keeper's state (in sync, turns, library version) is readable with the qc key, without the consult log or the session id",
           s == 200 and "in_sync" in d and "consults" not in d and "session_id" not in d, str(d)[:150])
+    print("\n[the prompts of the two takes: in the record, never in the image, never diffed]")
+    req("PATCH", "/api/moments/1", {"status": "active"})       # S1 was archived above; it is active for this block and archived again after it
+    img1, meta1 = core.DATA / "samples" / "1" / "composite.png", core.DATA / "samples" / "1" / "meta.json"
+    before_img, before_meta = img1.read_bytes(), meta1.read_text(encoding="utf-8")
+    s, d, _ = req("PATCH", "/api/misses/1", {"wrong_prompt": "PROMPT-A the can on the desk.", "fixed_prompt": "PROMPT-B the can on the desk, as tall as the mug.", "prompt_note": "the height was stated against the mug"})
+    check("the prompts of both takes and the admin's note are kept on the report", s == 200 and d["miss"]["wrong_prompt"].startswith("PROMPT-A") and d["miss"]["fixed_prompt"].startswith("PROMPT-B") and d["miss"]["prompts"] == "pair", str(d)[:200])
+    check("they never touch the sample image or its meta (nothing rebuilt, nothing burned in)", img1.read_bytes() == before_img and meta1.read_text(encoding="utf-8") == before_meta and "PROMPT-A" not in before_meta)
+    s, d, _ = req("GET", "/api/qc/samples?model=wan3_0_prime", key=kq)
+    s1 = next(x for x in d["samples"] if x["id"] == "S1")
+    check("the QC list says the sample has a prompt pair and carries the note, never the prompts", s1["prompts"] == "pair" and s1["prompt_note"].startswith("the height") and "wrong_prompt" not in s1 and "fixed_prompt" not in s1, str(sorted(s1))[:200])
+    s, d, _ = req("GET", "/api/qc/samples/S1", key=kq)
+    check("one sample without ?prompts=1 carries no prompt text either", s == 200 and "wrong_prompt" not in d["sample"] and d["sample"]["prompts"] == "pair")
+    s, d, _ = req("GET", "/api/qc/samples/S1?prompts=1", key=kq)
+    check("one sample with ?prompts=1 carries both prompts whole (the agent reads them and judges what changed; nothing is diffed here)", s == 200 and d["sample"]["wrong_prompt"].startswith("PROMPT-A") and d["sample"]["fixed_prompt"].startswith("PROMPT-B") and "diff" not in d["sample"] and "prompt_change" not in d["sample"])
+    s, d, _ = req("POST", "/api/qc/brief", {"model": "wan3_0_prime"}, key=kq)
+    check("the brief says the prompts are kept and where to read them, without their text", "prompts of both takes are kept" in d["text"] and "?prompts=1" in d["text"] and "PROMPT-A" not in d["text"], d["text"][:300])
+    s, d, _ = req("GET", f"/api/request-prompt?run=20261001-000000-07&video=03&path={quote(wrong)}")
+    check("the form can fill a prompt from the run's request file of the version picked (read, not judged)", s == 200 and d.get("prompt", "").startswith("Show the can.") and d.get("request") == "video-03-request.json", str(d)[:200])
+    s, d, _ = req("GET", "/api/request-prompt?run=20261001-000000-07&video=09&path=x")
+    check("no request file: an empty prompt, no error", s == 200 and d.get("prompt") == "")
+    s, d, _ = req("PATCH", "/api/misses/1", {"fixed_prompt": ""})
+    check("clearing one prompt leaves the other (the prompt of the wrong take only)", s == 200 and d["miss"]["prompts"] == "wrong")
+    s, d, _ = req("PATCH", "/api/misses/1", {"fixed_prompt": "PROMPT-B the can on the desk, as tall as the mug."})
+    req("PATCH", "/api/moments/1", {"status": "archived"})
     s, d, _ = req("GET", "/api/misses/suggest-kinds?text=" + quote("The can size changes after the cut and the lid opens by itself; the label reads mirrored"))
     check("kinds are suggested from the admin's words (a prefix match on the vocabulary's own words), for the admin to confirm",
           s == 200 and set(d.get("suggested", [])) >= {"scale-size", "openings-use", "label-orientation"} and "counts" not in d.get("suggested", []), str(d))
@@ -333,6 +357,12 @@ def main(with_keeper=False):
     finally:
         core.DATA = old_data
     check("a data folder with no database starts from the seed, so a clone opens with the samples", n_seeded == kept and (fresh / "loupe.db").is_file())
+    scon = _sqlite3.connect(f"file:{sdb.as_posix()}?mode=ro", uri=True)
+    try:
+        seeded_prompt = scon.execute("SELECT wrong_prompt FROM misses WHERE id=1").fetchone()[0]
+    finally:
+        scon.close()
+    check("the seed carries the prompts of the two takes with the misses", str(seeded_prompt or "").startswith("PROMPT-A"))
     s, d, _ = req("PATCH", f"/api/moments/1", {"status": "active"})
     long_title = ("The can size changes drastically and unexpectedly without any logical reasoning, " * 8).strip()
     s, d, _ = req("POST", "/api/misses", {"run": "20261001-000000-07", "video": "04", "title": long_title, "model": "wan3_0_prime", "wrong_path": wrong})

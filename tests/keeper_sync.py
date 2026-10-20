@@ -450,6 +450,29 @@ check("a digest line has no empty 'miss: / wrong here: / correct:' fields", not 
 check("the boot message explains every field of a line and that an empty kinds field means untagged", "empty kinds field" in qc.LIB_HEADER and "where it came from" in qc.LIB_HEADER)
 qc._run_claude = fake_claude
 
+print("\n[the prompts of the two takes: in the record, read whole by the keeper on request, never in its digest, never diffed]")
+qc._run_claude = fake_claude
+pm_id, pm_mo = mk_miss("the can is set down and shrinks", video="08")
+ask()                                  # the new sample reaches the keeper; what follows must come from the prompts alone
+misses.update(pm_id, {"wrong_prompt": "WRONGPROMPT-MARK the can on the desk.", "fixed_prompt": "FIXEDPROMPT-MARK the can on the desk, as tall as the mug.", "prompt_note": "NOTE-ON-PROMPT the height was stated"}, "test")
+fresh, current, text = ask()
+check("saving the prompts of both takes re-syncs the keeper (the library version counts them)", fresh and current)
+line = line_of(pm_mo)
+check("its digest line says the prompts are saved and carries the admin's note, never the prompts", "PROMPTS OF BOTH TAKES SAVED" in line and "NOTE-ON-PROMPT" in line and "WRONGPROMPT-MARK" not in line and "FIXEDPROMPT-MARK" not in line, line[:300])
+check("the header and the role tell the keeper to read the prompts through sample_origin and judge what changed itself, never to assume", "sample_origin" in qc.LIB_HEADER and "Never assume what changed without reading them" in qc.ROLE)
+qc._run_claude = scripted
+script[:] = [{"relevant": [], "needs": [{"kind": "sample_origin", "id": f"S{pm_mo}", "why": "what the corrected prompt said"}]},
+             {"relevant": [{"id": f"S{pm_mo}", "why": "w", "check": "c", "wrong_pattern": "p"}], "advice": "", "not_covered": ""}]
+res = qc.consult("sync-test", dict(CTX), "how was the height fixed", "qc")
+check("sample_origin brings both prompts whole to the keeper, as evidence for that answer, and nothing of them enters the library", "WRONGPROMPT-MARK" in calls[-1] and "FIXEDPROMPT-MARK" in calls[-1] and "NOTE-ON-PROMPT" in calls[-1] and "WRONGPROMPT-MARK" not in qc._digest(), calls[-1][:400])
+check("the answer says the sample has a prompt pair and the admin's note, and never the prompts or a diff", res["relevant"][0]["prompts"] == "pair" and res["relevant"][0]["prompt_note"].startswith("NOTE-ON-PROMPT") and not any(k in res["relevant"][0] for k in ("wrong_prompt", "fixed_prompt", "prompt_change", "diff")), str(sorted(res["relevant"][0]))[:300])
+script[:] = [{"hints": [{"id": f"S{pm_mo}", "trigger": "the can is set down after a cut", "right_outcome": "the can keeps its height", "lever": "state the height against the mug at that beat", "caveat": "", "confidence": "high"}]}]
+res = qc.consult("sync-test", dict(CTX), "Beat 1: the can is set down.", "plan")
+check("a planning hint carries the same marker and note, nothing more", res["hints"][0]["prompts"] == "pair" and res["hints"][0]["prompt_note"].startswith("NOTE-ON-PROMPT") and "wrong_prompt" not in res["hints"][0], str(res["hints"])[:300])
+misses.delete(pm_id, "test")
+qc._run_claude = fake_claude
+ask()
+
 print("\n[the consult answer carries the admin's words, honest reasons, fields cut at a sentence]")
 qc._run_claude = scripted
 n = len(calls)

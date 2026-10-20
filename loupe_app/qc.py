@@ -96,7 +96,7 @@ def score(s: dict, ctx: dict) -> float:
     ck = {str(k).lower() for k in (ctx.get("kinds") or [])}
     sc += 3 * len(ck & set(s.get("kinds") or []))
     blob = " ".join([s.get("title", ""), s.get("explanation", ""), s.get("details", ""), s.get("correct_note", ""), s.get("product", ""),
-                     s.get("idea", ""), s.get("better", ""), s.get("missed", "")]).lower()
+                     s.get("idea", ""), s.get("better", ""), s.get("missed", ""), s.get("prompt_note", "")]).lower()
     for p in ctx.get("product_forms") or [x for x in (ctx.get("product"), ctx.get("product_details")) if x]:
         for tok in re.findall(r"[a-z0-9]{4,}", str(p).lower()):
             if tok in blob:
@@ -121,6 +121,14 @@ def search(ctx: dict, limit: int = 8) -> list[dict]:
     return res[:limit]
 
 
+# What a list says about the prompts of a sample's two takes: a marker and the admin's note, never the prompts (they are read whole, on request, and judged by
+# whoever asked: the keeper through sample_origin, a pipeline agent through GET /api/qc/samples/S<id>?prompts=1).
+PROMPTS_SAVED = {"pair": "the prompts of both takes are kept in the record (the prompt that produced the miss and the prompt of the corrected take)",
+                 "wrong": "the prompt of the wrong take is kept in the record (no corrected prompt)",
+                 "fixed": "the prompt of the corrected take is kept in the record (no wrong prompt)"}
+PROMPT_FETCH = 4000      # characters of each prompt handed to the keeper when it asks for sample_origin
+
+
 def sample_lines(s: dict, with_path: bool = True) -> str:
     kind = s.get("sample_kind", "pair")
     t = [f"[{s['id']}] kinds: {', '.join(s['kinds']) or '-'} | model {s['model'] or 'any'} | {s['run'] or 'no run'} video {s['video'] or '-'} @ {s['t_wrong']:.2f}s",
@@ -134,6 +142,9 @@ def sample_lines(s: dict, with_path: bool = True) -> str:
         t.append("  NO RIGHT VERSION: a miss example only")
     elif s["correct_note"]:
         t.append(f"  CORRECT: {s['correct_note'][:400]}")
+    if s.get("prompts") in PROMPTS_SAVED:
+        t.append("  PROMPTS: " + PROMPTS_SAVED[s["prompts"]] + ": read them whole from GET /api/qc/samples/" + s["id"] + "?prompts=1 and judge what changed"
+                 + (f"; the admin's note on the prompt: {s['prompt_note'][:400]}" if s.get("prompt_note") else ""))
     if with_path:
         if not s.get("n_frames"):
             t.append(f"  image (a text card with the admin's words and the product sample; this scenario has no frames): {s['composite_path']}")
@@ -149,7 +160,7 @@ def brief(ctx: dict, limit: int = 8) -> dict:
     text = (f"{len(sam)} sample(s) from the library that match this video ({ctx.get('model') or 'any model'}; "
             f"{', '.join(ctx.get('kinds') or []) or 'any kind'}). Look at each image; compare the marked region with the same place in the video under QC.\n\n"
             + "\n\n".join(sample_lines(s) for s in sam)) if sam else "No sample in the library matches this video."
-    return {"mode": "brief", "samples": [{k: s[k] for k in ("id", "title", "kinds", "model", "details", "correct_note", "idea", "better", "missed", "sample_kind", "has_right", "frames", "n_frames", "composite_path", "image_url", "score")} for s in sam],
+    return {"mode": "brief", "samples": [{k: s[k] for k in ("id", "title", "kinds", "model", "details", "correct_note", "idea", "better", "missed", "prompts", "prompt_note", "sample_kind", "has_right", "frames", "n_frames", "composite_path", "image_url", "score")} for s in sam],
             "text": text, "library_size": len(library())}
 
 
@@ -169,7 +180,9 @@ def frames_text(s: dict) -> str:
 
 LIB_HEADER = ("One line per sample: id | kinds | model | title (the admin's own words) | the admin's other notes when there are any | "
               "where it came from (run, video, time, mode, the product when the admin named it) | its frames (each WRONG, RIGHT or EXAMPLE, with its time) | "
-              "its kind | the path of its image (Read it). An empty kinds field means the admin did not tag the sample: judge from the words and the image. "
+              "its kind | whether the prompts of its two takes are saved (the prompt that produced the miss and the prompt of the corrected take; they are NOT in this list: "
+              "ask for them with sample_origin, and the admin's one-line note on the prompt, when there is one, is in the notes) | the path of its image (Read it). "
+              "An empty kinds field means the admin did not tag the sample: judge from the words and the image. "
               "This is the admin's record of past misses and your only memory of them; Loupe can fetch more about a sample or about the video under QC when you ask "
               "(see ASK, DO NOT GUESS).")
 
@@ -194,13 +207,19 @@ def _digest() -> str:
         notes = []
         if len(lib) <= 250:
             for lab, key in (("miss", "explanation"), ("wrong here", "details"), ("correct", "correct_note"), ("idea", "idea"),
-                             ("could be better", "better"), ("agents missed", "missed")):
+                             ("could be better", "better"), ("agents missed", "missed"), ("prompt note", "prompt_note")):
                 if s.get(key):
                     notes.append(f"{lab}: {s[key][:240]}")
         org = _origin(s)
         parts = [s["id"], ",".join(s["kinds"]), s["model"] or "any", s["title"]] + notes + ([org] if org else []) + [frames_text(s)]
         if kind_note.get(s.get("sample_kind")):
             parts.append(kind_note[s["sample_kind"]])
+        if s.get("prompts") == "pair":
+            parts.append("PROMPTS OF BOTH TAKES SAVED (ask sample_origin to read them)")
+        elif s.get("prompts") == "wrong":
+            parts.append("PROMPT OF THE WRONG TAKE SAVED, no corrected prompt (ask sample_origin to read it)")
+        elif s.get("prompts") == "fixed":
+            parts.append("PROMPT OF THE CORRECTED TAKE SAVED, no wrong prompt (ask sample_origin to read it)")
         parts.append(f"image: {s['composite_path']}")
         lines.append(" | ".join(parts))
     return "\n".join(lines) or "(the library is empty)"
@@ -216,7 +235,7 @@ def _sig() -> str:
             m = os.stat(s["composite_path"]).st_mtime_ns
         except OSError:
             m = 0
-        parts.append(f"{s['id']}:{s['updated']}:{m}")
+        parts.append(f"{s['id']}:{s['updated']}:{m}:{s.get('prompts_sig', '')}")      # the prompts of the two takes count too: the keeper re-reads them on request
     return f"{len(lib)}:" + hashlib.sha1("\n".join(parts).encode("utf-8")).hexdigest()[:16]
 
 
@@ -230,6 +249,13 @@ ROLE = ("You are the Loupe keeper of a video-generation pipeline. You hold a lib
         "visual pattern to match: for QC compare the video with the idea and with what was missed, and for planning let one justify a hint only when a beat of the plan matches the "
         "situation it describes, under the same rules as any hint. For QC a miss example still shows the wrong pattern to look for; for planning, give a hint from one only when the admin's words "
         "let you state the right outcome positively, or the lever is a plain restatement at the matching beat, and then at most medium confidence. "
+        "Some samples say PROMPTS OF BOTH TAKES SAVED (or of one take): the admin kept the prompt that produced the miss and the prompt of the corrected take. "
+        "They are not in your digest: ask for them with sample_origin (they come whole, as evidence for that one answer) when the question is about how the video was or "
+        "should be prompted, when a hint of yours would rest on that sample, or when a QC question asks what was fixed by prompting; then read both yourself and judge what the "
+        "corrected prompt did differently and whether that difference is the mechanism the question is about. Never assume what changed without reading them, and never "
+        "treat the corrected prompt as a rule: it is one admin judgement about one video. In a planning answer a lever built from them names the mechanism (what the corrected "
+        "prompt stated, at which beat, through which of the writer's tools) in your own words, never a sentence to paste; in a QC answer the check names what the corrected "
+        "take's prompt secured, so the agent looks for exactly that in the video. "
         "You may Read a sample's image (path given) to describe it, nothing else. "
         "Reason from mechanisms, not labels: a sample is relevant when it and the video share a product detail (form, size, opening, posture) and a "
         "scene mechanism, and you say which; a sample about another product form applies only through the same mechanism. Every why, check, trigger, "
@@ -253,7 +279,7 @@ ROLE = ("You are the Loupe keeper of a video-generation pipeline. You hold a lib
         '"lever":"<which tool, at which beat, how>","caveat":"<when it does not apply>","confidence":"high|medium|low","model_independent":false}],'
         '"none_reason":"<one phrase when hints is empty>"} '
         "ASK, DO NOT GUESS. When you cannot judge something because it is missing or unclear (what this plan intended at a checkpoint, the product registry row, "
-        "how the video under QC looks at a time the question does not show, where a sample came from, or what the QC agent itself sees), put a needs list (at most 3) "
+        "how the video under QC looks at a time the question does not show, where a sample came from or the prompts of its two takes, or what the QC agent itself sees), put a needs list (at most 3) "
         "in your JSON object instead of guessing (writing the gap in not_covered is not asking: when what is missing is one of the kinds below, ask for it), each item "
         '{"kind":"video_frame|video_plan|request_prompt|product_registry|sample_origin|ask_agent","t":<seconds, video_frame only>,"id":"S12, sample_origin only",'
         '"question":"<ask_agent only: what the QC agent can answer by looking at its own video>","why":"<what you cannot judge without it>"}'
@@ -438,7 +464,8 @@ def plan_hints_from(parsed, ctx: dict, lib: dict, cap: int = 3, why: list | None
             _why(why, s["id"], f"another model family ({sm}) and not model-independent")
             continue
         out.append({"id": s["id"], "trigger": _clip(r["trigger"], 600), "right_outcome": _clip(r.get("right_outcome", ""), 600),
-                    "lever": _clip(r["lever"], 700), "caveat": _clip(r.get("caveat", ""), 500), "confidence": conf, "model_independent": indep})
+                    "lever": _clip(r["lever"], 700), "caveat": _clip(r.get("caveat", ""), 500), "confidence": conf, "model_independent": indep,
+                    "prompts": s.get("prompts", ""), "prompt_note": _clip(s.get("prompt_note", ""), 400)})
     out.sort(key=lambda h: 0 if h["confidence"] == "high" else 1)
     for extra in out[cap:]:
         _why(why, extra["id"], f"beyond the cap of {cap} hints")
@@ -504,12 +531,18 @@ def _fulfil(n: dict, ctx: dict, d: Path, plan: bool) -> dict:
             if not s:
                 return no(f"{sid or 'that id'} is not in the library")
             lines = [f"{sid}: {_origin(s) or 'no origin recorded'}; model {s['model'] or 'any'}"]
+            pp = misses.prompts_of(s["moment_id"]) or {}        # the prompts of the two takes, as the admin saved them: whole, judged by the keeper, never compared here
+            for key, what in (("wrong_prompt", "the prompt of the wrong take (as the admin saved it)"), ("fixed_prompt", "the prompt of the corrected take (as the admin saved it)")):
+                if pp.get(key):
+                    lines.append(f"{what}:\n" + _clip(pp[key], PROMPT_FETCH))
+            if pp.get("prompt_note"):
+                lines.append("the admin's note on the prompt: " + _clip(pp["prompt_note"], 600))
             srd = runs.run_dir(s["run"]) if s.get("run") else None
             if srd:
                 plan_txt = _read_text(srd / "40-briefs" / f"video-{core.nn(s['video'])}-plan.md", 1500)
                 if plan_txt:
                     lines.append("the plan of that video (first 1500 characters):\n" + plan_txt)
-                pr = _request_prompt(srd, s["video"], 1200)
+                pr = _request_prompt(srd, s["video"], 1200) if not pp.get("wrong_prompt") else ""      # the run folder's request only when the admin saved no prompt
                 if pr:
                     lines.append("the request prompt of that video: " + pr)
                 for k, ps in enumerate(runs.product_samples(s["run"], s["video"])[:2], 1):
@@ -662,7 +695,7 @@ def consult(key_name: str, ctx: dict, question: str, purpose: str = "qc") -> dic
                         rel.append({"id": s["id"], "why": _clip(r.get("why", ""), 600), "check": _clip(r.get("check", ""), 600),
                                     "wrong_pattern": _clip(r.get("wrong_pattern", ""), 300), "composite_path": s["composite_path"], "image_url": s["image_url"],
                                     "title": _clip(s.get("title", ""), 600), "model": s.get("model", ""), "run": s.get("run", ""), "video": s.get("video", ""),
-                                    "t_wrong": s.get("t_wrong"), "kinds": s.get("kinds", []),
+                                    "t_wrong": s.get("t_wrong"), "kinds": s.get("kinds", []), "prompts": s.get("prompts", ""), "prompt_note": _clip(s.get("prompt_note", ""), 400),
                                     "details": s["details"], "correct_note": s["correct_note"], "has_right": s.get("has_right", True),
                                     "idea": s.get("idea", ""), "better": s.get("better", ""), "missed": s.get("missed", ""), "sample_kind": s.get("sample_kind", "pair"),
                                     "frames": s.get("frames", []), "n_frames": s.get("n_frames", 0)})

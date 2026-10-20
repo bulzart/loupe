@@ -12,7 +12,7 @@ Loupe is a local web app for the video pipelines /analyze-then-pick, /analyze-th
 
 ## Keep the docs in step
 
-After every edit to Loupe (code, routes, UI, hooks, keys, the `atp.py` and `atg.py` commands that call it), update in the same sitting:
+After every edit to Loupe (code, routes, UI, hooks, keys, the `atp.py`, `atg.py` and `awl.py` commands that call it), update in the same sitting:
 
 - `README.md` in this folder.
 - The build prompt `C:\Users\Glaresquare1\Documents\prompts\loupe.txt` (outside this repo): copy it to `loupe.txt.bak-<date>-<why>` first, keep CRLF prose with no headings, keep every sentence true to the code.

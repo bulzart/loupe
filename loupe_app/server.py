@@ -404,6 +404,12 @@ def product_sample(h):
                                           for i, p in enumerate(runs.product_samples(run, video, wrong))]})
 
 
+@route("GET", "/api/request-prompt", scope="runs:read")
+def request_prompt(h):
+    """The prompt of the request file a version of a video came from (the attempt in its path picks the request): read for the report form, never judged."""
+    h.send_json({"ok": True, "prompt": "", **runs.request_prompt_for(h.q.get("run", ""), h.q.get("video", ""), h.q.get("path", ""))})
+
+
 @route("GET", "/api/product-sample/image", scope="runs:read")
 def product_sample_image(h):
     ps = runs.product_samples(h.q.get("run", ""), h.q.get("video", ""), h.q.get("wrong", ""))
@@ -613,7 +619,7 @@ def moments_image(h, mid):
 # ======================================================================= QC (what the QC phase and the keeper use)
 def _qc_sample(s: dict) -> dict:
     return {k: s[k] for k in ("id", "title", "explanation", "details", "correct_note", "kinds", "model", "mode", "product", "run", "video",
-                              "t_wrong", "t_fixed", "frames", "n_frames", "idea", "better", "missed", "sample_kind", "has_right", "image_url", "zoom_url", "composite_path", "created") if k in s}
+                              "t_wrong", "t_fixed", "frames", "n_frames", "idea", "better", "missed", "prompts", "prompt_note", "sample_kind", "has_right", "image_url", "zoom_url", "composite_path", "created") if k in s}
 
 
 @route("GET", "/api/qc/samples", scope="qc:read")
@@ -629,7 +635,10 @@ def qc_sample(h, mid):
     s = next((x for x in qc.library() if x["moment_id"] == int(mid)), None)
     if not s:
         raise LookupError("S" + mid)
-    h.send_json({"ok": True, "sample": _qc_sample(s)})
+    out = _qc_sample(s)
+    if h.q.get("prompts") in ("1", "true", "yes"):        # the prompts of the two takes, whole: one sample, on request only (never in a list, a brief or the keeper's digest)
+        out.update({k: v for k, v in (misses.prompts_of(int(mid)) or {}).items() if k in ("wrong_prompt", "fixed_prompt", "prompt_note")})
+    h.send_json({"ok": True, "sample": out})
 
 
 @route("GET", r"/api/qc/samples/S(\d+)/image", scope="qc:read")

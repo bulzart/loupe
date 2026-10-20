@@ -45,6 +45,29 @@ def _kinds(v) -> str:
 # frame (its index).  An older moment holds no frames column at all: it is the miss frame at t_wrong and, when the report has a right version, the right frame at t_fixed.
 FRAME_DESC = {"wrong": "as generated", "fixed": "correct version"}
 TITLE_MAX = 2000       # the title is often a whole paragraph and is burned into the image in full: never cut it short
+# The prompts of the two takes: the prompt that produced Video A (the miss) and the prompt of Video B (the corrected take), plus one line of the admin's own
+# words on what in the prompt made the difference.  They live in the misses table only: never in the composite or its meta, never in the keeper's digest, and
+# nothing here compares or diffs them (the keeper and the agents read both whole, on request, and judge what changed).  Every listing carries only the marker
+# `prompts` (pair | wrong | fixed | empty) and the note; the pair itself is served by prompts_of() to the single-sample route and the keeper's sample_origin fetch.
+PROMPT_COLS = ("wrong_prompt", "fixed_prompt", "prompt_note")
+PROMPT_MAX = 12000     # per prompt: a storage bound, far above any video model's prompt length
+
+
+def _prompt_text(v) -> str:
+    return str(v or "").replace("\r\n", "\n").strip()[:PROMPT_MAX]
+
+
+def prompts_kind(miss: dict) -> str:
+    """Which prompts the report holds: 'pair' (both takes), 'wrong' (the miss's prompt only), 'fixed' (the corrected take's only) or ''."""
+    w, f = bool((miss.get("wrong_prompt") or "").strip()), bool((miss.get("fixed_prompt") or "").strip())
+    return "pair" if w and f else ("wrong" if w else ("fixed" if f else ""))
+
+
+def prompts_sig(miss: dict) -> str:
+    """A short version of the three prompt fields, so the keeper's library version changes when they do (it then re-reads them on request)."""
+    import hashlib
+    blob = "\x1f".join(str(miss.get(k) or "") for k in PROMPT_COLS)
+    return hashlib.sha1(blob.encode("utf-8")).hexdigest()[:10] if blob.strip("\x1f") else ""
 
 
 def _frames_clean(raw, miss: dict) -> list[dict]:
@@ -126,11 +149,12 @@ def create(data: dict, actor: str) -> dict:
     con = core.db()
     try:
         cur = con.execute("""INSERT INTO misses(created,updated,run,video,title,explanation,kinds,model,mode,product,status,wrong_path,wrong_label,
-                             fixed_path,fixed_label,sample_on) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                             fixed_path,fixed_label,sample_on,wrong_prompt,fixed_prompt,prompt_note) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                           (core.now(), core.now(), str(data.get("run") or ""), core.nn(data.get("video")), str(data["title"]).strip()[:TITLE_MAX],
                            str(data.get("explanation") or "").strip(), _kinds(data.get("kinds")), str(data.get("model") or ""),
                            str(data.get("mode") or ""), str(data.get("product") or ""), "active", wrong, str(data.get("wrong_label") or ""),
-                           fixed, str(data.get("fixed_label") or ""), 0 if data.get("product_sample") is False else 1))
+                           fixed, str(data.get("fixed_label") or ""), 0 if data.get("product_sample") is False else 1,
+                           _prompt_text(data.get("wrong_prompt")), _prompt_text(data.get("fixed_prompt")), _prompt_text(data.get("prompt_note"))[:1000]))
         con.commit()
         mid = cur.lastrowid
     finally:
@@ -143,6 +167,7 @@ def _miss_row(r) -> dict:
     d = dict(r)
     d["kinds"] = [k for k in (d.get("kinds") or "").split(",") if k]
     d["product_sample"] = d.get("sample_on") != 0       # the product sample is shown in the saved image unless the admin turned it off
+    d["prompts"] = prompts_kind(d)
     return d
 
 
@@ -195,6 +220,9 @@ def update(mid: int, patch: dict, actor: str) -> dict | None:
         cols["sample_on"] = 0 if patch["product_sample"] in (False, 0, "0", "false") else 1
     if "kinds" in patch:
         cols["kinds"] = _kinds(patch["kinds"])
+    for k in PROMPT_COLS:       # the prompts of the two takes: stored, never burned in (no image is rebuilt for them)
+        if k in patch:
+            cols[k] = _prompt_text(patch[k])[:1000] if k == "prompt_note" else _prompt_text(patch[k])
     for k in ("wrong_path", "fixed_path"):
         if k in patch and (patch[k] or "") != cur[k]:
             v = str(patch[k] or "")
@@ -401,8 +429,24 @@ def moment_view(r, miss: dict) -> dict:
             "correct_note": r["correct_note"], "kinds": kinds, "model": miss["model"], "mode": miss["mode"], "product": miss["product"],
             "run": miss["run"], "video": miss["video"], "t_wrong": r["t_wrong"], "t_fixed": r["t_fixed"], "shapes": compose.clean_shapes(json.loads(r["shapes"] or "[]")),
             "status": r["status"], "miss_status": miss["status"], "created": r["created"], "updated": r["updated"],
+            "prompts": prompts_kind(miss), "prompt_note": miss.get("prompt_note") or "", "prompts_sig": prompts_sig(miss),
             "has_right": has_right, "image_url": f"/api/moments/{mid}/image?kind=composite", "zoom_url": f"/api/moments/{mid}/image?kind=zoom" if (d / "zoom.png").exists() else "",
             "composite_path": str(d / "composite.png")}
+
+
+def prompts_of(mid: int) -> dict | None:
+    """The prompts of the two takes of the report a sample (moment id) belongs to, whole, with the admin's note: for the single-sample route (?prompts=1)
+    and the keeper's sample_origin fetch only.  None when the sample does not exist; empty strings when the admin saved no prompt."""
+    con = core.db()
+    try:
+        r = con.execute("SELECT m.id AS miss_id, m.title, m.model, m.run, m.video, m.wrong_prompt, m.fixed_prompt, m.prompt_note FROM moments mo JOIN misses m ON m.id=mo.miss_id WHERE mo.id=?", (mid,)).fetchone()
+    finally:
+        con.close()
+    if not r:
+        return None
+    d = {k: (r[k] or "") for k in ("title", "model", "run", "video", "wrong_prompt", "fixed_prompt", "prompt_note")}
+    d.update({"id": f"S{mid}", "miss_id": r["miss_id"], "prompts": prompts_kind(d)})
+    return d
 
 
 def moment(mid: int) -> dict | None:
