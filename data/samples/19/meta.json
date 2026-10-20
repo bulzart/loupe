@@ -1,0 +1,39 @@
+{
+ "moment": 19,
+ "miss": 14,
+ "title": "product render is looking fake, sitting in the air or in just a little bit of the desks edge (which is still wrong in the way that it is sitting and not real life physics and logical feeling), everythings wrong about the product in this one",
+ "model": "wan3_0_prime",
+ "run": "20261019-235823-19",
+ "video": "07",
+ "t_wrong": 3.3,
+ "t_fixed": 3.3,
+ "sample": "S19",
+ "frames": [
+  {
+   "n": 1,
+   "role": "wrong",
+   "from": "as generated",
+   "t": 3.3
+  },
+  {
+   "n": 2,
+   "role": "wrong",
+   "from": "as generated",
+   "t": 4.2
+  },
+  {
+   "n": 3,
+   "role": "wrong",
+   "from": "as generated",
+   "t": 6.533
+  }
+ ],
+ "product_samples": [
+  {
+   "asset": "A15",
+   "label": "P1 Cherry Cola canonical front (A15), padded, shape, colours and label only",
+   "file": "cherry cola front - cans usa.png"
+  }
+ ],
+ "shapes": []
+}

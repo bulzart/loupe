@@ -1,8 +1,8 @@
 {
- "exported": "2026-10-20T21:55:42+02:00",
+ "exported": "2026-10-20T23:59:35+02:00",
  "tables": {
-  "misses": 11,
-  "moments": 12,
+  "misses": 15,
+  "moments": 16,
   "flags": 26,
   "flag_inputs": 95
  },
@@ -17,6 +17,6 @@
   "consults"
  ],
  "flags_scrubbed": 0,
- "samples": 12,
+ "samples": 16,
  "note": "misses, moments, flags and flag inputs only: no passphrase, session, API key, capture, audit, usage, file index or consult; signed URLs removed from the flag records; the misses' video paths are those of the machine that exported (the sample images do not need them)"
 }

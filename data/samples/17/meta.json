@@ -1,0 +1,50 @@
+{
+ "moment": 17,
+ "miss": 13,
+ "title": "The wrong sample's product (which is the can/tin) is loking fake and like ai slop, texture,lightning isn't correct and is looking like more of a product image placement through photoshop rather than an actual product render in the video scene",
+ "model": "wan3_0_prime",
+ "run": "20261019-235823-19",
+ "video": "01",
+ "t_wrong": 0.0,
+ "t_fixed": 0.0,
+ "sample": "S17",
+ "frames": [
+  {
+   "n": 1,
+   "role": "wrong",
+   "from": "as generated",
+   "t": 0.0
+  },
+  {
+   "n": 2,
+   "role": "right",
+   "from": "correct version",
+   "t": 0.0
+  }
+ ],
+ "product_samples": [
+  {
+   "asset": "A15",
+   "label": "P1 Cherry Cola canonical front (A15), padded, shape, colours and label only",
+   "file": "cherry cola front - cans usa.png"
+  }
+ ],
+ "shapes": [
+  {
+   "type": "rect",
+   "frame": 0,
+   "x1": 0.5593903878211036,
+   "y1": 0.45486732921769135,
+   "x2": 0.9999016955890485,
+   "y2": 0.8584071049648049
+  },
+  {
+   "type": "rect",
+   "frame": 1,
+   "x1": 0.30688308520771873,
+   "y1": 0.4566371799570269,
+   "x2": 0.8417896732116519,
+   "y2": 0.8212389228618251
+  }
+ ]
+}

@@ -1,0 +1,36 @@
+{
+ "moment": 21,
+ "miss": 16,
+ "title": "wrong placement, wrong product render, everything's wrong here",
+ "model": "wan3_0_prime",
+ "run": "20261019-235823-19",
+ "video": "17",
+ "t_wrong": 5.906,
+ "t_fixed": 5.906,
+ "sample": "S21",
+ "frames": [
+  {
+   "n": 1,
+   "role": "wrong",
+   "from": "as generated",
+   "t": 5.906
+  }
+ ],
+ "product_samples": [
+  {
+   "asset": "A41",
+   "label": "P2 Peach Vibe canonical front (A41), padded, shape, colours and label only",
+   "file": "peach vibe front - cans usa.png"
+  }
+ ],
+ "shapes": [
+  {
+   "type": "arrow",
+   "frame": 0,
+   "x1": 0.2982300164776917,
+   "y1": 0.3893805647318342,
+   "x2": 0.11887896002335299,
+   "y2": 0.3008849895105953
+  }
+ ]
+}
