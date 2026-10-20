@@ -1,6 +1,6 @@
 # Loupe: working rules
 
-Loupe is a local web app for the video pipelines /analyze-then-pick and /analyze-then-generate (Python standard library + SQLite + Pillow + ffmpeg, vanilla-JS UI): Higgsfield flags, generation-miss samples and a read-only QC keeper. `README.md` is the operating guide. This folder is its own git repository; `origin` is the private GitHub repo `bulzart/loupe`.
+Loupe is a local web app for the video pipelines /analyze-then-pick, /analyze-then-generate and /analyze-with-loupe (Python standard library + SQLite + Pillow + ffmpeg, vanilla-JS UI): Higgsfield flags, generation-miss samples and a read-only QC keeper. `README.md` is the operating guide. This folder is its own git repository; `origin` is the private GitHub repo `bulzart/loupe`.
 
 ## Always commit changes
 

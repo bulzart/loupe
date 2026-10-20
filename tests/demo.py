@@ -11,6 +11,7 @@ TMP = Path(tempfile.gettempdir()) / "loupe-demo"
 os.environ["LOUPE_DATA"] = str(TMP / "data")
 os.environ["ATP_HOME"] = str(TMP / "atp")
 os.environ["ATG_HOME"] = str(TMP / "atg")
+os.environ["AWL_HOME"] = str(TMP / "awl")
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from loupe_app import core, flags, media, server  # noqa: E402
 

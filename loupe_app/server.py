@@ -265,7 +265,7 @@ def session(h):
 @route("GET", "/api/settings", scope="admin")
 def get_settings(h):
     h.send_json({"ok": True, "allowed_roots": core.setting_get("allowed_roots", []), "default_roots": [str(r) for r in media.default_roots()],
-                 "keeper_model": core.setting_get("keeper_model", qc.DEFAULT_MODEL), "atp": str(core.ATP), "atg": str(core.ATG), "data": str(core.DATA), "kinds": misses.KINDS})
+                 "keeper_model": core.setting_get("keeper_model", qc.DEFAULT_MODEL), "atp": str(core.ATP), "atg": str(core.ATG), "awl": str(core.AWL), "data": str(core.DATA), "kinds": misses.KINDS})
 
 
 @route("POST", "/api/settings", scope="admin")

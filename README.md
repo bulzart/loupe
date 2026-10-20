@@ -1,6 +1,6 @@
 # Loupe
 
-The web app of the video pipelines (`/analyze-then-pick` and `/analyze-then-generate`; the runs of both can be browsed here). It does three things:
+The web app of the video pipelines (`/analyze-then-pick`, `/analyze-then-generate` and `/analyze-with-loupe`; the runs of all three can be browsed here). It does three things:
 
 1. **Flag record.** Every prompt and video Higgsfield flagged, refused, withheld or rerouted, with the evidence the pipeline could
    gather (the request, each input with its file, thumbnail and file facts, the same file in earlier runs, the raw answer the
@@ -85,7 +85,7 @@ product's details, not only its name, so samples can be matched this way.
 
 ## Runs
 
-The run browser, the product sample finder, the usage index and the evidence for a flag read `runs/` of every library in `core.LIBS` (`ATP_HOME`, default `~/.claude/analyze-then-pick`, and `ATG_HOME`, default `~/.claude/analyze-then-generate`); each run is listed with its library (`lib`: `atp` or `atg`) and the media of both are readable. A run name that exists in both libraries resolves to the one whose `state.json` changed last.
+The run browser, the product sample finder, the usage index and the evidence for a flag read `runs/` of every library in `core.LIBS` (`ATP_HOME`, `ATG_HOME`, `AWL_HOME`; `ATP_HOME` default `~/.claude/analyze-then-pick`, and `ATG_HOME`, default `~/.claude/analyze-then-generate`); each run is listed with its library (`lib`: `atp` or `atg`) and the media of both are readable. A run name that exists in both libraries resolves to the one whose `state.json` changed last.
 
 ## Data (not in git)
 
