@@ -46,6 +46,7 @@ def export(dst: Path | None = None) -> dict:
         src.close()
     con = sqlite3.connect(str(tmp))
     try:
+        con.execute("PRAGMA journal_mode=DELETE")          # one plain file, no -wal / -shm sidecars beside the seed
         names = {r[0] for r in con.execute("SELECT name FROM sqlite_master WHERE type='table'")}
         for t in DROP:
             if t in names:
@@ -63,8 +64,9 @@ def export(dst: Path | None = None) -> dict:
         con.execute("VACUUM")
     finally:
         con.close()
-    if dst.exists():
-        dst.unlink()
+    for side in (dst, dst.with_name(dst.name + "-wal"), dst.with_name(dst.name + "-shm"), tmp.with_name(tmp.name + "-wal"), tmp.with_name(tmp.name + "-shm")):
+        if side.exists():
+            side.unlink()
     tmp.replace(dst)
     samples = core.DATA / "samples"
     manifest = {"exported": core.now(), "tables": counts, "dropped": list(DROP), "flags_scrubbed": scrubbed,

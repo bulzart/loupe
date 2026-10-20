@@ -13,3 +13,6 @@ node_modules/
 .env
 *.bak
 *.bak-*
+data/seed/*-wal
+data/seed/*-shm
+data/seed/*.tmp
