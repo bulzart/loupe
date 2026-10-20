@@ -5,7 +5,7 @@ The web app of the video pipelines (`/analyze-then-pick`, `/analyze-then-generat
 1. **Flag record.** Every prompt and video Higgsfield flagged, refused, withheld or rerouted, with the evidence the pipeline could
    gather (the request, each input with its file, thumbnail and file facts, the same file in earlier runs, the raw answer the
    hook saved). It replaces the old `caught_flags.html` page.
-2. **Generation misses.** One page, no second step: you pick a run and a video, the frames play side by side (two to start with: the miss from Video A and the right version from Video B, on the same time), and you
+2. **Generation misses.** One page, no second step: you pick a run and a video, the frames play side by side (two to start with: the miss from Video A and the right version from Video B, on the same time; choosing the right version later, even after marks were drawn on the first frame, adds its frame once at the same time, and the marks stay on the frame they were drawn on), and you
    draw an arrow, circle, box or note straight on any of them (red on a frame you call Wrong, green on a frame you call Right). You choose what each
    frame is: Wrong or Right, which video it comes from (so an early frame of one video can be the right one), and its own time (slider, 1-frame buttons or a time box); **+ Add a frame** adds as many as you need.
    Nothing is marked or copied for you. Undo / Redo / Ctrl+Z / Ctrl+Y work. Everything is optional: a right version, a wrong frame, even a video or any frame (a report can be in words only: the idea, what could have been better, what the AI agents missed or could not understand).

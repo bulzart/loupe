@@ -348,9 +348,12 @@ export async function work(qs) {
     f.src = src; loadFrame(f);
   };
   let syncRight = () => {};
+  let hadFixed = false;      // a right version was chosen before: its frame is offered once, not again after the admin removed it
   const setSources = () => {      // the version pickers changed
     for (const f of frames.filter((x) => !state[x.src])) removeFrame(f);      // frames of a video that is gone fall away
-    if (state.fixed && frames.length === 1 && !ws.shapes.length && !ws.editing && frames[0].src === 'wrong' && frames[0].role === 'wrong') addFrame('fixed', 'right', frames[0].t);      // two frames to start with
+    const justChosen = !!state.fixed && !hadFixed;      // chosen just now: its frame comes even when the first frame was marked already (marks belong to their frame and stay)
+    hadFixed = !!state.fixed;
+    if (state.fixed && frames.length === 1 && !ws.editing && frames[0].src === 'wrong' && frames[0].role === 'wrong' && (justChosen || !ws.shapes.length)) addFrame('fixed', 'right', frames[0].t);      // two frames to start with
     frames.forEach((f) => { styleFrame(f); loadFrame(f); });
     drawPlayers(); loadSample();
   };

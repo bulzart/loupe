@@ -123,6 +123,27 @@ const ok = (name, cond, info = '') => { console.log((cond ? '  ok   ' : '  FAIL 
   const allBox5 = walk(allLabel, (e) => e.tag === 'input')[0];
   allBox5.checked = true; (allBox5.listeners.change || []).forEach((f) => f());
   ok('ticking it lists every file, the generated ones still named as such', selects5()[0].options.length === 5 && optTexts(selects5()[0]).includes('a2 · with-original-audio.mp4') && optTexts(selects5()[0]).includes('capcut-preview.mp4'), optTexts(selects5()[0]));
+  // choosing the right version after the first frame was marked still brings its frame, once; the mark stays on the first frame
+  withMoment = false; noRight = true; sent.length = 0;
+  const root6 = await work({ run: 'R', video: '03', miss: '1' });
+  const frames6 = () => walk(root6, (e) => e.className === 'players')[0].children.filter((e) => e.className.split(/\s+/).includes('player') && e.style.display !== 'none' && walk(e, (x) => x.tag === 'canvas').length);
+  const cv6 = walk(frames6()[0], (e) => e.tag === 'canvas')[0];
+  (cv6.listeners.pointerdown || []).forEach((f) => f({ preventDefault() {}, clientX: 100, clientY: 140, pointerId: 1 }));
+  click(walk(root6, (e) => e.tag === 'button' && e.text === 'Box')[0]);
+  (cv6.listeners.pointerdown || []).forEach((f) => f({ preventDefault() {}, clientX: 100, clientY: 140, pointerId: 1 }));
+  (cv6.listeners.pointermove || []).forEach((f) => f({ clientX: 220, clientY: 350 }));
+  (cv6.listeners.pointerup || []).forEach((f) => f({}));
+  ok('a report with no right version starts with one frame, and a box is drawn on it', frames6().length === 1);
+  const fixedSel6 = walk(root6, (e) => e.tag === 'select')[1];
+  fixedSel6.value = 'A2.mp4'; (fixedSel6.listeners.change || []).forEach((f) => f());
+  ok('choosing the right version after marking the first frame still adds a Right frame from Video B', frames6().length === 2 && frames6()[1].className.includes('role-right') && walk(frames6()[1], (e) => e.tag === 'select')[0].value === 'fixed', String(frames6().length));
+  fixedSel6.value = 'A.mp4'; (fixedSel6.listeners.change || []).forEach((f) => f());
+  ok('choosing another right version afterwards does not add a third frame', frames6().length === 2);
+  sent.length = 0;
+  await Promise.all(walk(root6, (e) => e.tag === 'button' && e.text === 'Mark this moment').flatMap((b) => (b.listeners.click || []).map((f) => f())));
+  const post6 = sent.find((x) => x.method === 'POST' && x.url.endsWith('/moments'));
+  ok('the mark stays on the first frame, which stays Wrong; the new frame is Right from Video B', post6 && post6.body.frames.length === 2 && post6.body.frames[0].role === 'wrong' && post6.body.frames[0].src === 'wrong' && post6.body.frames[1].role === 'right' && post6.body.frames[1].src === 'fixed'
+    && post6.body.shapes.length === 1 && post6.body.shapes[0].frame === 0, JSON.stringify(post6 && post6.body));
   console.log(fails ? `${fails} failed` : 'all passed');
   process.exit(fails ? 1 : 0);
 })().catch((e) => { console.log('FAIL the page threw: ' + (e && e.stack || e)); process.exit(1); });
