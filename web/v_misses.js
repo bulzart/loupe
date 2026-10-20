@@ -130,7 +130,7 @@ export async function work(qs) {
     if (!path) { toast(key === 'wrong' ? 'Pick Video A first' : 'Pick Video B first', true); return; }
     try {
       const d = await api('GET', `/api/request-prompt?run=${encodeURIComponent(qs.run)}&video=${encodeURIComponent(qs.video)}&path=${encodeURIComponent(path)}`);
-      if (d.prompt) { ta.value = d.prompt; toast('Filled from ' + d.request + (d.attempt ? ' (attempt a' + d.attempt + ')' : '')); } else toast('No request file with a prompt was found for that version: paste it', true);
+      if (d.prompt) { ta.value = d.prompt; toast('Filled from ' + d.request + (d.attempt ? ' (attempt a' + d.attempt + ')' : '')); } else toast(d.note || 'No request file with a prompt was found for that version: paste it', true);
     } catch (e) { toast(e.message, true); }
   } }, key === 'wrong' ? 'Fill from the run (Video A)' : 'Fill from the run (Video B)');
   const promptsBox = h('details', { style: 'margin-top:10px', open: !!(miss && (miss.wrong_prompt || miss.fixed_prompt || miss.prompt_note)) },

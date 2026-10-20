@@ -137,19 +137,51 @@ def _identical_attempt(rd: Path, nn: str, p: Path) -> int:
     return best
 
 
+def recorded_outputs(rd: Path, nn: str) -> dict:
+    """What the run itself recorded as the video's finished files: {"clean": Path | None, "preview": Path | None}, from state.json videos[] (the entry the
+    pipeline writes when the take is accepted) and the video's result.json.  Read, not inferred: a file named here is the delivered take's."""
+    out = {"clean": None, "preview": None}
+    st = _json(rd / "state.json") or {}
+    ent = next((v for v in (st.get("videos") or []) if isinstance(v, dict) and core.nn(v.get("video")) == core.nn(nn)), {})
+    res = _json(rd / "60-outputs" / f"video-{core.nn(nn)}" / "result.json") or {}
+    for key in ("clean", "preview"):
+        for src in (ent, res):
+            v = src.get(key) if isinstance(src, dict) else None
+            if isinstance(v, str) and v:
+                p = Path(v)
+                if p.is_file():
+                    out[key] = p
+                    break
+    return out
+
+
 def delivered_attempt(rd: Path, nn: str) -> int:
-    """The attempt whose finished file is the video's clean deliverable, byte for byte (0 when none is): the take its clean video and preview come from."""
-    for clean in (rd / "60-outputs" / f"video-{core.nn(nn)}" / "clean.mp4", rd / "deliverables" / f"video-{core.nn(nn)}-clean.mp4"):
-        if clean.is_file():
+    """The attempt whose finished file is the video's clean video, byte for byte (0 when none is): the take its clean video and preview come from.  The
+    clean video is the one the run recorded (state.json videos[].clean, result.json), else the one at its usual place."""
+    cands = [recorded_outputs(rd, nn)["clean"], rd / "60-outputs" / f"video-{core.nn(nn)}" / "clean.mp4", rd / "deliverables" / f"video-{core.nn(nn)}-clean.mp4"]
+    for clean in cands:
+        if clean and clean.is_file():
             n = _identical_attempt(rd, nn, clean)
             if n:
                 return n
     return 0
 
 
+def _same_file(a: Path, b: Path) -> bool:
+    """The same path, or the same bytes (sizes first, a hash only for the same size)."""
+    try:
+        if a.resolve() == b.resolve():
+            return True
+        return a.stat().st_size == b.stat().st_size and media.sha1_file(a) == media.sha1_file(b)
+    except OSError:
+        return False
+
+
 def attempt_of_path(rd: Path, nn: str, path: str) -> int:
-    """The attempt (1, 2 ...) a picked file of a video belongs to, or 0 when it cannot be told: the attempt folder it sits in (60-outputs/video-NN/a2/raw.mp4),
-    else the attempt it is a copy of."""
+    """The attempt (1, 2 ...) a picked file of a video belongs to, or 0 when it cannot be told.  In order: the attempt folder it sits in
+    (60-outputs/video-NN/a2/raw.mp4); the attempt it is a byte-for-byte copy of (a clean video, a deliverable); the delivered attempt when the file is
+    the run's own recorded clean or preview of this video, or a copy of one (the preview is made from the clean, and both are recorded together when
+    the take is accepted).  Nothing else is assumed: a file that is none of these answers 0, never "the latest attempt"."""
     if not path:
         return 0
     p = Path(path)
@@ -157,7 +189,15 @@ def attempt_of_path(rd: Path, nn: str, path: str) -> int:
         m = re.fullmatch(r"a(\d+)", part)
         if m:
             return int(m.group(1))
-    return _identical_attempt(rd, nn, p) if p.is_file() else 0
+    if not p.is_file():
+        return 0
+    n = _identical_attempt(rd, nn, p)
+    if n:
+        return n
+    rec = recorded_outputs(rd, nn)
+    if any(r and _same_file(p, r) for r in rec.values()):
+        return delivered_attempt(rd, nn)
+    return 0
 
 
 def attempt_for(rd: Path, nn: str, hint: str) -> int:
@@ -373,13 +413,16 @@ def request_prompt_for(run: str, video: str, hint: str = "") -> dict:
     if not rd or not video:
         return {}
     attempt = attempt_for(rd, video, hint)
+    if not attempt:        # never a guess: the admin picks the generated take the file came from, or pastes the prompt
+        return {"prompt": "", "attempt": 0, "note": "which attempt this file came from cannot be told: it sits in no attempt folder, equals no attempt's file and is not "
+                                                   "the run's recorded clean video or preview (or a copy of one). Pick the generated take it came from (a1, a2 …) and fill from it, or paste the prompt."}
     for rf in _request_files(rd, video, attempt):
         req = _json(rf) or {}
         pr = (req.get("params") or {}).get("prompt") if isinstance(req.get("params"), dict) else None
         pr = pr or req.get("prompt")
         if pr:
             return {"prompt": str(pr), "request": rf.name, "attempt": attempt}
-    return {}
+    return {"prompt": "", "attempt": attempt, "note": f"attempt a{attempt} has no request file with a prompt in this run: paste the prompt"}
 
 
 # ------------------------------------------------------------------ usage index (which input went into which request, and what happened)

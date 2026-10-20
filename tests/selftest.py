@@ -326,7 +326,13 @@ def main(with_keeper=False):
     (atp_run / "50-requests" / "video-03-frame-a2-request.json").write_text(json.dumps({"params": {"model": "an_image_model", "prompt": "FRAME: edit the start frame.", "resolution": "2k", "medias": [{"role": "image_references", "value": "m1"}]}}))
     (atp_run / "50-requests" / "video-03-a2-request.json").write_text(json.dumps({"params": {"model": "wan3_0_prime", "duration": 5, "prompt": "Show the can, second attempt.", "medias": [{"role": "image_references", "value": "m1"}]}}))
     shutil.copyfile(atp_run / "60-outputs" / "video-03" / "a2" / "raw.mp4", atp_run / "60-outputs" / "video-03" / "clean.mp4")
-    mkvideo(atp_run / "deliverables" / "video-03-preview.mp4", "0x502020", "blue")
+    mkvideo(atp_run / "60-outputs" / "video-03" / "capcut-preview.mp4", "0x502020", "blue")        # the preview (a burn: equal to no attempt's file)
+    (atp_run / "deliverables").mkdir(exist_ok=True)
+    shutil.copyfile(atp_run / "60-outputs" / "video-03" / "capcut-preview.mp4", atp_run / "deliverables" / "video-03-preview.mp4")
+    mkvideo(atp_run / "60-outputs" / "video-03" / "stray.mp4", "0x205050", "yellow")                 # a file the run never recorded and no attempt holds
+    _st = json.loads((atp_run / "state.json").read_text(encoding="utf-8"))
+    _st["videos"][0].update({"clean": str(atp_run / "60-outputs" / "video-03" / "clean.mp4"), "preview": str(atp_run / "60-outputs" / "video-03" / "capcut-preview.mp4")})
+    (atp_run / "state.json").write_text(json.dumps(_st), encoding="utf-8")
     s, d, _ = req("GET", f"/api/request-prompt?run=20261001-000000-07&video=03&path={quote(wrong)}")
     check("the form can fill a prompt from the run's request file of the version picked (read, not judged)", s == 200 and d.get("prompt", "").startswith("Show the can.") and d.get("request") == "video-03-request.json", str(d)[:200])
     s, d, _ = req("GET", "/api/request-prompt?run=20261001-000000-07&video=09&path=x")
@@ -344,7 +350,12 @@ def main(with_keeper=False):
     d = fill(vs["clean.mp4"]["path"])
     check("a clean video with no attempt in its name fills the request of the attempt it is a copy of", d.get("request") == "video-03-a2-request.json" and d["attempt"] == 2, str(d)[:160])
     d = fill(vs["deliverables/video-03-preview.mp4"]["path"])
-    check("a file whose attempt cannot be told (a preview with its caption burned in) takes the latest attempt's request", d.get("request") == "video-03-a2-request.json" and d["attempt"] == 0, str(d)[:160])
+    check("the run's recorded preview, and a deliverable that is a copy of it, fill the delivered attempt's request (read from the run's record, not guessed)",
+          d.get("request") == "video-03-a2-request.json" and d["attempt"] == 2, str(d)[:160])
+    d = fill(str(atp_run / "60-outputs" / "video-03" / "capcut-preview.mp4"))
+    check("the recorded preview itself too", d.get("request") == "video-03-a2-request.json" and d["attempt"] == 2, str(d)[:160])
+    d = fill(str(atp_run / "60-outputs" / "video-03" / "stray.mp4"))
+    check("a file whose attempt cannot be told fills nothing and says why (never the latest attempt)", d.get("prompt") == "" and d.get("attempt") == 0 and "cannot be told" in d.get("note", ""), str(d)[:200])
     d = req("GET", "/api/request-prompt?run=20261001-000000-07&video=03&path=" + quote("a1 · raw.mp4"))[1]
     check("a label with an attempt word still picks that attempt", d.get("request") == "video-03-request.json", str(d)[:160])
     runs.index_usage(force=True)
