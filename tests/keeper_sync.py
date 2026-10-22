@@ -202,21 +202,44 @@ CTX = {"run": "20261001-000000-07", "video": "03", "model": "wan3_0_prime"}
 DELTA = "The library changed since your last digest"
 
 
+HELD: dict = {}
+
+
+def absorb(prompt: str):
+    """What the keeper holds after a message: a boot replaces everything with the lines of the library it carries; a delta (memory rot: only what changed is
+    sent) replaces the lines it carries and drops the ids it names as removed."""
+    global HELD
+    if "LIBRARY (" in prompt:
+        HELD = {ln.split(" | ")[0]: ln for ln in prompt.splitlines() if re.match(r"S\d+ \|", ln)}
+    elif DELTA in prompt:
+        for ln in prompt.splitlines():
+            if re.match(r"S\d+ \|", ln):
+                HELD[ln.split(" | ")[0]] = ln
+        m = re.search(r"Removed from the library, forget them: ([^\n]+)", prompt)
+        for k in (m.group(1).split(",") if m else []):
+            HELD.pop(k.strip(), None)
+
+
+def _asked(n: int):
+    new = calls[n:]
+    for p in new:
+        absorb(p)
+    text = "\n".join(new)
+    return (DELTA in text or "LIBRARY (" in text), HELD == digest_lines(), text
+
+
 def ask():
-    """One QC question; (did the keeper receive a fresh library, was it the current one, the prompt)."""
+    """One QC question; (did the keeper receive a fresh library or a delta, does it now hold the current library line for line, the prompt)."""
     n = len(calls)
     qc.consult("sync-test", dict(CTX), "the can looks different after the cut", "qc")
-    new = calls[n:]
-    text = "\n".join(new)
-    return (DELTA in text or "LIBRARY (" in text), qc._digest() in text, text
+    return _asked(n)
 
 
 def ask_plan():
     """One planning question (the first request of a video): the same keeper, the same library."""
     n = len(calls)
     qc.consult("sync-test", dict(CTX), "Beat 1: he sets the can on the desk.\nBeat 2: he lifts it.", "plan")
-    text = "\n".join(calls[n:])
-    return (DELTA in text or "LIBRARY (" in text), qc._digest() in text, text
+    return _asked(n)
 
 
 def mk_miss(title, video="03", kinds=None):
@@ -453,6 +476,7 @@ qc._run_claude = fake_claude
 print("\n[the prompts of the two takes: in the record, read whole by the keeper on request, never in its digest, never diffed]")
 qc._run_claude = fake_claude
 pm_id, pm_mo = mk_miss("the can is set down and shrinks", video="08")
+qc.keeper_reset("test")                # the hang test above booted a session through another recorder: start from one this block saw whole
 ask()                                  # the new sample reaches the keeper; what follows must come from the prompts alone
 misses.update(pm_id, {"wrong_prompt": "WRONGPROMPT-MARK the can on the desk.", "fixed_prompt": "FIXEDPROMPT-MARK the can on the desk, as tall as the mug.", "prompt_note": "NOTE-ON-PROMPT the height was stated"}, "test")
 fresh, current, text = ask()
@@ -547,6 +571,34 @@ frs[0]["shapes"] = [{"type": "rect", "frame": 0, "x1": 0.4, "y1": 0.4, "x2": 0.6
 c2, z2, _a = _compose.build(frs, {"title": "t"}, "d", "")
 check("marks that cover most of the frame give no zoom (it would repeat the panel); small marks do", z1 is None and z2 is not None and c1.height < c2.height, f"{c1.height} {c2.height}")
 qc._run_claude = fake_claude
+
+print("\n[memory rot: the keeper's context stays small and current]")
+qc.keeper_reset("test")
+ask()                                                       # a fresh session told the whole library once
+n_lib = len(digest_lines())
+r_id, r_mo = mk_miss("one more can that grows", video="09")
+fresh, current, text = ask()
+check("a one-sample change sends only that sample's line, never the whole library again", fresh and current and DELTA in text and "LIBRARY (" not in text
+      and sum(1 for ln in text.splitlines() if re.match(r"S\d+ \|", ln)) == 1, text[:300])
+st = core.setting_get("keeper", {})
+st["chars"] = qc.ROT_CHARS + 1
+core.setting_set("keeper", st)
+fresh, current, text = ask()
+check("a session that has carried more than ROT_CHARS characters is replaced by a fresh one told the whole library", fresh and current and "LIBRARY (" in text
+      and core.setting_get("keeper", {}).get("session_id") != st["session_id"])
+check("the keeper's bookkeeping of the lines it holds is not shown to a page or a pipeline", "lines" not in qc.keeper_status())
+s_any = qc.library()[0]
+ud = core.DATA / "keeper" / "understood"
+ud.mkdir(parents=True, exist_ok=True)
+long = "a detail of the frames that is long enough to matter. " * 30
+(ud / f"{s_any['id']}.json").write_text(json.dumps({"id": s_any["id"], "source_sig": qc._source_sig(s_any), "read_at": core.now(), "model": "m", "images_read": True,
+    "reading": {"the_miss": long, "mechanism": long, "when_it_recurs": long, "qc_check": long, "right_version": "RIGHT-MARK " + long, "prompts": "PROMPTS-MARK " + long,
+                "uncertain": "OPEN-MARK", "frames_seen": [{"frame": "WRONG 0:01.00", "seen": "FRAME-MARK " + long}]}}), encoding="utf-8")
+line = line_of(int(s_any["id"][1:]))
+check("the digest carries only the short reading (four fields, each cut) and the path of the full one; the frames, the right version, the prompts and what is open stay in the file",
+      "READ (from its picture" in line and "full reading:" in line and not any(m in line for m in ("RIGHT-MARK", "PROMPTS-MARK", "OPEN-MARK", "FRAME-MARK"))
+      and len(line.split("READ (from its picture", 1)[1]) < 1000, line[-400:])
+(ud / f"{s_any['id']}.json").unlink()
 
 print("\n[the same library everywhere]")
 same_library("at the end")

@@ -680,7 +680,7 @@ def keeper_get(h):
 def keeper_state(h):
     """What a pipeline's status or doctor command may know about the keeper without the admin's rights: in sync or not, turns, the library version, the model."""
     st = qc.keeper_status()
-    h.send_json({"ok": True, **{k: st[k] for k in ("in_sync", "turns", "library", "library_sig", "last_synced", "last_used", "model", "claude_found", "created", "understanding") if k in st}})
+    h.send_json({"ok": True, **{k: st[k] for k in ("in_sync", "turns", "chars", "library", "library_sig", "last_synced", "last_used", "model", "claude_found", "created", "understanding") if k in st}})
 
 
 @route("GET", "/api/qc/keeper/understanding", scope="admin")

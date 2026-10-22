@@ -181,9 +181,10 @@ def frames_text(s: dict) -> str:
 LIB_HEADER = ("One line per sample: id | kinds | model | title (the admin's own words) | the admin's other notes when there are any | "
               "where it came from (run, video, time, mode, the product when the admin named it) | its frames (each WRONG, RIGHT or EXAMPLE, with its time) | "
               "its kind | whether the prompts of its two takes are saved (the prompt that produced the miss and the prompt of the corrected take; they are NOT in this list: "
-              "ask for them with sample_origin, and the admin's one-line note on the prompt, when there is one, is in the notes) | READ: the reading of its picture "
-              "(what each frame shows, the miss, the right version, the product and scene, the mechanism, when it recurs, what QC checks, what the saved prompts changed, "
-              "the admin's feedback, what is open), made once by a session that opened the picture and the prompts, or NOT READ YET | the path of its image (Read it). "
+              "ask for them with sample_origin, and the admin's one-line note on the prompt, when there is one, is in the notes) | READ: the short reading of its picture "
+              "(the miss, the mechanism, when it recurs, what QC checks), made once by a session that opened the picture and the prompts, with the path of the full reading "
+              "(what each frame shows, the right version, the product and scene, what the saved prompts changed, the admin's feedback, what is open), or NOT READ YET | "
+              "the path of its image (Read it). "
               "An empty kinds field means the admin did not tag the sample: judge from the words and the image. "
               "This is the admin's record of past misses and your only memory of them; Loupe can fetch more about a sample or about the video under QC when you ask "
               "(see ASK, DO NOT GUESS).")
@@ -395,15 +396,16 @@ def sync_understanding(actor: str = "system", only: list[str] | None = None) -> 
 
 
 def _reading_text(s: dict) -> str:
+    """The short form of a sample's reading that rides in the digest (memory rot: the digest is the keeper's standing context, so it carries four short
+    fields; what each frame shows, the right version, the prompts and what is open stay in the JSON file, which the keeper Reads when it needs them)."""
     j = understood(s)
     if not j:
         return "NOT READ YET (Read the image yourself before you rely on this sample)"
     r = j["reading"]
-    seen = "; ".join(f"{f['frame']}: {_clip(f['seen'], 160)}" for f in r.get("frames_seen") or [])
-    bits = ([f"frames: {seen}"] if seen else []) + [f"{lab}: {_clip(r.get(k, ''), 220)}" for lab, k in (
-        ("miss", "the_miss"), ("right", "right_version"), ("product and scene", "product_and_scene"), ("mechanism", "mechanism"), ("recurs when", "when_it_recurs"),
-        ("QC check", "qc_check"), ("prompts", "prompts"), ("admin's feedback", "admin_feedback"), ("open", "uncertain")) if r.get(k)]
-    return "READ (from its picture" + ("" if j.get("images_read", True) else ", WITHOUT opening it") + f", {j.get('read_at', '')[:10]}): " + " / ".join(bits)
+    bits = [f"{lab}: {_clip(r.get(k, ''), n)}" for lab, k, n in (("miss", "the_miss", 200), ("mechanism", "mechanism", 160), ("recurs when", "when_it_recurs", 160),
+                                                                  ("QC check", "qc_check", 160)) if r.get(k)]
+    return ("READ (from its picture" + ("" if j.get("images_read", True) else ", WITHOUT opening it") + f", {j.get('read_at', '')[:10]}): " + " / ".join(bits)
+            + f" / full reading: {_u_dir() / (s['id'] + '.json')}")
 
 
 def _digest() -> str:
@@ -449,6 +451,61 @@ def _sig() -> str:
     return f"{len(lib)}:" + hashlib.sha1("\n".join(parts).encode("utf-8")).hexdigest()[:16]
 
 
+# Memory rot: a keeper session is its whole history.  So the library goes in whole only when a session starts; after that a change sends only the lines that
+# changed, a large change starts a fresh session instead, and a session is replaced by a fresh one after ROT_TURNS turns or once ROT_CHARS characters of
+# prompts and answers have gone through it, whichever comes first.  The library is the memory: nothing is lost by starting fresh.
+ROT_CHARS = 150_000
+DELTA = "The library changed since your last digest"
+
+
+def _line_marks() -> tuple[dict, dict]:
+    """Each sample's digest line, and a mark of everything the keeper holds of it: the line, the exact modification time of its image, its update time, its prompts."""
+    lib = {s["id"]: s for s in library()}
+    lines = {ln.split(" | ")[0]: ln for ln in _digest().splitlines() if re.match(r"S\d+ \|", ln)}
+    marks = {}
+    for sid, line in lines.items():
+        s = lib.get(sid, {})
+        try:
+            m = os.stat(s.get("composite_path", "")).st_mtime_ns
+        except OSError:
+            m = 0
+        marks[sid] = hashlib.sha1(f"{line}|{m}|{s.get('updated', '')}|{s.get('prompts_sig', '')}".encode("utf-8")).hexdigest()[:12]
+    return lines, marks
+
+
+def _worn(st: dict, model: str) -> bool:
+    return not st.get("session_id") or st.get("turns", 0) >= ROT_TURNS or st.get("chars", 0) >= ROT_CHARS or st.get("model") != model
+
+
+def _delta(st: dict, sig: str):
+    """Only the lines that changed since the keeper's last digest, and the removed ids.  None when a fresh session is due instead: the session has no record
+    of the lines it holds, or more changed at once than a delta should carry (over a third of the library, and more than three lines)."""
+    old = st.get("lines")
+    if not isinstance(old, dict) or not old:
+        return None
+    lines, marks = _line_marks()
+    changed = [k for k in marks if old.get(k) != marks[k]]
+    removed = [k for k in old if k not in marks]
+    if len(changed) > max(3, len(marks) // 3):
+        return None
+    msg = (f"{DELTA} (version {sig}): {len(changed)} sample line(s) added or changed, {len(removed)} removed; every other sample is as you hold it.\n"
+           + ("Added or changed, each replacing what you hold for that id (its image may have been rebuilt: read it again before you rely on what you remember of it):\n"
+              + "\n".join(lines[k] for k in changed) + "\n" if changed else "")
+           + (f"Removed from the library, forget them: {', '.join(removed)}\n" if removed else ""))
+    return msg, marks
+
+
+def _boot(lib_n: int, sig: str, model: str) -> tuple[dict, float]:
+    """A fresh keeper session told the whole current library."""
+    sid = str(uuid.uuid4())
+    boot = (f"LIBRARY ({lib_n} samples; version {sig}). {LIB_HEADER}\n\n{_digest()}\n\nYou now hold this library. Reply with the single word: ready.")
+    d = _run_claude(boot, sid, False, model)
+    marks = _line_marks()[1]
+    st = {"session_id": sid, "created": core.now(), "turns": 1, "model": model, "library_sig": sig, "bootstrapped": core.now(), "lines": marks,
+          "chars": len(boot) + len(d.get("result") or "")}
+    return st, float(d.get("total_cost_usd") or 0)
+
+
 ROLE = ("You are the Loupe keeper of a video-generation pipeline. You hold a library of samples: each is a generation miss (a frame of a wrong "
         "video with the admin's marks) and, when there is one, the right frame to compare, each frame tagged WRONG (red) or RIGHT (green) with its time (a right frame can come from the right version or from an earlier part of the same video), with the admin's own words. Rules for every question: you only "
         "READ; you never write, edit or create anything, and you never add to the library (only the admin does, in the web app). Cite only sample ids "
@@ -467,9 +524,11 @@ ROLE = ("You are the Loupe keeper of a video-generation pipeline. You hold a lib
         "prompt stated, at which beat, through which of the writer's tools) in your own words, never a sentence to paste; in a QC answer the check names what the corrected "
         "take's prompt secured, so the agent looks for exactly that in the video. "
         "You may Read a sample's image (path given) to describe it, nothing else. "
-        "Each sample line carries READ: the reading of its picture, made once by a session that opened the image, its frames and the saved prompts. Take it as "
-        "what the picture shows; the admin's words win where they differ; Read the image yourself when your judgement rests on a detail the reading does not "
-        "state, when the reading says it was made WITHOUT opening the picture, and for a sample marked NOT READ YET. "
+        "Each sample line carries READ: the short reading of its picture, made once by a session that opened the image, its frames and the saved prompts, and the "
+        "path of the full reading (a JSON file). Take it as what the picture shows; the admin's words win where they differ. Read the full reading when your "
+        "judgement rests on what a frame shows, the right version, the prompts or what is open, and Read the image itself when it rests on a detail neither states, "
+        "when the reading was made WITHOUT opening the picture, and for a sample marked NOT READ YET. Read only what the question at hand needs: your memory stays "
+        "small and current. "
         "Reason from mechanisms, not labels: a sample is relevant when it and the video share a product detail (form, size, opening, posture) and a "
         "scene mechanism, and you say which; a sample about another product form applies only through the same mechanism. Every why, check, trigger, "
         "right_outcome and lever is a CONDITION tied to this video's product details and beat, never a universal: no never, always, must, avoid or "
@@ -577,7 +636,9 @@ def keeper_status() -> dict:
     st["model"] = core.setting_get("keeper_model", DEFAULT_MODEL)
     st["library"] = _sig()
     st["claude_found"] = bool(_claude())
-    st["in_sync"] = bool(st.get("session_id")) and st.get("library_sig") == st["library"] and st.get("turns", 0) < ROT_TURNS and st.get("model") == st["model"]
+    st["in_sync"] = (bool(st.get("session_id")) and st.get("library_sig") == st["library"] and st.get("turns", 0) < ROT_TURNS
+                     and st.get("chars", 0) < ROT_CHARS and st.get("model") == st["model"])
+    st.pop("lines", None)                      # the per-sample marks are the keeper's bookkeeping, not something a page or a pipeline reads
     u = understanding_status()
     st["understanding"] = {k: u[k] for k in ("library_size", "understood", "stale", "missing", "retired", "current", "model")}
     return st
@@ -599,22 +660,18 @@ def sync_keeper(actor: str = "system") -> dict:
             st = core.setting_get("keeper", {}) or {}
             sig = _sig()
             state, cost = "in_sync", 0.0
-            if not st.get("session_id") or st.get("turns", 0) >= ROT_TURNS or st.get("model") != model:
-                sid = str(uuid.uuid4())
-                boot = (f"LIBRARY ({len(lib)} samples; version {sig}). {LIB_HEADER}\n\n"
-                        f"{_digest()}\n\nYou now hold this library. Reply with the single word: ready.")
-                d = _run_claude(boot, sid, False, model)
-                cost = float(d.get("total_cost_usd") or 0)
-                st = {"session_id": sid, "created": core.now(), "turns": 1, "model": model, "library_sig": sig, "bootstrapped": core.now()}
+            dl = None if _worn(st, model) or st.get("library_sig") == sig else _delta(st, sig)
+            if _worn(st, model) or (st.get("library_sig") != sig and dl is None):
+                st, cost = _boot(len(lib), sig, model)
                 state = "booted"
             elif st.get("library_sig") != sig:
-                msg = ("The library changed since your last digest (a sample added, edited, archived or deleted; an image may have been rebuilt). Full current list:\n"
-                       + _digest() + "\nAn image you looked at before may have changed: read it again before you rely on what you remember of it.\n"
-                       "You now hold this library. Reply with the single word: ready.")
+                msg = dl[0] + "Reply with the single word: ready."
                 d = _run_claude(msg, st["session_id"], True, st["model"])
                 cost = float(d.get("total_cost_usd") or 0)
                 st["turns"] = st.get("turns", 0) + 1
                 st["library_sig"] = sig
+                st["lines"] = dl[1]
+                st["chars"] = st.get("chars", 0) + len(msg) + len(d.get("result") or "")
                 state = "synced"
             if state != "in_sync":
                 st["last_synced"] = core.now()
@@ -833,6 +890,7 @@ def _ask_loop(parsed, st: dict, ctx: dict, plan: bool):
                + f"\n\nAnswer again with the same kind of JSON object. Rounds left for more questions: {MAX_ASKS - rounds - 1}.")
         res = _run_claude(msg, st["session_id"], True, st["model"])
         cost += float(res.get("total_cost_usd") or 0)
+        st["chars"] = st.get("chars", 0) + len(msg) + len(res.get("result") or "")
         turns += 1
         rounds += 1
         parsed = _json_of(res.get("result", ""))
@@ -868,17 +926,18 @@ def consult(key_name: str, ctx: dict, question: str, purpose: str = "qc") -> dic
             model = core.setting_get("keeper_model", DEFAULT_MODEL)
             st = core.setting_get("keeper", {}) or {}
             sig = _sig()
-            if not st.get("session_id") or st.get("turns", 0) >= ROT_TURNS or st.get("model") != model:
-                sid = str(uuid.uuid4())
-                boot = (f"LIBRARY ({len(library())} samples; version {sig}). {LIB_HEADER}\n\n"
-                        f"{_digest()}\n\nYou now hold this library. Reply with the single word: ready.")
-                d = _run_claude(boot, sid, False, model)
-                cost += float(d.get("total_cost_usd") or 0)
-                st = {"session_id": sid, "created": core.now(), "turns": 1, "model": model, "library_sig": sig, "bootstrapped": core.now()}
+            if _worn(st, model):
+                st, c = _boot(len(library()), sig, model)
+                cost += c
             delta = ""
             if st.get("library_sig") != sig:
-                delta = ("\nThe library changed since your last digest (a sample added, edited, archived or deleted; an image may have been rebuilt). Full current list again:\n"
-                         + _digest() + "\nAn image you looked at before may have changed: read it again before you rely on what you remember of it.\n")
+                dl = _delta(st, sig)
+                if dl is None:                  # too much changed for a delta, or no record of the lines held: a fresh session told the whole library
+                    st, c = _boot(len(library()), sig, model)
+                    cost += c
+                else:
+                    delta = "\n" + dl[0]
+                    st["lines"] = dl[1]
             who = (f"run {ctx.get('run') or '?'} video {ctx.get('video') or '?'} (model {ctx.get('model') or '?'}, mode {ctx.get('mode') or '?'}, "
                    f"product {ctx.get('product') or '?'}; product details: {str(ctx.get('product_details') or '-')[:400]})")
             if ctx.get("note"):
@@ -892,6 +951,7 @@ def consult(key_name: str, ctx: dict, question: str, purpose: str = "qc") -> dic
             d = _run_claude(prompt, st["session_id"], True, st["model"])
             cost += float(d.get("total_cost_usd") or 0)
             st["turns"] = st.get("turns", 0) + 1
+            st["chars"] = st.get("chars", 0) + len(prompt) + len(d.get("result") or "")
             st["library_sig"] = sig
             st["last_used"] = core.now()
             core.setting_set("keeper", st)
