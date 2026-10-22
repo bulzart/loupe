@@ -481,6 +481,49 @@ def main(with_keeper=False):
     nim3 = Image.open(ndir / "composite.png").convert("RGB")
     check("clearing it makes the miss an example again", s == 200 and not (ndir / "fixed.png").exists() and nim3.getpixel((611, 55)) == (70, 74, 90) and grey(nim3))
     s, d, _ = req("DELETE", f"/api/misses/{nid}")
+    print("\n[the keeper's readings of the pictures: one JSON per sample, only new or changed samples are read]")
+    from loupe_app import qc as _qc
+    if not _qc.library():
+        req("PATCH", "/api/moments/1", {"status": "active"})
+    calls = []
+    real_extract, real_claude, real_run = _qc._extract_one, _qc._claude, _qc._run_claude
+    _qc._claude = lambda: "claude"
+
+    def fake_extract(s, model):
+        calls.append(s["id"])
+        return {"reading": {"the_miss": f"the miss of {s['id']}", "mechanism": "m", "frames_seen": [{"frame": "WRONG 0:01.00", "seen": "a can"}]},
+                "cost": 0.01, "turns": 3, "images_read": True}
+    _qc._extract_one = fake_extract
+    try:
+        ids = [s["id"] for s in _qc.library()]
+        r1 = _qc.sync_understanding("test")
+        check("the first pass reads every active sample once and keeps one JSON per sample", ids and sorted(r1["read"]) == sorted(ids) and len(calls) == len(ids)
+              and all((core.DATA / "keeper" / "understood" / f"{i}.json").exists() for i in ids), str(r1))
+        r2 = _qc.sync_understanding("test")
+        check("when the readings match the library one for one, nothing is read again", r2["state"] == "current" and len(calls) == len(ids), str(r2))
+        check("the keeper's digest carries each reading", "READ (from its picture" in _qc._digest() and f"the miss of {ids[0]}" in _qc._digest())
+        req("PATCH", f"/api/moments/{ids[0][1:]}", {"details": "Edited words, so the reading is stale."})
+        r3 = _qc.sync_understanding("test")
+        check("an edited sample is read again, and only it", r3["read"] == [ids[0]] and len(calls) == len(ids) + 1, str(r3))
+        s, d, _ = req("GET", "/api/qc/keeper/understanding")
+        check("the admin page gets every reading and the counts", s == 200 and d["status"]["current"] and d["status"]["understood"] == len(ids)
+              and any(x["reading"] and x["reading"]["the_miss"] for x in d["readings"]), str(d)[:200])
+        s, d, _ = req("GET", "/api/qc/keeper/state", key=kq)
+        check("the qc key sees the reading counts, not the readings", s == 200 and d.get("understanding", {}).get("understood") == len(ids) and "readings" not in d, str(d)[:200])
+        req("PATCH", f"/api/moments/{ids[0][1:]}", {"status": "archived"})
+        r4 = _qc.sync_understanding("test")
+        check("a sample that leaves the library has its reading retired, nothing is read", r4["retired"] == 1 and r4["read"] == []
+              and not (core.DATA / "keeper" / "understood" / f"{ids[0]}.json").exists() and any((core.DATA / "keeper" / "understood" / "retired").glob(f"{ids[0]}-*.json")), str(r4))
+        req("PATCH", f"/api/moments/{ids[0][1:]}", {"status": "active"})
+        _qc._extract_one = real_extract
+        seq = iter([{"result": json.dumps({"the_miss": "x"}), "num_turns": 1, "total_cost_usd": 0.01}, {"result": json.dumps({"the_miss": "seen", "frames_seen": []}), "num_turns": 3, "total_cost_usd": 0.02}])
+        prompts = []
+        _qc._run_claude = lambda prompt, *a, **k: (prompts.append(prompt), next(seq))[1]
+        one = _qc._extract_one(_qc.library()[0], "m")
+        check("a reading given without opening the picture is asked once more and kept only when the picture was opened", one["images_read"] and one["reading"]["the_miss"] == "seen"
+              and len(prompts) == 2 and "Read the composite" in prompts[0] and "composite.png" in prompts[0], str(one))
+    finally:
+        _qc._extract_one, _qc._claude, _qc._run_claude = real_extract, real_claude, real_run
     if with_keeper:
         print("\n[keeper] (a real headless session)")
         s, d, _ = req("POST", "/api/qc/consult", {"run": "r", "video": "03", "model": "wan3_0_prime", "question": "The product changes colour after a cut. Which samples apply?"}, key=kq)

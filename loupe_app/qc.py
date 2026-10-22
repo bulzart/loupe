@@ -181,7 +181,9 @@ def frames_text(s: dict) -> str:
 LIB_HEADER = ("One line per sample: id | kinds | model | title (the admin's own words) | the admin's other notes when there are any | "
               "where it came from (run, video, time, mode, the product when the admin named it) | its frames (each WRONG, RIGHT or EXAMPLE, with its time) | "
               "its kind | whether the prompts of its two takes are saved (the prompt that produced the miss and the prompt of the corrected take; they are NOT in this list: "
-              "ask for them with sample_origin, and the admin's one-line note on the prompt, when there is one, is in the notes) | the path of its image (Read it). "
+              "ask for them with sample_origin, and the admin's one-line note on the prompt, when there is one, is in the notes) | READ: the reading of its picture "
+              "(what each frame shows, the miss, the right version, the product and scene, the mechanism, when it recurs, what QC checks, what the saved prompts changed, "
+              "the admin's feedback, what is open), made once by a session that opened the picture and the prompts, or NOT READ YET | the path of its image (Read it). "
               "An empty kinds field means the admin did not tag the sample: judge from the words and the image. "
               "This is the admin's record of past misses and your only memory of them; Loupe can fetch more about a sample or about the video under QC when you ask "
               "(see ASK, DO NOT GUESS).")
@@ -196,6 +198,212 @@ def _origin(s: dict) -> str:
     if s.get("product"):
         bits.append(f"product: {str(s['product'])[:120]}")
     return " | ".join(bits)
+
+
+# ------------------------------------------------------------------ what the keeper understood of each sample's picture
+# A session that must open the picture reads each sample ONCE (the composite with its WRONG / RIGHT / EXAMPLE frames and the admin's marks, the frames
+# themselves when a detail is small, the admin's words and the prompts of the two takes) and its reading is kept as one JSON file per sample in
+# DATA/keeper/understood/.  Only a sample that is new, or whose words, frames, image or prompts changed since its reading, is read again; when every active
+# sample has a current reading nothing runs.  A sample that leaves the library (archived, deleted) has its reading moved to understood/retired/.  The
+# keeper's digest carries these readings, so the session holds what the pictures show, the prompts and the admin's feedback together.
+EXTRACT_MODEL_DEFAULT = "claude-sonnet-5-5"
+READING_FIELDS = ("the_miss", "right_version", "product_and_scene", "mechanism", "when_it_recurs", "qc_check", "prompts", "admin_feedback", "uncertain")
+EXTRACT_ROLE = (
+    "You read ONE sample of a video-generation pipeline's library of generation misses, once, so that the library's keeper can hold what it shows. "
+    "A sample is a picture (a composite of frames of a generated video, each tagged WRONG in red, RIGHT in green or EXAMPLE in blue with its time, the admin's marks "
+    "drawn on them, a zoom of each below and the admin's words at the bottom) plus the admin's notes and, sometimes, the prompts of the two takes. "
+    "You MUST Read the composite image before you answer, and Read a single frame file too when the marked detail is small. Describe only what you can see in "
+    "the frames and what the admin wrote; never invent a detail, a cause or a right version. Where the picture and the admin's words disagree, the admin's words "
+    "win and you say what you saw. Write every field as a condition tied to this sample's product details and scene, never as a universal rule. You only READ: "
+    "you never write, edit or create anything. Answer ONE JSON object and no other text: "
+    '{"frames_seen":[{"frame":"WRONG 0:04.23","seen":"<what this frame shows: the product, its size, place, state and what the marks point at>"}],'
+    '"the_miss":"<what went wrong, in your own words, as the frames show it>",'
+    '"right_version":"<what the RIGHT frame shows; or: none, a miss example only; or for a scenario what the admin says was meant>",'
+    '"product_and_scene":"<the product form, size, opening and posture, the scene, the camera and where the product is>",'
+    '"mechanism":"<why it went wrong as far as the frames and the admin\'s words show: the product detail and the scene mechanism>",'
+    '"when_it_recurs":"<the situation in a new plan or video where this miss would arise again>",'
+    '"qc_check":"<what exactly a QC agent compares in a new video to catch it>",'
+    '"prompts":"<when prompts are given: what the corrected prompt states that the wrong one did not, at which beat; else: none saved>",'
+    '"admin_feedback":"<the admin\'s notes (idea, could be better, what the agents missed, correct note) in one or two sentences>",'
+    '"uncertain":"<what the picture and the words leave open, or empty>"}')
+_understand_lock = threading.Lock()
+
+
+def _u_dir() -> Path:
+    d = core.DATA / "keeper" / "understood"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def _sample_images(s: dict) -> list[str]:
+    """The composite first, then the marked frames (frame-N-marked.png, else frame-N.png) the sample holds, at most six."""
+    d = Path(s["composite_path"]).parent
+    out = [s["composite_path"]]
+    for k in range(1, 13):
+        p = d / f"frame-{k}-marked.png"
+        p = p if p.is_file() else d / f"frame-{k}.png"
+        if p.is_file():
+            out.append(str(p))
+    return out[:7]
+
+
+def _source_sig(s: dict) -> str:
+    """What a reading rests on: the admin's words, the frames, the picture's exact modification time and size, and the prompts of the two takes."""
+    try:
+        st = os.stat(s["composite_path"])
+        img = f"{st.st_mtime_ns}:{st.st_size}"
+    except OSError:
+        img = "0"
+    words = [s.get(k) or "" for k in ("title", "explanation", "details", "correct_note", "idea", "better", "missed", "prompt_note", "product", "model", "mode", "run", "video")]
+    fr = [f"{f.get('role')}@{f.get('t')}:{f.get('src')}" for f in s.get("frames") or []]
+    raw = json.dumps([s["id"], words, sorted(s.get("kinds") or []), fr, img, s.get("prompts_sig", "")], ensure_ascii=False)
+    return hashlib.sha1(raw.encode("utf-8")).hexdigest()[:16]
+
+
+def _read_json(p: Path):
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+
+
+def understood(s: dict) -> dict | None:
+    """The current reading of a sample, or None when it has none or the sample changed since it was read."""
+    j = _read_json(_u_dir() / f"{s['id']}.json")
+    return j if isinstance(j, dict) and j.get("source_sig") == _source_sig(s) and isinstance(j.get("reading"), dict) else None
+
+
+def understanding_status() -> dict:
+    lib = library()
+    have, stale, missing = [], [], []
+    for s in lib:
+        p = _u_dir() / f"{s['id']}.json"
+        if understood(s):
+            have.append(s["id"])
+        elif p.exists():
+            stale.append(s["id"])
+        else:
+            missing.append(s["id"])
+    ret = _u_dir() / "retired"
+    return {"library_size": len(lib), "understood": len(have), "stale": stale, "missing": missing,
+            "retired": len(list(ret.glob("*.json"))) if ret.is_dir() else 0, "current": not stale and not missing,
+            "model": core.setting_get("keeper_extract_model", EXTRACT_MODEL_DEFAULT)}
+
+
+def readings() -> list[dict]:
+    """Every active sample with its reading (None when not read yet), for the admin page."""
+    out = []
+    for s in library():
+        j = understood(s)
+        out.append({"id": s["id"], "title": s.get("title", ""), "model": s.get("model", ""), "image_url": s.get("image_url", ""),
+                    "read_at": (j or {}).get("read_at"), "read_by": (j or {}).get("model"), "images_read": (j or {}).get("images_read"),
+                    "reading": (j or {}).get("reading")})
+    return out
+
+
+def _extract_prompt(s: dict) -> str:
+    lines = [f"SAMPLE {s['id']} ({'a scenario' if s.get('sample_kind') == 'scenario' else 'a miss example only, no right version' if s.get('sample_kind') == 'miss-only' else 'a miss with its right version'})",
+             f"model: {s.get('model') or 'any'}; {_origin(s) or 'no origin recorded'}; kinds: {', '.join(s.get('kinds') or []) or 'not tagged'}",
+             f"the admin's title: {s.get('title', '')}"]
+    for lab, key in (("the admin's explanation", "explanation"), ("wrong here", "details"), ("correct", "correct_note"), ("idea (what was meant)", "idea"),
+                     ("could have been better", "better"), ("what the AI agents missed", "missed"), ("the admin's note on the prompt", "prompt_note")):
+        if s.get(key):
+            lines.append(f"{lab}: {s[key]}")
+    lines.append("frames in the picture: " + frames_text(s))
+    pp = misses.prompts_of(s["moment_id"]) or {}
+    for key, what in (("wrong_prompt", "THE PROMPT OF THE WRONG TAKE"), ("fixed_prompt", "THE PROMPT OF THE CORRECTED TAKE")):
+        if pp.get(key):
+            lines.append(f"{what}:\n{_clip(pp[key], PROMPT_FETCH)}")
+    imgs = _sample_images(s)
+    lines.append("Read the composite first: " + imgs[0])
+    if len(imgs) > 1:
+        lines.append("The single frames (Read one when a marked detail is small in the composite): " + ", ".join(imgs[1:]))
+    lines.append("Then answer with the JSON object only.")
+    return "\n".join(lines)
+
+
+def _clean_reading(parsed) -> dict | None:
+    if not isinstance(parsed, dict) or not str(parsed.get("the_miss", "")).strip():
+        return None
+    r = {k: _clip(parsed.get(k, ""), 700) for k in READING_FIELDS}
+    fs = parsed.get("frames_seen") if isinstance(parsed.get("frames_seen"), list) else []
+    r["frames_seen"] = [{"frame": _clip(f.get("frame", ""), 40), "seen": _clip(f.get("seen", ""), 400)} for f in fs[:12] if isinstance(f, dict)]
+    return r
+
+
+def _extract_one(s: dict, model: str) -> dict:
+    """One fresh, read-only session reads one sample.  It must open the picture: a reply given without a single tool call (num_turns 1) is asked once more,
+    and a reading that still opened nothing is kept with images_read false so the admin page shows it."""
+    prompt = _extract_prompt(s)
+    cwd = core.DATA / "keeper" / "extract"
+    cost, reading, turns = 0.0, None, 0
+    for attempt in (1, 2):
+        d = _run_claude(prompt if attempt == 1 else prompt + "\n\nYou answered without opening the picture. Read the composite image file now, look at every frame, then answer.",
+                        str(uuid.uuid4()), False, model, timeout=300, role=EXTRACT_ROLE, cwd=cwd, max_turns=12)
+        cost += float(d.get("total_cost_usd") or 0)
+        turns = int(d.get("num_turns") or 0)
+        reading = _clean_reading(_json_of(d.get("result", "")))
+        if reading and turns >= 2:
+            break
+    if not reading:
+        raise RuntimeError(f"{s['id']}: the reading was not a JSON object with the miss in it")
+    return {"reading": reading, "cost": cost, "turns": turns, "images_read": turns >= 2}
+
+
+def sync_understanding(actor: str = "system", only: list[str] | None = None) -> dict:
+    """Read the samples that have no current reading (new ones, and ones the admin changed since), keep each reading as DATA/keeper/understood/S<id>.json,
+    and move the readings of samples that left the library to understood/retired/.  When the readings match the library one for one nothing runs.
+    `only` re-reads the listed ids even when current (the admin's explicit request).  Never raises: {state, read, retired, failed, cost, library_size}."""
+    if not _understand_lock.acquire(blocking=False):
+        return {"state": "busy", "note": "another reading is running"}
+    try:
+        lib = library()
+        active = {s["id"] for s in lib}
+        retired = 0
+        for p in _u_dir().glob("S*.json"):
+            if p.stem not in active:
+                dst = _u_dir() / "retired"
+                dst.mkdir(exist_ok=True)
+                shutil.move(str(p), str(dst / f"{p.stem}-{time.strftime('%Y%m%d-%H%M%S')}.json"))
+                retired += 1
+        todo = [s for s in lib if (only and s["id"] in only) or not understood(s)]
+        if not todo:
+            return {"state": "current", "read": [], "retired": retired, "failed": [], "cost": 0.0, "library_size": len(lib)}
+        if not _claude():
+            return {"state": "failed", "read": [], "retired": retired, "failed": [s["id"] for s in todo], "cost": 0.0, "library_size": len(lib),
+                    "error": "the claude CLI was not found on PATH"}
+        model = core.setting_get("keeper_extract_model", EXTRACT_MODEL_DEFAULT)
+        read, failed, cost = [], [], 0.0
+        for s in todo:
+            try:
+                r = _extract_one(s, model)
+            except Exception as e:  # noqa: BLE001
+                failed.append({"id": s["id"], "error": str(e)[:200]})
+                continue
+            cost += r["cost"]
+            doc = {"id": s["id"], "moment_id": s["moment_id"], "title": s.get("title", ""), "source_sig": _source_sig(s), "read_at": core.now(), "model": model,
+                   "cost_usd": round(r["cost"], 4), "turns": r["turns"], "images_read": r["images_read"], "images": _sample_images(s), "reading": r["reading"]}
+            tmp = _u_dir() / f"{s['id']}.json.tmp"
+            tmp.write_text(json.dumps(doc, ensure_ascii=False, indent=1), encoding="utf-8")
+            os.replace(tmp, _u_dir() / f"{s['id']}.json")
+            read.append(s["id"])
+        core.audit(actor, "keeper.understand", f"{len(read)} read, {len(failed)} failed, {retired} retired", f"cost {cost:.4f}")
+        return {"state": "read" if not failed else ("partial" if read else "failed"), "read": read, "retired": retired, "failed": failed,
+                "cost": round(cost, 4), "library_size": len(lib)}
+    finally:
+        _understand_lock.release()
+
+
+def _reading_text(s: dict) -> str:
+    j = understood(s)
+    if not j:
+        return "NOT READ YET (Read the image yourself before you rely on this sample)"
+    r = j["reading"]
+    seen = "; ".join(f"{f['frame']}: {_clip(f['seen'], 160)}" for f in r.get("frames_seen") or [])
+    bits = ([f"frames: {seen}"] if seen else []) + [f"{lab}: {_clip(r.get(k, ''), 220)}" for lab, k in (
+        ("miss", "the_miss"), ("right", "right_version"), ("product and scene", "product_and_scene"), ("mechanism", "mechanism"), ("recurs when", "when_it_recurs"),
+        ("QC check", "qc_check"), ("prompts", "prompts"), ("admin's feedback", "admin_feedback"), ("open", "uncertain")) if r.get(k)]
+    return "READ (from its picture" + ("" if j.get("images_read", True) else ", WITHOUT opening it") + f", {j.get('read_at', '')[:10]}): " + " / ".join(bits)
 
 
 def _digest() -> str:
@@ -220,6 +428,8 @@ def _digest() -> str:
             parts.append("PROMPT OF THE WRONG TAKE SAVED, no corrected prompt (ask sample_origin to read it)")
         elif s.get("prompts") == "fixed":
             parts.append("PROMPT OF THE CORRECTED TAKE SAVED, no wrong prompt (ask sample_origin to read it)")
+        if len(lib) <= 120:
+            parts.append(_reading_text(s))
         parts.append(f"image: {s['composite_path']}")
         lines.append(" | ".join(parts))
     return "\n".join(lines) or "(the library is empty)"
@@ -257,6 +467,9 @@ ROLE = ("You are the Loupe keeper of a video-generation pipeline. You hold a lib
         "prompt stated, at which beat, through which of the writer's tools) in your own words, never a sentence to paste; in a QC answer the check names what the corrected "
         "take's prompt secured, so the agent looks for exactly that in the video. "
         "You may Read a sample's image (path given) to describe it, nothing else. "
+        "Each sample line carries READ: the reading of its picture, made once by a session that opened the image, its frames and the saved prompts. Take it as "
+        "what the picture shows; the admin's words win where they differ; Read the image yourself when your judgement rests on a detail the reading does not "
+        "state, when the reading says it was made WITHOUT opening the picture, and for a sample marked NOT READ YET. "
         "Reason from mechanisms, not labels: a sample is relevant when it and the video share a product detail (form, size, opening, posture) and a "
         "scene mechanism, and you say which; a sample about another product form applies only through the same mechanism. Every why, check, trigger, "
         "right_outcome and lever is a CONDITION tied to this video's product details and beat, never a universal: no never, always, must, avoid or "
@@ -308,17 +521,22 @@ def _kill_tree(proc):
         pass
 
 
-def _run_claude(prompt: str, sid: str, resume: bool, model: str, timeout: int = 150) -> dict:
+def _run_claude(prompt: str, sid: str, resume: bool, model: str, timeout: int = 150, role: str | None = None, cwd: Path | None = None,
+                max_turns: int = 6) -> dict:
+    """One headless claude call.  The prompt goes in on stdin, not on the command line: a digest that carries the keeper's readings of the pictures is longer
+    than a Windows command line may be (32767 characters)."""
     exe = _claude()
     if not exe:
         raise RuntimeError("the claude CLI was not found on PATH")
-    cmd = [exe, "-p", prompt, "--model", model, "--tools", "Read", "--allowedTools", "Read", "--strict-mcp-config", "--output-format", "json",
-           "--max-turns", "6", "--append-system-prompt", ROLE, "--add-dir", str(core.DATA / "samples")]
+    cmd = [exe, "-p", "--model", model, "--tools", "Read", "--allowedTools", "Read", "--strict-mcp-config", "--output-format", "json",
+           "--max-turns", str(max_turns), "--append-system-prompt", role or ROLE, "--add-dir", str(core.DATA / "samples")]
     cmd += ["--resume", sid] if resume else ["--session-id", sid]
     flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
-    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL, cwd=str(core.DATA / "keeper"), creationflags=flags)
+    wd = cwd or (core.DATA / "keeper")
+    wd.mkdir(parents=True, exist_ok=True)
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.PIPE, cwd=str(wd), creationflags=flags)
     try:
-        so, se = proc.communicate(timeout=timeout)
+        so, se = proc.communicate(input=prompt.encode("utf-8"), timeout=timeout)
     except subprocess.TimeoutExpired:
         _kill_tree(proc)
         raise RuntimeError(f"keeper session timed out after {timeout} s; its process tree was ended so the next call is not held")
@@ -360,6 +578,8 @@ def keeper_status() -> dict:
     st["library"] = _sig()
     st["claude_found"] = bool(_claude())
     st["in_sync"] = bool(st.get("session_id")) and st.get("library_sig") == st["library"] and st.get("turns", 0) < ROT_TURNS and st.get("model") == st["model"]
+    u = understanding_status()
+    st["understanding"] = {k: u[k] for k in ("library_size", "understood", "stale", "missing", "retired", "current", "model")}
     return st
 
 

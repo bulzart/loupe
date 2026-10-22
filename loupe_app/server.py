@@ -680,7 +680,23 @@ def keeper_get(h):
 def keeper_state(h):
     """What a pipeline's status or doctor command may know about the keeper without the admin's rights: in sync or not, turns, the library version, the model."""
     st = qc.keeper_status()
-    h.send_json({"ok": True, **{k: st[k] for k in ("in_sync", "turns", "library", "library_sig", "last_synced", "last_used", "model", "claude_found", "created") if k in st}})
+    h.send_json({"ok": True, **{k: st[k] for k in ("in_sync", "turns", "library", "library_sig", "last_synced", "last_used", "model", "claude_found", "created", "understanding") if k in st}})
+
+
+@route("GET", "/api/qc/keeper/understanding", scope="admin")
+def keeper_understanding(h):
+    """What the keeper understood of each sample's picture (one reading per active sample, null when not read yet) and the counts."""
+    h.send_json({"ok": True, "status": qc.understanding_status(), "readings": qc.readings()})
+
+
+@route("POST", "/api/qc/keeper/understand", scope="admin")
+def keeper_understand(h):
+    """Read the samples that have no current reading, in the background (the watcher does the same a little after the library changes).
+    {"ids": ["S12"]} re-reads those samples even when their reading is current."""
+    body = h.body_json() or {}
+    only = [str(x) for x in (body.get("ids") or []) if str(x).startswith("S")][:50] or None
+    threading.Thread(target=qc.sync_understanding, args=(h.pr.name, only), daemon=True).start()
+    h.send_json({"ok": True, "started": True, "status": qc.understanding_status()})
 
 
 @route("POST", "/api/qc/keeper/sync", scope="qc:read")
@@ -708,15 +724,22 @@ KEEPER_QUIET = 25     # seconds a library must stay unchanged before the keeper 
 
 
 def _keeper_watch():
-    """Keeps the keeper current: it boots with the server when a library exists, and re-reads the library a little after the admin's last edit."""
-    last, stable, retry_at = None, 0, 0.0
+    """Keeps the keeper current: it boots with the server when a library exists, and re-reads the library a little after the admin's last edit.
+    Before the keeper is told, every sample without a current reading of its picture is read (only those: new or changed samples)."""
+    last, stable, retry_at, read_retry_at = None, 0, 0.0, 0.0
     first = True
     while True:
         try:
             sig = qc._sig()
             stable = stable + 1 if sig == last else 0
             last = sig
-            if (first or (stable * 10 >= KEEPER_QUIET and not qc.keeper_status().get("in_sync"))) and time.time() >= retry_at:
+            if (first or stable * 10 >= KEEPER_QUIET) and time.time() >= read_retry_at and not qc.understanding_status()["current"]:
+                u = qc.sync_understanding("watcher")       # only the samples without a current reading; nothing when the readings match the library
+                if u.get("state") not in ("current", "busy"):
+                    print("keeper readings:", {k: u.get(k) for k in ("state", "read", "retired", "failed", "cost")}, flush=True)
+                if u.get("state") in ("failed", "partial"):
+                    read_retry_at = time.time() + 900      # a sample that cannot be read is tried again in fifteen minutes; the keeper is told meanwhile
+            elif (first or (stable * 10 >= KEEPER_QUIET and not qc.keeper_status().get("in_sync"))) and time.time() >= retry_at:     # the keeper is told once the readings are done
                 first = False
                 r = qc.sync_keeper("watcher")
                 if r.get("state") in ("booted", "synced", "failed"):

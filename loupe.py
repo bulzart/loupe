@@ -7,6 +7,8 @@
   python loupe.py key-list | key-revoke ID
   python loupe.py import-flags PATH            move the entries of the old caught_flags.html page into Loupe
   python loupe.py status                       is it running, how many flags / samples / keys
+  python loupe.py keeper understand [--ids S3] read the samples without a current reading of their picture (only new or changed ones)
+  python loupe.py keeper status                the keeper's reading of every sample and the counts
 Scopes: flags:write, flags:read, qc:read, runs:read, admin.
 """
 import argparse
@@ -29,6 +31,9 @@ def main():
     s = sp.add_parser("key-revoke"); s.add_argument("id", type=int)
     s = sp.add_parser("import-flags"); s.add_argument("path")
     sp.add_parser("status")
+    s = sp.add_parser("keeper", help="understand: read the samples that have no current reading of their picture now (only new or changed ones; --ids S3,S7 re-reads those); status: the readings and the counts")
+    s.add_argument("action", choices=["understand", "status"])
+    s.add_argument("--ids", default="")
     s = sp.add_parser("seed", help="export: write data/seed/loupe-seed.db (misses, moments, flags; no secrets) for a clone; import: start an empty data folder from it")
     s.add_argument("action", choices=["export", "import"])
     a = ap.parse_args()
@@ -55,6 +60,13 @@ def main():
             print(json.dumps(seed.export(), indent=1))
         else:
             print("imported from the seed" if seed.import_if_empty() else "nothing imported: the database exists already, or there is no seed")
+    elif a.cmd == "keeper":
+        from loupe_app import qc
+        if a.action == "understand":
+            only = [x.strip() for x in a.ids.split(",") if x.strip()] or None
+            print(json.dumps(qc.sync_understanding("cli", only), indent=1, ensure_ascii=False))
+        else:
+            print(json.dumps({"status": qc.understanding_status(), "readings": qc.readings()}, indent=1, ensure_ascii=False))
     elif a.cmd == "import-flags":
         from loupe_app import flags
         print("imported", flags.import_legacy(Path(a.path)), "entries")

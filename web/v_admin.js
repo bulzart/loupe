@@ -24,6 +24,7 @@ export async function overview() {
 // ---------------------------------------------------------------------------------------- keeper
 export async function keeper() {
   const d = await api('GET', '/api/qc/keeper');
+  const u = await api('GET', '/api/qc/keeper/understanding').catch(() => ({ status: null, readings: [] }));
   const k = d.keeper;
   const model = h('input', { value: k.model, size: 24 });
   const out = h('div');
@@ -50,10 +51,33 @@ export async function keeper() {
         h('label', { class: 'f' }, 'Model'), h('div', { class: 'row' }, model, h('button', { class: 'btn sm', onclick: async () => { await api('POST', '/api/settings', { keeper_model: model.value }); toast('Model saved'); } }, 'Save')),
         h('div', { style: 'margin-top:12px' }, h('button', { class: 'btn danger', onclick: async () => { await api('POST', '/api/qc/keeper/reset', {}); toast('Keeper reset'); keeper().then((n) => document.querySelector('.main').replaceChildren(n)); } }, 'Reset the session'))),
       h('div', { class: 'card' }, h('h2', {}, 'Ask it'), ask, h('div', { style: 'margin-top:8px' }, h('button', { class: 'btn primary', onclick: run }, 'Ask')), out)),
+    understandingCard(u),
     h('div', { class: 'card', style: 'margin-top:14px' }, h('h2', {}, 'Consultations'),
       d.consults.length ? h('table', {}, h('thead', {}, h('tr', {}, ['When', 'Key', 'Run / video', 'Asked for', 'Question', 'Samples', 'Mode', 'ms'].map((x) => h('th', {}, x)))),
         h('tbody', {}, d.consults.map((c) => h('tr', {}, h('td', {}, fmtDate(c.ts)), h('td', {}, c.key_name), h('td', { class: 'mono' }, `${c.run || ''} ${c.video || ''}`), h('td', {}, c.purpose === 'plan' ? 'planning hints' : 'QC'), h('td', {}, c.question.slice(0, 140)),
           h('td', { class: 'mono' }, c.sample_ids), h('td', {}, c.mode), h('td', {}, c.ms))))) : h('div', { class: 'empty' }, 'No consultation yet.')));
+}
+
+// What the keeper understood of each sample's picture: read once by a session that opened it, kept as one JSON file per sample, carried in the keeper's digest.
+const READING_LABELS = [['the_miss', 'The miss'], ['right_version', 'Right version'], ['product_and_scene', 'Product and scene'], ['mechanism', 'Mechanism'],
+  ['when_it_recurs', 'Recurs when'], ['qc_check', 'QC checks'], ['prompts', 'Prompts'], ['admin_feedback', 'Your feedback'], ['uncertain', 'Open']];
+
+function understandingCard(u) {
+  const st = u.status;
+  if (!st) return null;
+  const reload = () => keeper().then((n) => document.querySelector('.main').replaceChildren(n));
+  const pending = [...st.missing, ...st.stale];
+  return h('div', { class: 'card', style: 'margin-top:14px' }, h('h2', {}, 'What the keeper understood of each sample'),
+    h('p', { class: 'muted small' }, `Read from its picture: ${st.understood} of ${st.library_size} sample(s)` + (pending.length ? ` · not read yet or changed since: ${pending.join(', ')}` : ' · every sample has a current reading')
+      + ` · reader model ${st.model}. Each sample is read once; only a new or changed sample is read again. The keeper holds these readings with your words; your words win where they differ.`),
+    h('div', { class: 'row' }, h('button', { class: 'btn sm', onclick: async () => { await api('POST', '/api/qc/keeper/understand', {}); toast('Reading the new or changed samples in the background'); setTimeout(reload, 1500); } }, 'Read new or changed samples now')),
+    (u.readings || []).map((r) => h('details', { class: 'card', style: 'margin-top:8px' },
+      h('summary', {}, h('b', {}, r.id), ' ', r.title.slice(0, 160), ' ', h('span', { class: 'muted small' }, r.reading ? `read ${fmtDate(r.read_at)} by ${r.read_by}` + (r.images_read === false ? ' · WITHOUT opening the picture' : '') : 'not read yet')),
+      r.image_url ? h('img', { src: r.image_url, style: 'width:320px;margin-top:6px;border-radius:8px' }) : null,
+      r.reading ? h('div', {},
+        (r.reading.frames_seen || []).map((f) => h('div', { class: 'small' }, h('b', {}, f.frame + ': '), f.seen)),
+        READING_LABELS.filter(([key]) => r.reading[key]).map(([key, label]) => h('div', { style: 'margin-top:4px' }, h('b', {}, label + ': '), r.reading[key])),
+        h('div', { style: 'margin-top:6px' }, h('button', { class: 'btn sm', onclick: async () => { await api('POST', '/api/qc/keeper/understand', { ids: [r.id] }); toast(`Reading ${r.id} again in the background`); } }, 'Read this sample again'))) : null)));
 }
 
 // ---------------------------------------------------------------------------------------- captures
