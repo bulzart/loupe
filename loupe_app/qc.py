@@ -54,6 +54,8 @@ class _TimedLock:
 _keeper_lock = _TimedLock()
 ROT_TURNS = 30           # a keeper session this long is replaced by a fresh one rebuilt from the library (nothing is lost: the library is the memory)
 DEFAULT_MODEL = "claude-haiku-5-5"
+EFFORTS = ("high", "xhigh", "max")   # the reasoning effort every keeper and reader call is started with; never low or medium (Haiku 5.5's own default is medium)
+EFFORT_DEFAULT = "high"
 
 
 def _clip(text, n: int) -> str:
@@ -516,15 +518,23 @@ def _sig() -> str:
 
 # Memory rot: a keeper session is its whole history.  So the library goes in whole only when a session starts; after that a change sends only the lines that
 # changed, a large change starts a fresh session instead, and a session is replaced by a fresh one after ROT_TURNS turns or once ROT_CHARS characters of
-# prompts and answers have gone through it, whichever comes first.  The library is the memory: nothing is lost by starting fresh.
+# prompts, answers, Reads and thinking have gone through it, whichever comes first.  The library is the memory: nothing is lost by starting fresh.
 ROT_CHARS = 150_000
 READ_CHARS = 6000        # what one Read (a sample's picture, its reading, a fetched frame or file) adds to the session, counted toward ROT_CHARS
+THINK_CHARS = 4          # characters counted per thinking token: a resumed session keeps its earlier thinking, and a higher effort thinks longer
 DELTA = "The library changed since your last digest"
 
 
+def _thinking(d: dict) -> int:
+    """The thinking tokens of one call, from the CLI's usage: the larger of the overall figure and the per-model one."""
+    n = int(((d.get("usage") or {}).get("output_tokens_details") or {}).get("thinking_tokens") or 0)
+    return max(n, sum(int((m or {}).get("thinkingTokens") or 0) for m in (d.get("modelUsage") or {}).values()))
+
+
 def _carried(prompt: str, d: dict) -> int:
-    """What one keeper call added to its session: the prompt, the answer and every Read it made (each model turn after the first follows a tool result)."""
-    return len(prompt) + len(d.get("result") or "") + max(0, int(d.get("num_turns") or 1) - 1) * READ_CHARS
+    """What one keeper call added to its session: the prompt, the answer, every Read it made (each model turn after the first follows a tool result) and
+    its thinking."""
+    return len(prompt) + len(d.get("result") or "") + max(0, int(d.get("num_turns") or 1) - 1) * READ_CHARS + _thinking(d) * THINK_CHARS
 
 
 def _line_marks() -> tuple[dict, dict]:
@@ -649,6 +659,20 @@ def _kill_tree(proc):
         pass
 
 
+def effort() -> str:
+    """The --effort of every keeper and reader call: the admin's keeper_effort when it is high, xhigh or max, else high, so no call runs at low or medium."""
+    e = str(core.setting_get("keeper_effort", EFFORT_DEFAULT) or "").strip().lower()
+    return e if e in EFFORTS else EFFORT_DEFAULT
+
+
+def _claude_cmd(exe: str, model: str, sid: str, resume: bool, role: str | None = None, max_turns: int = 6) -> list[str]:
+    """The command line of one keeper or reader call: Read only, no MCP servers, JSON out, at the keeper's effort (the CLI still runs a model that has
+    no effort levels)."""
+    cmd = [exe, "-p", "--model", model, "--effort", effort(), "--tools", "Read", "--allowedTools", "Read", "--strict-mcp-config", "--output-format", "json",
+           "--max-turns", str(max_turns), "--append-system-prompt", role or ROLE, "--add-dir", str(core.DATA / "samples")]
+    return cmd + (["--resume", sid] if resume else ["--session-id", sid])
+
+
 def _run_claude(prompt: str, sid: str, resume: bool, model: str, timeout: int = 150, role: str | None = None, cwd: Path | None = None,
                 max_turns: int = 6) -> dict:
     """One headless claude call.  The prompt goes in on stdin, not on the command line: a digest that carries the keeper's readings of the pictures is longer
@@ -656,9 +680,7 @@ def _run_claude(prompt: str, sid: str, resume: bool, model: str, timeout: int = 
     exe = _claude()
     if not exe:
         raise RuntimeError("the claude CLI was not found on PATH")
-    cmd = [exe, "-p", "--model", model, "--tools", "Read", "--allowedTools", "Read", "--strict-mcp-config", "--output-format", "json",
-           "--max-turns", str(max_turns), "--append-system-prompt", role or ROLE, "--add-dir", str(core.DATA / "samples")]
-    cmd += ["--resume", sid] if resume else ["--session-id", sid]
+    cmd = _claude_cmd(exe, model, sid, resume, role, max_turns)
     flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
     wd = cwd or (core.DATA / "keeper")
     wd.mkdir(parents=True, exist_ok=True)
@@ -703,6 +725,7 @@ class _Held:
 def keeper_status() -> dict:
     st = core.setting_get("keeper", {}) or {}
     st["model"] = core.setting_get("keeper_model", DEFAULT_MODEL)
+    st["effort"], st["efforts"] = effort(), list(EFFORTS)
     st["library"] = _sig()
     st["claude_found"] = bool(_claude())
     st["in_sync"] = (bool(st.get("session_id")) and st.get("library_sig") == st["library"] and st.get("turns", 0) < ROT_TURNS

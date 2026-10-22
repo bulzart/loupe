@@ -266,12 +266,15 @@ def session(h):
 def get_settings(h):
     h.send_json({"ok": True, "allowed_roots": core.setting_get("allowed_roots", []), "default_roots": [str(r) for r in media.default_roots()],
                  "keeper_model": core.setting_get("keeper_model", qc.DEFAULT_MODEL), "keeper_extract_model": core.setting_get("keeper_extract_model", qc.EXTRACT_MODEL_DEFAULT),
+                 "keeper_effort": qc.effort(), "keeper_efforts": list(qc.EFFORTS),
                  "atp": str(core.ATP), "atg": str(core.ATG), "awl": str(core.AWL), "data": str(core.DATA), "kinds": misses.KINDS})
 
 
 @route("POST", "/api/settings", scope="admin")
 def set_settings(h):
     b = h.body_json()
+    if "keeper_effort" in b and str(b["keeper_effort"]).strip().lower() not in qc.EFFORTS:      # the keeper's and the reader's effort: never below high
+        raise ValueError(f"keeper_effort must be one of {', '.join(qc.EFFORTS)}")
     if "allowed_roots" in b:
         roots = []
         for r in b["allowed_roots"]:
@@ -283,7 +286,9 @@ def set_settings(h):
     for key in ("keeper_model", "keeper_extract_model"):       # the keeper's model, and the model that reads each sample's picture once
         if key in b and re.match(r"^[A-Za-z0-9._-]{3,60}$", str(b[key])):
             core.setting_set(key, b[key])
-    core.audit("admin", "settings.update", "", core.jdump({k: b[k] for k in b if k in ("allowed_roots", "keeper_model", "keeper_extract_model")}))
+    if "keeper_effort" in b:
+        core.setting_set("keeper_effort", str(b["keeper_effort"]).strip().lower())
+    core.audit("admin", "settings.update", "", core.jdump({k: b[k] for k in b if k in ("allowed_roots", "keeper_model", "keeper_extract_model", "keeper_effort")}))
     return get_settings(h)
 
 
@@ -685,9 +690,11 @@ def keeper_get(h):
 
 @route("GET", "/api/qc/keeper/state", scope="qc:read")
 def keeper_state(h):
-    """What a pipeline's status or doctor command may know about the keeper without the admin's rights: in sync or not, turns, the library version, the model."""
+    """What a pipeline's status or doctor command may know about the keeper without the admin's rights: in sync or not, turns, the library version, the model
+    and its effort."""
     st = qc.keeper_status()
-    h.send_json({"ok": True, **{k: st[k] for k in ("in_sync", "turns", "chars", "library", "library_sig", "last_synced", "last_used", "model", "claude_found", "created", "understanding") if k in st}})
+    h.send_json({"ok": True, **{k: st[k] for k in ("in_sync", "turns", "chars", "library", "library_sig", "last_synced", "last_used", "model", "effort", "claude_found", "created",
+                                                   "understanding") if k in st}})
 
 
 @route("GET", "/api/qc/keeper/understanding", scope="admin")

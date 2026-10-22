@@ -27,6 +27,8 @@ export async function keeper() {
   const u = await api('GET', '/api/qc/keeper/understanding').catch(() => ({ status: null, readings: [] }));
   const k = d.keeper;
   const model = h('input', { value: k.model, size: 24 });
+  const effort = h('select', {}, (k.efforts || []).map((e) => h('option', { value: e }, e)));
+  effort.value = k.effort;
   const out = h('div');
   const ask = h('textarea', { placeholder: 'Ask as a QC agent would: "The product looks larger after the cut; which samples apply?"' });
   const run = async () => {
@@ -49,6 +51,7 @@ export async function keeper() {
           h('dt', {}, 'library'), h('dd', { class: 'mono' }, k.library)),
         h('p', { class: 'muted small' }, 'Tools: Read only. It cannot write, edit or run anything; the library changes only here, by you. After 30 turns the session is replaced by a fresh one rebuilt from the library, so nothing is lost.'),
         h('label', { class: 'f' }, 'Model'), h('div', { class: 'row' }, model, h('button', { class: 'btn sm', onclick: async () => { await api('POST', '/api/settings', { keeper_model: model.value }); toast('Model saved'); } }, 'Save')),
+        h('label', { class: 'f' }, 'Effort (the keeper and the reader; never below high)'), h('div', { class: 'row' }, effort, h('button', { class: 'btn sm', onclick: async () => { await api('POST', '/api/settings', { keeper_effort: effort.value }); toast('Effort saved'); } }, 'Save')),
         h('div', { style: 'margin-top:12px' }, h('button', { class: 'btn danger', onclick: async () => { await api('POST', '/api/qc/keeper/reset', {}); toast('Keeper reset'); keeper().then((n) => document.querySelector('.main').replaceChildren(n)); } }, 'Reset the session'))),
       h('div', { class: 'card' }, h('h2', {}, 'Ask it'), ask, h('div', { style: 'margin-top:8px' }, h('button', { class: 'btn primary', onclick: run }, 'Ask')), out)),
     understandingCard(u),

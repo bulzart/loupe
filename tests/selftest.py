@@ -586,6 +586,17 @@ def main(with_keeper=False):
         s, d, _ = req("POST", "/api/settings", {"keeper_extract_model": "claude-opus-5-5"})
         check("the reader model is a setting the admin changes", s == 200 and d.get("keeper_extract_model") == "claude-opus-5-5" and _qc.understanding_status()["model"] == "claude-opus-5-5", str(d)[:200])
         req("POST", "/api/settings", {"keeper_extract_model": _qc.EXTRACT_MODEL_DEFAULT})
+        s, d, _ = req("POST", "/api/settings", {"keeper_effort": "medium"})
+        check("the keeper's effort is refused below high", s == 400 and _qc.effort() == "high", f"{s} {str(d)[:200]}")
+        s, d, _ = req("POST", "/api/settings", {"keeper_effort": "max"})
+        c = _qc._claude_cmd("claude", "claude-haiku-5-5", "sid", False)
+        check("the admin raises the effort, and every keeper and reader call carries it", s == 200 and d.get("keeper_effort") == "max"
+              and c[c.index("--effort") + 1] == "max" and c[-2:] == ["--session-id", "sid"] and req("GET", "/api/qc/keeper")[1]["keeper"]["effort"] == "max", str(d)[:200])
+        core.setting_set("keeper_effort", "low")
+        c = _qc._claude_cmd("claude", "claude-haiku-5-5", "sid", True)
+        check("an effort below high that was stored around the API still runs at high", _qc.effort() == "high" and c[c.index("--effort") + 1] == "high"
+              and c[-2:] == ["--resume", "sid"])
+        req("POST", "/api/settings", {"keeper_effort": "high"})
         _qc._extract_one = real_extract
         seq = iter([{"result": json.dumps({"the_miss": "x"}), "num_turns": 1, "total_cost_usd": 0.01}, {"result": json.dumps({"the_miss": "seen", "frames_seen": []}), "num_turns": 3, "total_cost_usd": 0.02}])
         prompts = []

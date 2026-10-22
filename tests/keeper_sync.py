@@ -589,6 +589,9 @@ check("a session that has carried more than ROT_CHARS characters is replaced by 
 check("the keeper's bookkeeping of the lines it holds is not shown to a page or a pipeline", "lines" not in qc.keeper_status())
 check("every Read the keeper makes counts toward the session's size, not only the text sent and received",
       qc._carried("abc", {"result": "xy", "num_turns": 3}) == 5 + 2 * qc.READ_CHARS and qc._carried("abc", {"result": "xy"}) == 5)
+check("the keeper's thinking counts toward the session's size too (a resumed session keeps it, and a higher effort thinks longer)",
+      qc._carried("abc", {"result": "xy", "usage": {"output_tokens_details": {"thinking_tokens": 100}}}) == 5 + 100 * qc.THINK_CHARS
+      and qc._carried("abc", {"result": "xy", "modelUsage": {"m": {"thinkingTokens": 7}}}) == 5 + 7 * qc.THINK_CHARS)
 s_any = qc.library()[0]
 ud = core.DATA / "keeper" / "understood"
 ud.mkdir(parents=True, exist_ok=True)
