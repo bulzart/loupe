@@ -587,6 +587,8 @@ fresh, current, text = ask()
 check("a session that has carried more than ROT_CHARS characters is replaced by a fresh one told the whole library", fresh and current and "LIBRARY (" in text
       and core.setting_get("keeper", {}).get("session_id") != st["session_id"])
 check("the keeper's bookkeeping of the lines it holds is not shown to a page or a pipeline", "lines" not in qc.keeper_status())
+check("every Read the keeper makes counts toward the session's size, not only the text sent and received",
+      qc._carried("abc", {"result": "xy", "num_turns": 3}) == 5 + 2 * qc.READ_CHARS and qc._carried("abc", {"result": "xy"}) == 5)
 s_any = qc.library()[0]
 ud = core.DATA / "keeper" / "understood"
 ud.mkdir(parents=True, exist_ok=True)

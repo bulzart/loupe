@@ -265,7 +265,8 @@ def session(h):
 @route("GET", "/api/settings", scope="admin")
 def get_settings(h):
     h.send_json({"ok": True, "allowed_roots": core.setting_get("allowed_roots", []), "default_roots": [str(r) for r in media.default_roots()],
-                 "keeper_model": core.setting_get("keeper_model", qc.DEFAULT_MODEL), "atp": str(core.ATP), "atg": str(core.ATG), "awl": str(core.AWL), "data": str(core.DATA), "kinds": misses.KINDS})
+                 "keeper_model": core.setting_get("keeper_model", qc.DEFAULT_MODEL), "keeper_extract_model": core.setting_get("keeper_extract_model", qc.EXTRACT_MODEL_DEFAULT),
+                 "atp": str(core.ATP), "atg": str(core.ATG), "awl": str(core.AWL), "data": str(core.DATA), "kinds": misses.KINDS})
 
 
 @route("POST", "/api/settings", scope="admin")
@@ -279,9 +280,10 @@ def set_settings(h):
                 raise ValueError(f"not a folder: {r}")
             roots.append(str(p.resolve()))
         core.setting_set("allowed_roots", roots)
-    if "keeper_model" in b and re.match(r"^[A-Za-z0-9._-]{3,60}$", str(b["keeper_model"])):
-        core.setting_set("keeper_model", b["keeper_model"])
-    core.audit("admin", "settings.update", "", core.jdump({k: b[k] for k in b if k in ("allowed_roots", "keeper_model")}))
+    for key in ("keeper_model", "keeper_extract_model"):       # the keeper's model, and the model that reads each sample's picture once
+        if key in b and re.match(r"^[A-Za-z0-9._-]{3,60}$", str(b[key])):
+            core.setting_set(key, b[key])
+    core.audit("admin", "settings.update", "", core.jdump({k: b[k] for k in b if k in ("allowed_roots", "keeper_model", "keeper_extract_model")}))
     return get_settings(h)
 
 
@@ -670,9 +672,14 @@ def qc_consult(h):
 def keeper_get(h):
     con = core.db()
     try:
-        cons = [dict(r) for r in con.execute("SELECT id,ts,key_name,run,video,question,sample_ids,ms,mode,cost,purpose FROM consults ORDER BY id DESC LIMIT 50")]
+        cons = [dict(r) for r in con.execute("SELECT id,ts,key_name,run,video,question,sample_ids,ms,mode,cost,purpose,asks FROM consults ORDER BY id DESC LIMIT 50")]
     finally:
         con.close()
+    for c in cons:          # what the keeper asked for, could not get, held back or found the library does not cover: shown to the admin, who can add what is missing
+        try:
+            c["asks"] = json.loads(c["asks"]) if c.get("asks") else {}
+        except ValueError:
+            c["asks"] = {}
     h.send_json({"ok": True, "keeper": qc.keeper_status(), "consults": cons})
 
 
@@ -701,7 +708,15 @@ def keeper_understand(h):
 
 @route("POST", "/api/qc/keeper/sync", scope="qc:read")
 def keeper_sync(h):
-    h.send_json({"ok": True, **qc.sync_keeper(h.pr.name)})
+    """What a run start calls: samples without a current reading of their picture (new or changed ones) start being read in the background, the keeper
+    is brought up to date now with what is read, and the answer says how much of the library it holds from the pictures (the watcher tells it the rest)."""
+    u = qc.understanding_status()
+    started = False
+    if not u["current"]:
+        threading.Thread(target=qc.sync_understanding, args=(h.pr.name,), daemon=True).start()
+        started = True
+    r = qc.sync_keeper(h.pr.name)
+    h.send_json({"ok": True, **r, "understanding": {k: u[k] for k in ("library_size", "understood", "missing", "stale", "current")}, "reading_started": started})
 
 
 @route("POST", "/api/qc/keeper/reset", scope="admin")

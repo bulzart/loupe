@@ -515,6 +515,77 @@ def main(with_keeper=False):
         check("a sample that leaves the library has its reading retired, nothing is read", r4["retired"] == 1 and r4["read"] == []
               and not (core.DATA / "keeper" / "understood" / f"{ids[0]}.json").exists() and any((core.DATA / "keeper" / "understood" / "retired").glob(f"{ids[0]}-*.json")), str(r4))
         req("PATCH", f"/api/moments/{ids[0][1:]}", {"status": "active"})
+        _qc.sync_understanding("test")
+
+        print("\n[coupling: the answers carry the readings, what the keeper missed reaches the admin, a run start starts the readings]")
+        sid0 = ids[0]
+
+        def fake_keeper(prompt, *a, **k):
+            if "PLANNING question" in prompt:
+                return {"result": json.dumps({"hints": [{"id": sid0, "trigger": "the can is set down on the desk", "right_outcome": "the can stays the same size",
+                                                         "lever": "restate its size at that beat", "caveat": "c", "confidence": "high"}]}), "total_cost_usd": 0}
+            if "QC question" in prompt:
+                return {"result": json.dumps({"relevant": [{"id": sid0, "why": "w", "check": "c", "wrong_pattern": "p"}], "advice": "a",
+                                              "not_covered": "no sample shows a can held in a moving car",
+                                              "needs": [{"kind": "ask_agent", "question": "is the can's tab up at 2 s?", "why": "the frame list stops at 1 s"}]}), "total_cost_usd": 0}
+            return {"result": "ready", "total_cost_usd": 0}
+        _qc._run_claude = fake_keeper
+        _qc.keeper_reset("test")
+        s, d, _ = req("POST", "/api/qc/consult", {"run": "r", "video": "03", "model": "wan3_0_prime", "question": "Which samples apply?"}, key=kq)
+        rel = (d.get("relevant") or [{}])[0]
+        check("a QC answer's relevant sample carries the keeper's short reading and the path of the whole one", s == 200 and rel.get("reading_path", "").endswith(f"{sid0}.json")
+              and rel.get("reading", {}).get("the_miss"), str(d)[:300])
+        check("every answer says how much of the library the keeper holds from the pictures", d.get("library_read", {}).get("understood") == len(ids) and d["library_read"]["not_read"] == [])
+        check("what only the QC agent can answer comes back unmet", d.get("needs_unmet") and d["needs_unmet"][0]["kind"] == "ask_agent")
+        s, d, _ = req("POST", "/api/qc/consult", {"purpose": "plan", "run": "r", "video": "04", "model": "wan3_0_prime", "question": "Beat 1: he sets the can down."}, key=kq)
+        check("a planning hint carries the path of its sample's reading", s == 200 and (d.get("hints") or [{}])[0].get("reading_path", "").endswith(f"{sid0}.json"), str(d)[:300])
+        s, d, _ = req("GET", "/api/qc/keeper")
+        qa = next((c for c in d["consults"] if c["purpose"] == "qc"), {})
+        check("the consult log keeps what the keeper asked for, could not get and found not covered, whole, for the admin's page",
+              qa.get("asks", {}).get("not_covered", "").startswith("no sample shows") and qa["asks"].get("needs_unmet") and qa["asks"]["needs_unmet"][0].get("question"), str(qa)[:300])
+        req("PATCH", f"/api/moments/{sid0[1:]}", {"details": "Edited again, so its reading is stale."})
+        n_before = len(calls)
+        s, d, _ = req("POST", "/api/qc/keeper/sync", {}, key=kq)
+        check("a run start's keeper sync starts reading the samples without a current reading and says so", s == 200 and d.get("reading_started") is True
+              and sid0 in (d.get("understanding", {}).get("stale") or []), str(d)[:300])
+        import time as _t
+        for _ in range(50):
+            if len(calls) > n_before:
+                break
+            _t.sleep(0.1)
+        check("the background reading reads only that sample", calls[n_before:] == [sid0], str(calls[n_before:]))
+
+        print("\n[a failing reading is given up after two tries of the same content; a sample that comes back gets its reading back; the reader model is a setting]")
+
+        def failing_extract(s, model):
+            calls.append("fail-" + s["id"])
+            raise RuntimeError("the reading was not a JSON object with the miss in it")
+        _qc._extract_one = failing_extract
+        req("PATCH", f"/api/moments/{sid0[1:]}", {"details": "Changed, so it is read again, and the reading fails."})
+        _qc.sync_understanding("test")
+        _qc.sync_understanding("test")
+        n_fail = calls.count("fail-" + sid0)
+        r7 = _qc.sync_understanding("test")
+        st7 = _qc.understanding_status()
+        check("a sample whose reading failed twice, unchanged, is not read again on its own: it is listed as failed and the readings count as current (no call per tick)",
+              n_fail == 2 and calls.count("fail-" + sid0) == 2 and r7["state"] == "current" and sid0 in r7.get("gave_up", []) and sid0 in st7["failed"] and st7["current"], f"{n_fail} {r7} {st7}")
+        check("the keeper's digest says the sample could not be read", "COULD NOT BE READ" in _qc._digest())
+        _qc.sync_understanding("test", [sid0])
+        check("the admin's request reads it once more", calls.count("fail-" + sid0) == 3)
+        _qc._extract_one = fake_extract
+        req("PATCH", f"/api/moments/{sid0[1:]}", {"details": "Changed again: a changed sample starts again."})
+        r8 = _qc.sync_understanding("test")
+        check("a changed sample is read again after failures, and a success clears its failure record",
+              r8["read"] == [sid0] and not (core.DATA / "keeper" / "understood" / "failed" / f"{sid0}.json").exists(), str(r8))
+        n_calls = len(calls)
+        req("PATCH", f"/api/moments/{sid0[1:]}", {"status": "archived"})
+        _qc.sync_understanding("test")
+        req("PATCH", f"/api/moments/{sid0[1:]}", {"status": "active"})
+        r9 = _qc.sync_understanding("test")
+        check("a sample that comes back unchanged gets its earlier reading back, with no new reading", r9["restored"] == [sid0] and r9["read"] == [] and len(calls) == n_calls, str(r9))
+        s, d, _ = req("POST", "/api/settings", {"keeper_extract_model": "claude-opus-5-5"})
+        check("the reader model is a setting the admin changes", s == 200 and d.get("keeper_extract_model") == "claude-opus-5-5" and _qc.understanding_status()["model"] == "claude-opus-5-5", str(d)[:200])
+        req("POST", "/api/settings", {"keeper_extract_model": _qc.EXTRACT_MODEL_DEFAULT})
         _qc._extract_one = real_extract
         seq = iter([{"result": json.dumps({"the_miss": "x"}), "num_turns": 1, "total_cost_usd": 0.01}, {"result": json.dumps({"the_miss": "seen", "frames_seen": []}), "num_turns": 3, "total_cost_usd": 0.02}])
         prompts = []

@@ -274,19 +274,37 @@ def understood(s: dict) -> dict | None:
     return j if isinstance(j, dict) and j.get("source_sig") == _source_sig(s) and isinstance(j.get("reading"), dict) else None
 
 
+MAX_READ_ATTEMPTS = 2   # a sample whose reading failed this often, unchanged, is not read again on its own (a changed sample, or the admin's request, is)
+
+
+def _failure(s: dict) -> dict | None:
+    """The record of a sample whose reading failed, while the sample is unchanged since; None otherwise."""
+    j = _read_json(_u_dir() / "failed" / f"{s['id']}.json")
+    return j if isinstance(j, dict) and j.get("source_sig") == _source_sig(s) else None
+
+
+def _gave_up(s: dict) -> bool:
+    f = _failure(s)
+    return bool(f) and int(f.get("attempts") or 0) >= MAX_READ_ATTEMPTS
+
+
 def understanding_status() -> dict:
+    """The readings against the library.  `current` is true when every sample has a current reading or was given up on after MAX_READ_ATTEMPTS
+    failed readings of the same content (listed in `failed`: they wait for a change or the admin's request, so a failing sample never costs a call per tick)."""
     lib = library()
-    have, stale, missing = [], [], []
+    have, stale, missing, failed = [], [], [], []
     for s in lib:
         p = _u_dir() / f"{s['id']}.json"
         if understood(s):
             have.append(s["id"])
+        elif _gave_up(s):
+            failed.append(s["id"])
         elif p.exists():
             stale.append(s["id"])
         else:
             missing.append(s["id"])
     ret = _u_dir() / "retired"
-    return {"library_size": len(lib), "understood": len(have), "stale": stale, "missing": missing,
+    return {"library_size": len(lib), "understood": len(have), "stale": stale, "missing": missing, "failed": failed,
             "retired": len(list(ret.glob("*.json"))) if ret.is_dir() else 0, "current": not stale and not missing,
             "model": core.setting_get("keeper_extract_model", EXTRACT_MODEL_DEFAULT)}
 
@@ -296,9 +314,11 @@ def readings() -> list[dict]:
     out = []
     for s in library():
         j = understood(s)
+        f = None if j else _failure(s)
         out.append({"id": s["id"], "title": s.get("title", ""), "model": s.get("model", ""), "image_url": s.get("image_url", ""),
                     "read_at": (j or {}).get("read_at"), "read_by": (j or {}).get("model"), "images_read": (j or {}).get("images_read"),
-                    "reading": (j or {}).get("reading")})
+                    "reading": (j or {}).get("reading"),
+                    "failed": {"attempts": f.get("attempts"), "error": f.get("error", ""), "at": f.get("at")} if f else None})
     return out
 
 
@@ -361,25 +381,44 @@ def sync_understanding(actor: str = "system", only: list[str] | None = None) -> 
         lib = library()
         active = {s["id"] for s in lib}
         retired = 0
+        ret_dir, fail_dir = _u_dir() / "retired", _u_dir() / "failed"
         for p in _u_dir().glob("S*.json"):
             if p.stem not in active:
-                dst = _u_dir() / "retired"
-                dst.mkdir(exist_ok=True)
-                shutil.move(str(p), str(dst / f"{p.stem}-{time.strftime('%Y%m%d-%H%M%S')}.json"))
+                ret_dir.mkdir(exist_ok=True)
+                shutil.move(str(p), str(ret_dir / f"{p.stem}-{time.strftime('%Y%m%d-%H%M%S')}.json"))
                 retired += 1
-        todo = [s for s in lib if (only and s["id"] in only) or not understood(s)]
+        for p in fail_dir.glob("S*.json") if fail_dir.is_dir() else []:
+            if p.stem not in active:
+                p.unlink(missing_ok=True)
+        restored = []
+        for s in lib:                     # a sample that comes back unchanged (restored from the archive) gets its earlier reading back: no new call
+            if understood(s) or (only and s["id"] in only):
+                continue
+            for old in sorted(ret_dir.glob(f"{s['id']}-*.json"), reverse=True) if ret_dir.is_dir() else []:
+                j = _read_json(old)
+                if isinstance(j, dict) and j.get("source_sig") == _source_sig(s) and isinstance(j.get("reading"), dict):
+                    shutil.move(str(old), str(_u_dir() / f"{s['id']}.json"))
+                    restored.append(s["id"])
+                    break
+        todo = [s for s in lib if (only and s["id"] in only) or (not understood(s) and not _gave_up(s))]
+        gave_up = [s["id"] for s in lib if not understood(s) and _gave_up(s) and not (only and s["id"] in only)]
         if not todo:
-            return {"state": "current", "read": [], "retired": retired, "failed": [], "cost": 0.0, "library_size": len(lib)}
+            return {"state": "current", "read": [], "restored": restored, "retired": retired, "failed": [], "gave_up": gave_up, "cost": 0.0, "library_size": len(lib)}
         if not _claude():
-            return {"state": "failed", "read": [], "retired": retired, "failed": [s["id"] for s in todo], "cost": 0.0, "library_size": len(lib),
-                    "error": "the claude CLI was not found on PATH"}
+            return {"state": "failed", "read": [], "restored": restored, "retired": retired, "failed": [{"id": s["id"], "error": "no claude CLI"} for s in todo],
+                    "gave_up": gave_up, "cost": 0.0, "library_size": len(lib), "error": "the claude CLI was not found on PATH"}
         model = core.setting_get("keeper_extract_model", EXTRACT_MODEL_DEFAULT)
         read, failed, cost = [], [], 0.0
         for s in todo:
             try:
                 r = _extract_one(s, model)
             except Exception as e:  # noqa: BLE001
-                failed.append({"id": s["id"], "error": str(e)[:200]})
+                err = str(e)[:200]
+                failed.append({"id": s["id"], "error": err})
+                prev = _failure(s) or {}           # the same content failing again counts up; a changed sample starts again from one
+                fail_dir.mkdir(exist_ok=True)
+                (fail_dir / f"{s['id']}.json").write_text(json.dumps({"id": s["id"], "source_sig": _source_sig(s), "attempts": int(prev.get("attempts") or 0) + 1,
+                                                                      "error": err, "at": core.now(), "model": model}, ensure_ascii=False, indent=1), encoding="utf-8")
                 continue
             cost += r["cost"]
             doc = {"id": s["id"], "moment_id": s["moment_id"], "title": s.get("title", ""), "source_sig": _source_sig(s), "read_at": core.now(), "model": model,
@@ -387,10 +426,11 @@ def sync_understanding(actor: str = "system", only: list[str] | None = None) -> 
             tmp = _u_dir() / f"{s['id']}.json.tmp"
             tmp.write_text(json.dumps(doc, ensure_ascii=False, indent=1), encoding="utf-8")
             os.replace(tmp, _u_dir() / f"{s['id']}.json")
+            (fail_dir / f"{s['id']}.json").unlink(missing_ok=True)
             read.append(s["id"])
-        core.audit(actor, "keeper.understand", f"{len(read)} read, {len(failed)} failed, {retired} retired", f"cost {cost:.4f}")
-        return {"state": "read" if not failed else ("partial" if read else "failed"), "read": read, "retired": retired, "failed": failed,
-                "cost": round(cost, 4), "library_size": len(lib)}
+        core.audit(actor, "keeper.understand", f"{len(read)} read, {len(restored)} restored, {len(failed)} failed, {retired} retired", f"cost {cost:.4f}")
+        return {"state": "read" if not failed else ("partial" if read else "failed"), "read": read, "restored": restored, "retired": retired, "failed": failed,
+                "gave_up": gave_up, "cost": round(cost, 4), "library_size": len(lib)}
     finally:
         _understand_lock.release()
 
@@ -400,12 +440,35 @@ def _reading_text(s: dict) -> str:
     fields; what each frame shows, the right version, the prompts and what is open stay in the JSON file, which the keeper Reads when it needs them)."""
     j = understood(s)
     if not j:
+        if _gave_up(s):
+            return f"COULD NOT BE READ ({MAX_READ_ATTEMPTS} attempts failed; Read the image yourself before you rely on this sample)"
         return "NOT READ YET (Read the image yourself before you rely on this sample)"
     r = j["reading"]
     bits = [f"{lab}: {_clip(r.get(k, ''), n)}" for lab, k, n in (("miss", "the_miss", 200), ("mechanism", "mechanism", 160), ("recurs when", "when_it_recurs", 160),
                                                                   ("QC check", "qc_check", 160)) if r.get(k)]
     return ("READ (from its picture" + ("" if j.get("images_read", True) else ", WITHOUT opening it") + f", {j.get('read_at', '')[:10]}): " + " / ".join(bits)
             + f" / full reading: {_u_dir() / (s['id'] + '.json')}")
+
+
+def _reading_path(s: dict) -> str:
+    """The full reading's file when the sample has a current one: a pipeline agent Reads it for a sample it judged relevant, nothing else."""
+    return str(_u_dir() / f"{s['id']}.json") if understood(s) else ""
+
+
+def _reading_brief(s: dict) -> dict:
+    """For a QC answer's relevant sample: the keeper's reading in two short fields and the path of the whole one (Read on demand), or nothing."""
+    j = understood(s)
+    if not j:
+        return {"reading_path": "", "reading": None}
+    r = j["reading"]
+    return {"reading_path": str(_u_dir() / f"{s['id']}.json"), "reading": {"the_miss": _clip(r.get("the_miss", ""), 300), "qc_check": _clip(r.get("qc_check", ""), 300),
+                                                                           "opened_picture": bool(j.get("images_read", True))}}
+
+
+def library_read() -> dict:
+    """How much of the library the keeper holds from its pictures: the samples without a current reading were judged from the admin's words alone."""
+    u = understanding_status()
+    return {"understood": u["understood"], "library_size": u["library_size"], "not_read": u["missing"] + u["stale"]}
 
 
 def _digest() -> str:
@@ -455,7 +518,13 @@ def _sig() -> str:
 # changed, a large change starts a fresh session instead, and a session is replaced by a fresh one after ROT_TURNS turns or once ROT_CHARS characters of
 # prompts and answers have gone through it, whichever comes first.  The library is the memory: nothing is lost by starting fresh.
 ROT_CHARS = 150_000
+READ_CHARS = 6000        # what one Read (a sample's picture, its reading, a fetched frame or file) adds to the session, counted toward ROT_CHARS
 DELTA = "The library changed since your last digest"
+
+
+def _carried(prompt: str, d: dict) -> int:
+    """What one keeper call added to its session: the prompt, the answer and every Read it made (each model turn after the first follows a tool result)."""
+    return len(prompt) + len(d.get("result") or "") + max(0, int(d.get("num_turns") or 1) - 1) * READ_CHARS
 
 
 def _line_marks() -> tuple[dict, dict]:
@@ -502,7 +571,7 @@ def _boot(lib_n: int, sig: str, model: str) -> tuple[dict, float]:
     d = _run_claude(boot, sid, False, model)
     marks = _line_marks()[1]
     st = {"session_id": sid, "created": core.now(), "turns": 1, "model": model, "library_sig": sig, "bootstrapped": core.now(), "lines": marks,
-          "chars": len(boot) + len(d.get("result") or "")}
+          "chars": _carried(boot, d)}
     return st, float(d.get("total_cost_usd") or 0)
 
 
@@ -671,7 +740,7 @@ def sync_keeper(actor: str = "system") -> dict:
                 st["turns"] = st.get("turns", 0) + 1
                 st["library_sig"] = sig
                 st["lines"] = dl[1]
-                st["chars"] = st.get("chars", 0) + len(msg) + len(d.get("result") or "")
+                st["chars"] = st.get("chars", 0) + _carried(msg, d)
                 state = "synced"
             if state != "in_sync":
                 st["last_synced"] = core.now()
@@ -742,7 +811,8 @@ def plan_hints_from(parsed, ctx: dict, lib: dict, cap: int = 3, why: list | None
             continue
         out.append({"id": s["id"], "trigger": _clip(r["trigger"], 600), "right_outcome": _clip(r.get("right_outcome", ""), 600),
                     "lever": _clip(r["lever"], 700), "caveat": _clip(r.get("caveat", ""), 500), "confidence": conf, "model_independent": indep,
-                    "prompts": s.get("prompts", ""), "prompt_note": _clip(s.get("prompt_note", ""), 400)})
+                    "prompts": s.get("prompts", ""), "prompt_note": _clip(s.get("prompt_note", ""), 400),
+                    "reading_path": _reading_path(s) if s.get("composite_path") else ""})
     out.sort(key=lambda h: 0 if h["confidence"] == "high" else 1)
     for extra in out[cap:]:
         _why(why, extra["id"], f"beyond the cap of {cap} hints")
@@ -801,7 +871,8 @@ def _fulfil(n: dict, ctx: dict, d: Path, plan: bool) -> dict:
     rd = runs.run_dir(run) if run else None
     try:
         if kind == "ask_agent":
-            return no("only the QC agent can answer this: it looks at its own video and asks again with a note")
+            return no("only the prompt writer can answer this from its plan: it answers in words and asks again with a note" if plan
+                      else "only the QC agent can answer this: it looks at its own video and asks again with a note")
         if kind == "sample_origin":
             sid = str(n.get("id") or "").strip()
             s = next((x for x in library() if x["id"] == sid), None)
@@ -890,7 +961,7 @@ def _ask_loop(parsed, st: dict, ctx: dict, plan: bool):
                + f"\n\nAnswer again with the same kind of JSON object. Rounds left for more questions: {MAX_ASKS - rounds - 1}.")
         res = _run_claude(msg, st["session_id"], True, st["model"])
         cost += float(res.get("total_cost_usd") or 0)
-        st["chars"] = st.get("chars", 0) + len(msg) + len(res.get("result") or "")
+        st["chars"] = st.get("chars", 0) + _carried(msg, res)
         turns += 1
         rounds += 1
         parsed = _json_of(res.get("result", ""))
@@ -941,7 +1012,8 @@ def consult(key_name: str, ctx: dict, question: str, purpose: str = "qc") -> dic
             who = (f"run {ctx.get('run') or '?'} video {ctx.get('video') or '?'} (model {ctx.get('model') or '?'}, mode {ctx.get('mode') or '?'}, "
                    f"product {ctx.get('product') or '?'}; product details: {str(ctx.get('product_details') or '-')[:400]})")
             if ctx.get("note"):
-                delta += "\nThe QC agent adds (what it saw when it looked at its own video): " + str(ctx["note"])[:600] + "\n"
+                delta += (("\nThe prompt writer answers what you asked (from its plan): " if plan else "\nThe QC agent adds (what it saw when it looked at its own video): ")
+                          + str(ctx["note"])[:600] + "\n")
             if plan:
                 prompt = (f"PLANNING question for {who}. The video has not been generated. The writer's plan, one line per beat:\n{question}\n"
                           f"{delta}\nAnswer with the PLANNING JSON object only (an empty hints list is the normal answer); if you cannot judge something Loupe could fetch (the plan, the product row, a sample's origin), ask with needs instead of guessing.")
@@ -951,7 +1023,7 @@ def consult(key_name: str, ctx: dict, question: str, purpose: str = "qc") -> dic
             d = _run_claude(prompt, st["session_id"], True, st["model"])
             cost += float(d.get("total_cost_usd") or 0)
             st["turns"] = st.get("turns", 0) + 1
-            st["chars"] = st.get("chars", 0) + len(prompt) + len(d.get("result") or "")
+            st["chars"] = st.get("chars", 0) + _carried(prompt, d)
             st["library_sig"] = sig
             st["last_used"] = core.now()
             core.setting_set("keeper", st)
@@ -978,7 +1050,7 @@ def consult(key_name: str, ctx: dict, question: str, purpose: str = "qc") -> dic
                                     "t_wrong": s.get("t_wrong"), "kinds": s.get("kinds", []), "prompts": s.get("prompts", ""), "prompt_note": _clip(s.get("prompt_note", ""), 400),
                                     "details": s["details"], "correct_note": s["correct_note"], "has_right": s.get("has_right", True),
                                     "idea": s.get("idea", ""), "better": s.get("better", ""), "missed": s.get("missed", ""), "sample_kind": s.get("sample_kind", "pair"),
-                                    "frames": s.get("frames", []), "n_frames": s.get("n_frames", 0)})
+                                    "frames": s.get("frames", []), "n_frames": s.get("n_frames", 0), **_reading_brief(s)})
                 res = {"mode": "keeper", "purpose": "qc", "relevant": rel, "advice": _clip((parsed or {}).get("advice", ""), 700) if isinstance(parsed, dict) else _clip(d.get("result", ""), 700),
                        "not_covered": _clip((parsed or {}).get("not_covered", ""), 500) if isinstance(parsed, dict) else "", "library_size": len(ids)}
             if asked:
@@ -998,11 +1070,17 @@ def consult(key_name: str, ctx: dict, question: str, purpose: str = "qc") -> dic
         res = ({"mode": mode, "purpose": "plan", "hints": [], "library_size": len(lib_now), "keeper_error": err} if plan
                else {**fallback, "mode": mode, "purpose": "qc", "keeper_error": err})
     ms = int((time.time() - t0) * 1000)
+    if lib_now:
+        res["library_read"] = library_read()          # which samples the keeper holds from their pictures; the rest it judged from the admin's words alone
     ids_used = ",".join(x["id"] for x in (res.get("hints") if plan else res.get("relevant", res.get("samples", []))) or [])
+    asks = {k: res[k] for k in ("needs_asked", "needs_unmet", "not_covered", "none_reason", "held_back_why", "keeper_error") if res.get(k)}
+    if lib_now and res.get("library_read", {}).get("not_read"):
+        asks["not_read"] = res["library_read"]["not_read"]
     con = core.db()
     try:
-        con.execute("INSERT INTO consults(ts,key_name,run,video,question,sample_ids,answer,ms,mode,cost,purpose) VALUES(?,?,?,?,?,?,?,?,?,?,?)",
-                    (core.now(), key_name, ctx.get("run") or "", ctx.get("video") or "", question[:1000], ids_used, core.jdump(res)[:6000], ms, res["mode"], cost, purpose))
+        con.execute("INSERT INTO consults(ts,key_name,run,video,question,sample_ids,answer,ms,mode,cost,purpose,asks) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)",
+                    (core.now(), key_name, ctx.get("run") or "", ctx.get("video") or "", question[:1000], ids_used, core.jdump(res)[:6000], ms, res["mode"], cost, purpose,
+                     core.jdump(asks) if asks else None))
         con.commit()
     finally:
         con.close()

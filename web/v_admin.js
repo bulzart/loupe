@@ -52,10 +52,35 @@ export async function keeper() {
         h('div', { style: 'margin-top:12px' }, h('button', { class: 'btn danger', onclick: async () => { await api('POST', '/api/qc/keeper/reset', {}); toast('Keeper reset'); keeper().then((n) => document.querySelector('.main').replaceChildren(n)); } }, 'Reset the session'))),
       h('div', { class: 'card' }, h('h2', {}, 'Ask it'), ask, h('div', { style: 'margin-top:8px' }, h('button', { class: 'btn primary', onclick: run }, 'Ask')), out)),
     understandingCard(u),
+    gapsCard(d.consults),
     h('div', { class: 'card', style: 'margin-top:14px' }, h('h2', {}, 'Consultations'),
-      d.consults.length ? h('table', {}, h('thead', {}, h('tr', {}, ['When', 'Key', 'Run / video', 'Asked for', 'Question', 'Samples', 'Mode', 'ms'].map((x) => h('th', {}, x)))),
+      d.consults.length ? h('table', {}, h('thead', {}, h('tr', {}, ['When', 'Key', 'Run / video', 'Asked for', 'Question', 'Samples', 'Mode', 'The keeper asked, missed or held back', 'ms'].map((x) => h('th', {}, x)))),
         h('tbody', {}, d.consults.map((c) => h('tr', {}, h('td', {}, fmtDate(c.ts)), h('td', {}, c.key_name), h('td', { class: 'mono' }, `${c.run || ''} ${c.video || ''}`), h('td', {}, c.purpose === 'plan' ? 'planning hints' : 'QC'), h('td', {}, c.question.slice(0, 140)),
-          h('td', { class: 'mono' }, c.sample_ids), h('td', {}, c.mode), h('td', {}, c.ms))))) : h('div', { class: 'empty' }, 'No consultation yet.')));
+          h('td', { class: 'mono' }, c.sample_ids), h('td', {}, c.mode), h('td', { class: 'small' }, asksLines(c.asks || {})), h('td', {}, c.ms))))) : h('div', { class: 'empty' }, 'No consultation yet.')));
+}
+
+// What the keeper asked for, could not get, held back or found the library does not cover, in plain words (text nodes only).
+function asksLines(a) {
+  const out = [];
+  (a.needs_asked || []).forEach((n) => out.push(h('div', {}, `asked for ${n.kind}${n.question ? ': ' + n.question : ''}${n.fulfilled ? ' (fetched)' : ' (NOT available' + (n.reason ? ': ' + n.reason : '') + ')'}`)));
+  (a.needs_unmet || []).filter((n) => n.kind === 'more').forEach((n) => out.push(h('div', {}, 'still wanted: ' + n.why)));
+  if (a.not_covered) out.push(h('div', {}, 'not covered by the library: ' + a.not_covered));
+  if (a.not_read && a.not_read.length) out.push(h('div', {}, 'judged from your words only (no reading of the picture yet): ' + a.not_read.join(', ')));
+  (a.held_back_why || []).forEach((x) => out.push(h('div', { class: 'muted' }, `held back ${x.id}: ${x.reason}`)));
+  if (a.none_reason) out.push(h('div', { class: 'muted' }, 'no hint: ' + a.none_reason));
+  if (a.keeper_error) out.push(h('div', {}, 'keeper unavailable: ' + a.keeper_error));
+  return out;
+}
+
+// The open gaps across the recent consultations: what the keeper could not get and what the library does not cover. The admin closes a gap by adding a
+// sample (Generation misses) or by answering in a report's words; nothing here changes the library.
+function gapsCard(cons) {
+  const rows = cons.filter((c) => c.asks && ((c.asks.needs_unmet || []).length || c.asks.not_covered));
+  return h('div', { class: 'card', style: 'margin-top:14px' }, h('h2', {}, 'What the keeper is missing'),
+    h('p', { class: 'muted small' }, 'From the last 50 consultations: what the keeper asked for and could not get, and what it said the library does not cover. A new sample in Generation misses is how a gap gets closed.'),
+    rows.length ? rows.map((c) => h('div', { class: 'card', style: 'margin-top:6px' }, h('div', { class: 'muted small' }, `${fmtDate(c.ts)} · ${c.purpose === 'plan' ? 'planning' : 'QC'} · ${c.run || ''} ${c.video || ''}`),
+      (c.asks.needs_unmet || []).map((n) => h('div', {}, `could not get ${n.kind}${n.question ? ': ' + n.question : ''}${n.reason ? ' (' + n.reason + ')' : ''}`)),
+      c.asks.not_covered ? h('div', {}, 'not covered: ' + c.asks.not_covered) : null)) : h('div', { class: 'empty' }, 'Nothing missing in the recent consultations.'));
 }
 
 // What the keeper understood of each sample's picture: read once by a session that opened it, kept as one JSON file per sample, carried in the keeper's digest.
@@ -67,17 +92,25 @@ function understandingCard(u) {
   if (!st) return null;
   const reload = () => keeper().then((n) => document.querySelector('.main').replaceChildren(n));
   const pending = [...st.missing, ...st.stale];
+  const failed = st.failed || [];
+  const reader = h('input', { value: st.model, size: 24 });
+  const state = (r) => (r.reading ? `read ${fmtDate(r.read_at)} by ${r.read_by}` + (r.images_read === false ? ' · WITHOUT opening the picture' : '')
+    : r.failed ? `COULD NOT BE READ (${r.failed.attempts} attempt(s)): ${r.failed.error}` : 'not read yet');
   return h('div', { class: 'card', style: 'margin-top:14px' }, h('h2', {}, 'What the keeper understood of each sample'),
     h('p', { class: 'muted small' }, `Read from its picture: ${st.understood} of ${st.library_size} sample(s)` + (pending.length ? ` · not read yet or changed since: ${pending.join(', ')}` : ' · every sample has a current reading')
-      + ` · reader model ${st.model}. Each sample is read once; only a new or changed sample is read again. The keeper holds these readings with your words; your words win where they differ.`),
-    h('div', { class: 'row' }, h('button', { class: 'btn sm', onclick: async () => { await api('POST', '/api/qc/keeper/understand', {}); toast('Reading the new or changed samples in the background'); setTimeout(reload, 1500); } }, 'Read new or changed samples now')),
+      + (failed.length ? ` · given up after failed readings (it waits for a change or your button): ${failed.join(', ')}` : '')
+      + '. Each sample is read once; only a new or changed sample is read again, and a sample that comes back unchanged gets its earlier reading back. The keeper holds these readings with your words; your words win where they differ.'),
+    h('label', { class: 'f' }, 'Reader model (reads each picture once)'), h('div', { class: 'row' }, reader,
+      h('button', { class: 'btn sm', onclick: async () => { await api('POST', '/api/settings', { keeper_extract_model: reader.value }); toast('Reader model saved'); } }, 'Save'),
+      h('button', { class: 'btn sm', onclick: async () => { await api('POST', '/api/qc/keeper/understand', {}); toast('Reading the new or changed samples in the background'); setTimeout(reload, 1500); } }, 'Read new or changed samples now')),
     (u.readings || []).map((r) => h('details', { class: 'card', style: 'margin-top:8px' },
-      h('summary', {}, h('b', {}, r.id), ' ', r.title.slice(0, 160), ' ', h('span', { class: 'muted small' }, r.reading ? `read ${fmtDate(r.read_at)} by ${r.read_by}` + (r.images_read === false ? ' · WITHOUT opening the picture' : '') : 'not read yet')),
+      h('summary', {}, h('b', {}, r.id), ' ', r.title.slice(0, 160), ' ', h('span', { class: 'muted small' }, state(r))),
       r.image_url ? h('img', { src: r.image_url, style: 'width:320px;margin-top:6px;border-radius:8px' }) : null,
       r.reading ? h('div', {},
         (r.reading.frames_seen || []).map((f) => h('div', { class: 'small' }, h('b', {}, f.frame + ': '), f.seen)),
-        READING_LABELS.filter(([key]) => r.reading[key]).map(([key, label]) => h('div', { style: 'margin-top:4px' }, h('b', {}, label + ': '), r.reading[key])),
-        h('div', { style: 'margin-top:6px' }, h('button', { class: 'btn sm', onclick: async () => { await api('POST', '/api/qc/keeper/understand', { ids: [r.id] }); toast(`Reading ${r.id} again in the background`); } }, 'Read this sample again'))) : null)));
+        READING_LABELS.filter(([key]) => r.reading[key]).map(([key, label]) => h('div', { style: 'margin-top:4px' }, h('b', {}, label + ': '), r.reading[key]))) : null,
+      h('div', { style: 'margin-top:6px' }, h('button', { class: 'btn sm', onclick: async () => { await api('POST', '/api/qc/keeper/understand', { ids: [r.id] }); toast(`Reading ${r.id} in the background`); } },
+        r.reading ? 'Read this sample again' : 'Read this sample now')))));
 }
 
 // ---------------------------------------------------------------------------------------- captures

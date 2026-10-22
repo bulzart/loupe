@@ -115,6 +115,8 @@ def db() -> sqlite3.Connection:
                     con.execute("UPDATE moments SET frames=? WHERE id=?", (jdump(fr), r["id"]))
                 if "purpose" not in [r[1] for r in con.execute("PRAGMA table_info(consults)")]:      # a database made before planning hints existed
                     con.execute("ALTER TABLE consults ADD COLUMN purpose TEXT DEFAULT 'qc'")
+                if "asks" not in [r[1] for r in con.execute("PRAGMA table_info(consults)")]:      # what the keeper asked for, could not get, held back or found not covered
+                    con.execute("ALTER TABLE consults ADD COLUMN asks TEXT")
                 con.commit()
                 _inited = True
     con.execute("PRAGMA busy_timeout=30000")
