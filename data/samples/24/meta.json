@@ -1,13 +1,13 @@
 {
- "moment": 5,
+ "moment": 24,
  "miss": 5,
- "title": "The can proportions are good but it doesnt look like a real actual real can/tin that actually was in the video,, rather it looks like a video edit or image placement, i looks a bit 3d and doesnt blend",
+ "title": "﻿ The can proportions are good but it doesnt look like a real actual real can/tin that actually was in the video,, rather it looks like a video edit or image placement, i looks a bit 3d and doesnt blend, meanwhile the right version is correct",
  "model": "wan3_0_prime",
  "run": "20261014-220106-13",
  "video": "05",
  "t_wrong": 0.0,
  "t_fixed": 0.0,
- "sample": "S5",
+ "sample": "S24",
  "frames": [
   {
    "n": 1,
@@ -33,18 +33,18 @@
   {
    "type": "rect",
    "frame": 0,
-   "x1": 0.02763026114644788,
-   "y1": 0.6300886373604293,
-   "x2": 0.5342182170676621,
+   "x1": 0.0,
+   "y1": 0.5814160034719822,
+   "x2": 0.4775811929618362,
    "y2": 1.0
   },
   {
    "type": "rect",
    "frame": 1,
-   "x1": 0.011110919063421827,
-   "y1": 0.5044248125194448,
-   "x2": 0.4767943975848082,
-   "y2": 0.9805309666996509
+   "x1": 0.0,
+   "y1": 0.5672566236647885,
+   "x2": 0.47050147492625366,
+   "y2": 0.9814160102236588
   }
  ]
 }
