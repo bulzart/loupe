@@ -44,6 +44,7 @@ def _kinds(v) -> str:
 # the version as generated, "fixed" = the right version), has its own time, and is called WRONG, RIGHT or EXAMPLE (role "example": something the admin keeps for the QC keeper to understand and remember, neither a miss nor the right look) by the admin; the marks belong to a
 # frame (its index).  An older moment holds no frames column at all: it is the miss frame at t_wrong and, when the report has a right version, the right frame at t_fixed.
 FRAME_DESC = {"wrong": "as generated", "fixed": "correct version"}
+ORIGINAL_DESC = "original video"      # either video can be the original the generation was made from, or a take of another video or run: its frames' tags say so (side_desc)
 TITLE_MAX = 2000       # the title is often a whole paragraph and is burned into the image in full: never cut it short
 # The prompts of the two takes: the prompt that produced Video A (the miss) and the prompt of Video B (the corrected take), plus one line of the admin's own
 # words on what in the prompt made the difference.  They live in the misses table only: never in the composite or its meta, never in the keeper's digest, and
@@ -104,7 +105,8 @@ def frames_of(row, miss: dict) -> list[dict]:
         raw = None
     if raw not in (None, ""):          # saved with frames, possibly none: that is a scenario in words only, not an older moment
         try:
-            return [{"src": f["src"], "role": "example" if f["role"] == "neutral" else f["role"], "t": f["t"]} for f in json.loads(raw) if isinstance(f, dict) and "t" in f]
+            return [{"src": f["src"], "role": "example" if f["role"] == "neutral" else f["role"], "t": f["t"], **({"desc": str(f["desc"])} if f.get("desc") else {})}
+                    for f in json.loads(raw) if isinstance(f, dict) and "t" in f]
         except (TypeError, ValueError):
             pass
     return _frames_legacy(row["t_wrong"], row["t_fixed"], miss)
@@ -352,6 +354,18 @@ def delete_moment(mid: int, actor: str):
     core.audit(actor, "moment.delete", f"moment {mid}")
 
 
+def side_desc(miss: dict, src: str) -> str:
+    """Where the frames of one of the report's videos come from, in the words of their tag: 'as generated' (Video A) or 'correct version' (Video B), or
+    'original video' when that video is the original the run recorded for the report's video (the source clip as given, or the source as an attempt sent it);
+    a file of another video of the run, or of another run, adds where it was taken from ('correct version · video 04', 'as generated · run R video 03').
+    Read from the run's records and from where the file sits (runs.origin), never judged."""
+    path = miss.get("fixed_path" if src == "fixed" else "wrong_path") or ""
+    o = runs.origin(miss.get("run") or "", miss.get("video") or "", path) if path else {}
+    base = ORIGINAL_DESC if o.get("original") else FRAME_DESC[src]
+    where = (f"run {o['run']} video {o['video']}" if o.get("video") else f"run {o['run']}") if o.get("run") else (f"video {o['video']}" if o.get("video") else "")
+    return f"{base} · {where}" if where else base
+
+
 def regenerate(mid: int):
     """Cut every frame of the moment, draw the admin's marks on each, build the composite and the zoom, and store them."""
     con = core.db()
@@ -362,13 +376,14 @@ def regenerate(mid: int):
         con.close()
     frames = frames_of(mr, dict(miss))
     shapes = compose.clean_shapes(json.loads(mr["shapes"] or "[]"))
+    descs = {src: side_desc(dict(miss), src) for src in ("wrong", "fixed")}       # what each video is: the take as generated, the right version, the original, another video's take
     items, pngs = [], []
     for i, f in enumerate(frames):
         path = miss["fixed_path"] if f["src"] == "fixed" else miss["wrong_path"]
         if not path:             # its video was cleared from the report
             continue
         png = media.frame_file(media.resolve_media(path), f["t"])
-        items.append({"img": Image.open(png).convert("RGB"), "role": f["role"], "desc": FRAME_DESC[f["src"]], "t": f["t"], "shapes": [s for s in shapes if s["frame"] == i]})
+        items.append({"img": Image.open(png).convert("RGB"), "role": f["role"], "desc": descs[f["src"]], "t": f["t"], "shapes": [s for s in shapes if s["frame"] == i]})
         pngs.append(png)
     tw, tf = _times(frames)
     meta = {"title": miss["title"], "model": miss["model"], "run": miss["run"], "video": miss["video"], "t_wrong": tw, "t_fixed": tf, "sample": f"S{mid}",
@@ -376,7 +391,7 @@ def regenerate(mid: int):
     samples = []
     if miss["sample_on"] != 0:
         try:       # the product image(s) the video used, straight from the client's reference folder; never a reason to fail the save
-            for ps in runs.product_samples(miss["run"], miss["video"], miss["wrong_label"] or miss["wrong_path"]):
+            for ps in runs.product_samples(miss["run"], miss["video"], miss["wrong_label"] or miss["wrong_path"], path=miss["wrong_path"] or ""):
                 samples.append((compose.load_product(ps["path"]), ps["label"]))
                 meta.setdefault("product_samples", []).append({"asset": ps["asset_id"], "label": ps["label"], "file": ps["name"]})
         except Exception as e:  # noqa: BLE001
@@ -400,9 +415,15 @@ def regenerate(mid: int):
     comp.save(d / "composite.png", optimize=True)
     if zoom:
         zoom.save(d / "zoom.png", optimize=True)
+    # a moment saved with frames keeps each frame's source words with it, so the listings (the QC library, the keeper's digest) never read the run again
+    stored = core.jdump([dict(f, desc=descs[f["src"]]) for f in frames]) if "frames" in mr.keys() and mr["frames"] not in (None, "") else None
     con = core.db()
     try:
-        con.execute("UPDATE moments SET w=?, h=?, updated=? WHERE id=?", (items[0]["img"].width if items else None, items[0]["img"].height if items else None, core.now(), mid))
+        wh = (items[0]["img"].width if items else None, items[0]["img"].height if items else None, core.now())
+        if stored is not None:
+            con.execute("UPDATE moments SET w=?, h=?, updated=?, frames=? WHERE id=?", (*wh, stored, mid))
+        else:
+            con.execute("UPDATE moments SET w=?, h=?, updated=? WHERE id=?", (*wh, mid))
         con.commit()
     finally:
         con.close()
@@ -423,7 +444,7 @@ def moment_view(r, miss: dict) -> dict:
     d = sample_dir(mid)
     frames = frames_of(r, miss)
     has_wrong, has_right = any(f["role"] == "wrong" for f in frames), any(f["role"] == "right" for f in frames)
-    return {"moment_id": mid, "frames": [dict(f, desc=FRAME_DESC[f["src"]]) for f in frames], "n_frames": len(frames), "has_right_version": miss.get("fixed_path") or "",
+    return {"moment_id": mid, "frames": [dict(f, desc=f.get("desc") or FRAME_DESC[f["src"]]) for f in frames], "n_frames": len(frames), "has_right_version": miss.get("fixed_path") or "",
             "has_wrong_version": miss.get("wrong_path") or "", "has_wrong": has_wrong, "sample_kind": ("pair" if has_right else "miss-only") if has_wrong else "scenario",
             "idea": r["idea"] or "", "better": r["better"] or "", "missed": r["missed"] or "", "id": f"S{mid}", "miss_id": miss["id"], "title": miss["title"], "explanation": miss["explanation"], "details": r["details"],
             "correct_note": r["correct_note"], "kinds": kinds, "model": miss["model"], "mode": miss["mode"], "product": miss["product"],

@@ -14,7 +14,7 @@ class El {
   }
   set textContent(v) { this._text = String(v); this.children = []; }
   get textContent() { return this._text; }
-  get options() { return this.children.filter((c) => c.tag === 'option'); }
+  get options() { return this.children.flatMap((c) => (c && c.tag === 'option' ? [c] : c && c.tag === 'optgroup' ? c.children.filter((o) => o.tag === 'option') : [])); }      // like a real select: the options of its optgroups too
   setAttribute(k, v) { this.attrs[k] = v; }
   removeAttribute(k) { delete this.attrs[k]; }
   addEventListener(n, f) { (this.listeners[n] = this.listeners[n] || []).push(f); }

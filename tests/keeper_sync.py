@@ -570,6 +570,23 @@ c1, z1, _a = _compose.build(frs, {"title": "t"}, "d", "")
 frs[0]["shapes"] = [{"type": "rect", "frame": 0, "x1": 0.4, "y1": 0.4, "x2": 0.6, "y2": 0.7}]
 c2, z2, _a = _compose.build(frs, {"title": "t"}, "d", "")
 check("marks that cover most of the frame give no zoom (it would repeat the panel); small marks do", z1 is None and z2 is not None and c1.height < c2.height, f"{c1.height} {c2.height}")
+frs = [{"img": _Image.new("RGB", (360, 640), (90, 90, 90)), "role": "wrong", "desc": "as generated", "t": 1.0, "shapes": [{"type": "text", "frame": 0, "x": 0.4, "y": 0.4, "text": "here"}]},
+       {"img": _Image.new("RGB", (360, 640), (120, 120, 120)), "role": "right", "desc": "correct version", "t": 1.2, "shapes": [{"type": "circle", "frame": 1, "cx": 0.5, "cy": 0.5, "rx": 0.1, "ry": 0.1}]}]
+c3, z3, _a = _compose.build(frs, {"title": "t"}, "d", "")
+check("a zoom only under a frame marked with a circle, arrow or box: none for a text label alone, none cut around another frame's marks",
+      z3 is not None and z3.getpixel((300, 260)) == _compose.PAPER and z3.getpixel((888, 260)) != _compose.PAPER, f"{z3 and z3.getpixel((300, 260))} {z3 and z3.getpixel((888, 260))}")
+frs[0]["shapes"] = [{"type": "rect", "frame": 0, "x1": 0.0, "y1": 0.0, "x2": 1.0, "y2": 0.9}]
+c4, z4, _a = _compose.build(frs, {"title": "t"}, "d", "")
+check("a frame whose own marks cover most of it has no zoom, while another frame's small mark keeps its own",
+      z4 is not None and z4.getpixel((300, 260)) == _compose.PAPER and z4.getpixel((888, 260)) != _compose.PAPER, f"{z4 and z4.getpixel((300, 260))} {z4 and z4.getpixel((888, 260))}")
+frs[0]["desc"], frs[1]["desc"] = "correct version · run 20261019-235823-19 video 03", "original video"
+c5, _z5, _a = _compose.build(frs, {"title": "t"}, "d", "")
+check("a long source name shrinks its tag to fit its own panel, never over the next one", c5.getpixel((589, 55)) == _compose.PAPER and c5.getpixel((30, 55)) == _compose.RED,
+      f"{c5.getpixel((589, 55))} {c5.getpixel((30, 55))}")
+check("the tags' legend reads as before for the two videos, and names the original video and another video or run",
+      _compose.sources_legend(["as generated", "correct version"]) == "Frames tagged 'as generated' are from video A (the version as generated); frames tagged 'correct version' are from video B (the right version, a different video)."
+      and "the original video (the source clip the generation was made from, not generated)" in _compose.sources_legend(["as generated", "original video"])
+      and "taken from video 04 of the same run" in _compose.sources_legend(["correct version · video 04"]) and "taken from run R video 03" in _compose.sources_legend(["as generated · run R video 03"]))
 qc._run_claude = fake_claude
 
 print("\n[memory rot: the keeper's context stays small and current]")

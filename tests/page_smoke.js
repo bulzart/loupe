@@ -13,6 +13,7 @@ const uiSrc = read('ui.js').replace(/^export /gm, '').replace(/^import .*$/gm, '
 const sent = [];
 let withMoment = false;
 let noRight = false;
+let withOthers = false;      // the run also has video 04, and video 03 has an original
 const savedMoment = { moment_id: 5, id: 'S5', image_url: '/x?a=5', updated: 'u', details: 'the pack is right early', correct_note: 'c', has_right: true,
   frames: [{ src: 'wrong', role: 'right', t: 0.5, desc: 'as generated' }, { src: 'wrong', role: 'wrong', t: 3.0, desc: 'as generated' }, { src: 'fixed', role: 'right', t: 3.25, desc: 'correct version' }],
   shapes: [{ type: 'rect', frame: 1, x1: 0.1, y1: 0.1, x2: 0.4, y2: 0.4 }] };
@@ -21,9 +22,15 @@ const api = async (method, url, body) => {
   if (url === '/api/runs/_') throw new Error('no run');
   if (url === '/api/moments/5' && method === 'PATCH') return { moment: savedMoment };
   if (withMoment && url.startsWith('/api/misses/1') && method === 'GET') return { miss: { id: 1, title: 'T', explanation: '', kinds: [], model: 'm', mode: 'x', product: '', wrong_path: 'A.mp4', fixed_path: noRight ? '' : 'B.mp4', moments: [savedMoment], product_sample: true } };
-  if (url.startsWith('/api/runs/')) return { model: 'wan3_0_prime', mode: 'analyze', submode: 'recreate', products: [], videos: [{ video: '03', versions: [
+  if (url === '/api/runs') return { runs: [{ run: 'R', kind: 'run', lib: 'awl', videos: 2 }, { run: 'R2', kind: 'run', lib: 'atp', mode: 'analyze', submode: 'recreate', videos: 1 }] };
+  if (url === '/api/runs/R2') return { run: 'R2', videos: [{ video: '07', versions: [{ path: 'R2-7.mp4', label: 'a1 · raw.mp4', kind: 'attempt', attempt: 1, role: 'generated' },
+    { path: 'R2-7c.mp4', label: 'clean.mp4', kind: 'output', role: 'processed' }, { path: 'R2-o.mp4', label: 'original · x.mp4 (V02, the source clip as given)', kind: 'original', role: 'original' }] }] };
+  if (url.startsWith('/api/runs/')) return { run: 'R', model: 'wan3_0_prime', mode: 'analyze', submode: 'recreate', products: [], videos: [{ video: '03', versions: [
     { path: 'A.mp4', label: 'a1 · raw.mp4', kind: 'attempt', attempt: 1, role: 'generated', delivered: false }, { path: 'A2.mp4', label: 'a2 · raw.mp4', kind: 'attempt', attempt: 2, role: 'generated', delivered: true },
-    { path: 'A2c.mp4', label: 'a2 · with-original-audio.mp4', kind: 'attempt', attempt: 2, role: 'processed' }, { path: 'B.mp4', label: 'capcut-preview.mp4', kind: 'output', role: 'processed' }] }] };
+    { path: 'A2c.mp4', label: 'a2 · with-original-audio.mp4', kind: 'attempt', attempt: 2, role: 'processed' }, { path: 'B.mp4', label: 'capcut-preview.mp4', kind: 'output', role: 'processed' },
+    ...(withOthers ? [{ path: 'O.mp4', label: 'original · src.mp4 (V05, the source clip as given)', kind: 'original', role: 'original' }] : [])] },
+    ...(withOthers ? [{ video: '04', versions: [{ path: 'D4.mp4', label: 'a1 · raw.mp4', kind: 'attempt', attempt: 1, role: 'generated' }, { path: 'D4c.mp4', label: 'clean.mp4', kind: 'output', role: 'processed' },
+      { path: 'D4o.mp4', label: 'original · y.mp4 (V09, the source clip as given)', kind: 'original', role: 'original' }] }] : [])] };
   if (url === '/api/settings') return { kinds: [] };
   if (url.startsWith('/api/misses/1') && method === 'GET') return { miss: { id: 1, title: 'T', explanation: '', kinds: [], model: 'm', mode: 'x', product: '', wrong_path: 'A.mp4', fixed_path: noRight ? '' : 'B.mp4', moments: [], product_sample: true } };
   if (url.startsWith('/api/misses/1') && method === 'PATCH') return { miss: { id: 1, title: 'T', explanation: '', kinds: [], wrong_path: 'A.mp4', fixed_path: noRight ? '' : 'B.mp4', moments: [], product_sample: true } };
@@ -144,6 +151,36 @@ const ok = (name, cond, info = '') => { console.log((cond ? '  ok   ' : '  FAIL 
   const post6 = sent.find((x) => x.method === 'POST' && x.url.endsWith('/moments'));
   ok('the mark stays on the first frame, which stays Wrong; the new frame is Right from Video B', post6 && post6.body.frames.length === 2 && post6.body.frames[0].role === 'wrong' && post6.body.frames[0].src === 'wrong' && post6.body.frames[1].role === 'right' && post6.body.frames[1].src === 'fixed'
     && post6.body.shapes.length === 1 && post6.body.shapes[0].frame === 0, JSON.stringify(post6 && post6.body));
+  // either side can be any video: the original video, a take of another video of the run, a take of another run's video
+  withOthers = true; withMoment = false; noRight = true; sent.length = 0;
+  const root7 = await work({ run: 'R', video: '03', miss: '1' });
+  const sels7 = () => walk(root7, (e) => e.tag === 'select');
+  const groupsOf = (s) => s.children.filter((c) => c.tag === 'optgroup').map((gr) => gr.attrs.label + ': ' + gr.children.map((o) => o.text).join(' | ')).join(' || ');
+  ok('both pickers list the original video and the generated takes of the run’s other videos, each under its own heading', [0, 1].every((i) => groupsOf(sels7()[i]).includes('The original video (the source the generation was made from): original · src.mp4 (V05, the source clip as given)')
+    && groupsOf(sels7()[i]).includes('Other generations: the other videos of this run: video 04 · a1 · generated at Higgsfield')), groupsOf(sels7()[0]));
+  ok('another video’s other files wait for the tick, and its original is never listed', !optTexts(sels7()[0]).includes('video 04 · clean.mp4') && !optTexts(sels7()[0]).includes('y.mp4'), optTexts(sels7()[0]));
+  ok('Video A still starts on the first attempt of this video', sels7()[0].options.find((o) => o.selected).text.startsWith('a1 ·'));
+  const frames7 = () => walk(root7, (e) => e.className === 'players')[0].children.filter((e) => e.className.split(/\s+/).includes('player') && e.style.display !== 'none' && walk(e, (x) => x.tag === 'canvas').length);
+  const srcOpts = (fe) => walk(fe, (e) => e.tag === 'select')[0].options.map((o) => o.text);
+  const fixed7 = sels7()[1];
+  fixed7.value = 'O.mp4'; (fixed7.listeners.change || []).forEach((f) => f());
+  ok('the original can be Video B: its frame comes, and the frame’s own picker names it', frames7().length === 2 && srcOpts(frames7()[1])[1] === 'Video B · original video', frames7().length + ' ' + srcOpts(frames7()[frames7().length - 1]).join(' | '));
+  const wrong7 = sels7()[0];
+  wrong7.value = 'D4.mp4'; (wrong7.listeners.change || []).forEach((f) => f());
+  ok('a take of another video can be Video A', srcOpts(frames7()[0])[0] === 'Video A · video 04', srcOpts(frames7()[0]).join(' | '));
+  sent.length = 0;
+  await Promise.all(walk(root7, (e) => e.tag === 'button' && e.text === 'Mark this moment').flatMap((b) => (b.listeners.click || []).map((f) => f())));
+  const patch7 = sent.find((x) => x.method === 'PATCH' && x.url.startsWith('/api/misses/1'));
+  ok('saving sends both picks with their labels', patch7 && patch7.body.wrong_path === 'D4.mp4' && patch7.body.fixed_path === 'O.mp4' && patch7.body.wrong_label === 'video 04 · a1 · raw.mp4'
+    && patch7.body.fixed_label === 'original · src.mp4 (V05, the source clip as given)', JSON.stringify(patch7 && patch7.body));
+  const otherBtn7 = walk(root7, (e) => e.tag === 'button' && e.text === 'Other generations from another run…')[0];
+  await Promise.all((otherBtn7.listeners.click || []).map((f) => f()));
+  const runSel7 = sels7()[2];
+  ok('another run can be chosen (this run is not offered again)', runSel7.options.map((o) => o.value).join(',') === ',R2', runSel7.options.map((o) => o.value).join(','));
+  runSel7.value = 'R2'; await Promise.all((runSel7.listeners.change || []).map((f) => f()));
+  const vidSel7 = sels7()[3];
+  vidSel7.value = '07'; (vidSel7.listeners.change || []).forEach((f) => f());
+  ok('its video’s generated takes join both pickers under a heading of their own, its original does not', [0, 1].every((i) => groupsOf(sels7()[i]).includes('Other generations: R2 · video 07: R2 · video 07 · a1 · generated at Higgsfield') && !groupsOf(sels7()[i]).includes('x.mp4')), groupsOf(sels7()[1]));
   console.log(fails ? `${fails} failed` : 'all passed');
   process.exit(fails ? 1 : 0);
 })().catch((e) => { console.log('FAIL the page threw: ' + (e && e.stack || e)); process.exit(1); });

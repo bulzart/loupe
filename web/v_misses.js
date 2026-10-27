@@ -34,7 +34,7 @@ export async function pick() {
     const r = await api('GET', '/api/runs/' + encodeURIComponent(sel.value));
     out.replaceChildren(h('div', { class: 'grid g4' }, r.videos.map((v) => h('a', { class: 'card', style: 'color:inherit;text-decoration:none', href: `#/misses/work?run=${encodeURIComponent(r.run)}&video=${v.video}` },
       h('b', {}, 'Video ' + v.video), ' ', v.status ? status(v.status) : null,
-      h('div', { class: 'muted small' }, `${v.versions.some((x) => x.role === 'generated') ? v.versions.filter((x) => x.role === 'generated').length + ' generated take(s)' : v.versions.length + ' version(s)'}` + (v.capcut_project ? ` · ${v.capcut_project}` : '') + (v.credits ? ` · ${v.credits} cr` : '')),
+      h('div', { class: 'muted small' }, `${v.versions.some((x) => x.role === 'generated') ? v.versions.filter((x) => x.role === 'generated').length + ' generated take(s)' : v.versions.filter((x) => x.role !== 'original').length + ' version(s)'}` + (v.capcut_project ? ` · ${v.capcut_project}` : '') + (v.credits ? ` · ${v.credits} cr` : '')),
       v.qc ? h('div', { class: 'small', style: 'margin-top:4px' }, v.qc.slice(0, 120)) : null))));
   });
   return h('div', {}, head('New report', 'Choose the run that was executed by the pipeline, then the video the report is about. A report can also be in words only: the idea, what could have been better, what the AI agents missed.',
@@ -44,11 +44,12 @@ export async function pick() {
 
 // ------------------------------------------------------------------------------------------ the workspace
 // One page, one step: any number of frames side by side (two to start with), each from either video, each with its own time and called WRONG or RIGHT by the
-// admin, marks drawn straight on any of them, and one button that saves the moment as a single image (the frames, the marks, a zoom, the explanation burned in).
-function guessVersions(versions) {       // only the wrong version is guessed (the first attempt's generated take); the right one is always the user's choice
-  const attempts = versions.filter((v) => v.kind === 'attempt');
+// admin, marks drawn straight on any of them, and one button that saves the moment as a single image (the frames, the marks, a zoom of each marked place, the explanation burned in).
+function guessVersions(versions) {       // only the wrong version is guessed (the first attempt's generated take of this video); the right one is always the user's choice
+  const own = versions.filter((v) => v.role !== 'original');      // the original video is never the default
+  const attempts = own.filter((v) => v.kind === 'attempt');
   const clean = (v) => /with-original-audio\.mp4$|clean\.mp4$|trimmed\.mp4$/.test(v.label);
-  const firstA = versions.find((v) => v.role === 'generated' && v.attempt === 1) || attempts.find((v) => /^a1 ·/.test(v.label) && clean(v)) || attempts.find((v) => /^a1 ·/.test(v.label)) || versions[0];
+  const firstA = own.find((v) => v.role === 'generated' && v.attempt === 1) || attempts.find((v) => /^a1 ·/.test(v.label) && clean(v)) || attempts.find((v) => /^a1 ·/.test(v.label)) || own[0];
   return { wrong: firstA };
 }
 
@@ -72,15 +73,25 @@ export async function work(qs) {
   let miss = qs.miss ? (await api('GET', '/api/misses/' + qs.miss)).miss : null;
   const vinfo = runInfo ? (runInfo.videos.find((v) => v.video === (qs.video || '')) || { versions: [] }) : { versions: [] };
   const versions = [...vinfo.versions];
-  const g = guessVersions(versions);
+  // other generations can stand on either side: the generated takes of the run's other videos (and, from the chooser below, of another run's videos)
+  for (const ov of runInfo ? runInfo.videos.filter((v) => v.video !== (qs.video || '')) : []) {
+    for (const v of ov.versions) if (v.role !== 'original') versions.push({ ...v, group: 'other', video: ov.video, label: `video ${ov.video} · ${v.label}` });
+  }
+  const g = guessVersions(vinfo.versions);
   const state = { wrong: miss ? miss.wrong_path : (g.wrong ? g.wrong.path : ''), fixed: miss ? miss.fixed_path : '' };     // neither video is required: '' = none, else its path (the right version is never guessed)
   const addVersion = (v) => { if (!versions.some((x) => x.path === v.path)) versions.push(v); };
   if (miss) { if (miss.wrong_path) addVersion({ path: miss.wrong_path, label: miss.wrong_label || miss.wrong_path.split(/[\\/]/).slice(-2).join('/') }); if (miss.fixed_path) addVersion({ path: miss.fixed_path, label: miss.fixed_label || miss.fixed_path.split(/[\\/]/).slice(-2).join('/') }); }
   // By default only the video each attempt generated at Higgsfield is listed: its clean video and preview are made from it, and the prompt is filled from that
-  // attempt's request. Every other file of the video (conformed, trimmed, copies, previews, deliverables) is one tick away.
-  const hasGenerated = versions.some((v) => v.role === 'generated');
+  // attempt's request. Every other file of the video (conformed, trimmed, copies, previews, deliverables) is one tick away. The original video the generation
+  // was made from (as the run recorded it) is always listed, and so are the generated takes of the run's other videos and of another run's video added below.
+  const hasGenerated = vinfo.versions.some((v) => v.role === 'generated');
   let showAll = !hasGenerated;      // a video with no recognisable generated take (an older run, a folder of files) lists every file
-  const isShown = (v) => showAll || !v.role || v.role === 'generated' || v.role === 'client-fix' || v.path === state.wrong || v.path === state.fixed;
+  const isShown = (v) => {
+    if (v.path === state.wrong || v.path === state.fixed || v.role === 'original') return true;
+    if (v.group === 'other') return v.role === 'generated' || (showAll && hasGenerated);      // the run's other videos: their generated takes, every file with the tick
+    if (v.group) return true;                                                                 // taken from another run on purpose
+    return showAll || !v.role || v.role === 'generated' || v.role === 'client-fix';
+  };
   const ws = { shapes: [], tool: 'arrow', editing: null, draft: null, past: [], future: [] };      // every mark belongs to one frame (shape.fid); nothing is ever copied for you
   const addMark = (shape) => setMarks([...ws.shapes, shape]);
   const syncHist = () => { undoBtn.disabled = !ws.past.length; redoBtn.disabled = !ws.future.length; };
@@ -93,10 +104,15 @@ export async function work(qs) {
   const label = (v) => v.role === 'generated'
     ? `${v.label.replace(/\s*[·/]?\s*raw\.mp4$/, '')} · generated at Higgsfield${v.delivered ? ' · delivered (its clean video and preview)' : ''}`
     : v.label + (v.kind === 'fixed-lib' ? '  (client fix)' : '');
-  const mkSel = (key) => {
-    const opts = versions.filter(isShown).map((v) => h('option', { value: v.path, selected: v.path === state[key] }, label(v)));
-    opts.unshift(h('option', { value: '', selected: !state[key] }, key === 'fixed' ? 'No right version (optional)' : 'No video (a report in words only)'));
-    const sel = h('select', { style: 'max-width:100%' }, opts);
+  const mkSel = (key) => {       // this video's takes first, then the original video, then the other generations, each group under its own heading
+    const opt = (v) => h('option', { value: v.path, selected: v.path === state[key] }, label(v));
+    const shown = versions.filter(isShown);
+    const groups = [...new Set(shown.filter((v) => v.group).map((v) => v.group))];
+    const sel = h('select', { style: 'max-width:100%' },
+      h('option', { value: '', selected: !state[key] }, key === 'fixed' ? 'No right version (optional)' : 'No video (a report in words only)'),
+      shown.filter((v) => !v.group && v.role !== 'original').map(opt),
+      shown.some((v) => v.role === 'original') ? h('optgroup', { label: 'The original video (the source the generation was made from)' }, shown.filter((v) => v.role === 'original').map(opt)) : null,
+      groups.map((gr) => h('optgroup', { label: gr === 'other' ? 'Other generations: the other videos of this run' : 'Other generations: ' + gr }, shown.filter((v) => v.group === gr).map(opt))));
     sel.addEventListener('change', () => { state[key] = sel.value; setSources(); });
     return sel;
   };
@@ -104,19 +120,57 @@ export async function work(qs) {
   const rebuildSelects = () => { const a = mkSel('wrong'), b = mkSel('fixed'); wrongSel.replaceWith(a); fixedSel.replaceWith(b); wrongSel = a; fixedSel = b; };
   const allBox = h('input', { type: 'checkbox', checked: showAll, disabled: !hasGenerated });
   allBox.addEventListener('change', () => { showAll = allBox.checked; rebuildSelects(); });
-  const fileIn = h('input', { type: 'file', accept: 'video/*,image/*', style: 'display:none' });
-  const prog = h('span', { class: 'muted small' });
-  fileIn.addEventListener('change', async () => {
-    if (!fileIn.files[0]) return;
+  const mkAdd = (key) => {       // a file uploaded or typed can stand on either side
+    const fileIn = h('input', { type: 'file', accept: 'video/*,image/*', style: 'display:none' });
+    const prog = h('span', { class: 'muted small' });
+    fileIn.addEventListener('change', async () => {
+      if (!fileIn.files[0]) return;
+      try {
+        const r = await upload(fileIn.files[0], (p) => (prog.textContent = Math.round(p * 100) + '%'));
+        addVersion({ path: r.path, label: 'uploaded · ' + r.label, kind: 'upload' }); state[key] = r.path; prog.textContent = ''; rebuildSelects(); setSources(); toast('Uploaded');
+      } catch (e) { toast(e.message, true); prog.textContent = ''; }
+    });
+    const pathIn = h('input', { placeholder: 'or a path to a video file', size: 34 });
+    const use = h('button', { class: 'btn sm', onclick: async () => {
+      try { await api('GET', '/api/probe?path=' + encodeURIComponent(pathIn.value)); addVersion({ path: pathIn.value, label: pathIn.value.split(/[\\/]/).slice(-2).join('/') + ' (path)' }); state[key] = pathIn.value; rebuildSelects(); setSources(); }
+      catch (_) { /* toasted: outside the folders Loupe may read? add it in Settings */ } } }, 'Use');
+    return h('div', { class: 'row', style: 'margin-top:6px' }, h('button', { class: 'btn sm', onclick: () => fileIn.click() }, key === 'fixed' ? 'Upload the right video…' : 'Upload a video…'), fileIn, prog, pathIn, use);
+  };
+
+  // ---- other generations from another run: the generated takes of one of its videos join both pickers
+  const runSel = h('select', { style: 'max-width:100%' }, h('option', { value: '' }, 'Another run…'));
+  const vidSel = h('select', { disabled: true }, h('option', { value: '' }, 'its video…'));
+  const otherBox = h('div', { class: 'row', style: 'margin-top:6px;display:none' }, runSel, vidSel);
+  let otherRun = null;
+  const otherBtn = h('button', { class: 'btn sm', type: 'button', title: 'lists the other runs; the generated takes of the video you choose there are added to both pickers', onclick: async () => {
+    otherBox.style.display = otherBox.style.display === 'none' ? '' : 'none';
+    if (runSel.options.length > 1) return;
     try {
-      const r = await upload(fileIn.files[0], (p) => (prog.textContent = Math.round(p * 100) + '%'));
-      addVersion({ path: r.path, label: 'uploaded · ' + r.label, kind: 'upload' }); state.fixed = r.path; prog.textContent = ''; rebuildSelects(); setSources(); toast('Uploaded');
-    } catch (e) { toast(e.message, true); prog.textContent = ''; }
+      const d = await api('GET', '/api/runs');
+      d.runs.filter((r) => r.kind === 'run' && r.run !== qs.run).forEach((r) => runSel.append(h('option', { value: r.run }, `${r.lib ? r.lib.toUpperCase() + ' · ' : ''}${r.run} · ${r.mode || ''}${r.submode ? '/' + r.submode : ''} · ${r.videos} videos`)));
+    } catch (e) { toast(e.message, true); }
+  } }, 'Other generations from another run…');
+  runSel.addEventListener('change', async () => {
+    vidSel.replaceChildren(h('option', { value: '' }, 'its video…')); vidSel.disabled = true; otherRun = null;
+    if (!runSel.value) return;
+    try {
+      otherRun = await api('GET', '/api/runs/' + encodeURIComponent(runSel.value));
+      otherRun.videos.forEach((v) => { const n = v.versions.filter((x) => x.role === 'generated').length; vidSel.append(h('option', { value: v.video }, `video ${v.video}` + (n ? ` · ${n} generated take(s)` : ''))); });
+      vidSel.disabled = false;
+    } catch (e) { toast(e.message, true); }
   });
-  const pathIn = h('input', { placeholder: 'or a path to a video file', size: 34 });
-  const addPath = h('button', { class: 'btn sm', onclick: async () => {
-    try { await api('GET', '/api/probe?path=' + encodeURIComponent(pathIn.value)); addVersion({ path: pathIn.value, label: pathIn.value.split(/[\\/]/).slice(-2).join('/') + ' (path)' }); state.fixed = pathIn.value; rebuildSelects(); setSources(); }
-    catch (_) { /* toasted: outside the folders Loupe may read? add it in Settings */ } } }, 'Use');
+  vidSel.addEventListener('change', () => {
+    const v = otherRun && otherRun.videos.find((x) => x.video === vidSel.value);
+    if (!v) return;
+    const gr = `${otherRun.run} · video ${v.video}`;
+    const gen = v.versions.filter((x) => x.role === 'generated');
+    let n = 0;
+    for (const x of gen.length ? gen : v.versions.filter((y) => y.role !== 'original')) {
+      if (!versions.some((y) => y.path === x.path)) { versions.push({ ...x, group: gr, video: v.video, label: `${gr} · ${x.label}` }); n++; }
+    }
+    rebuildSelects();
+    toast(n ? `Added ${n} take(s) of ${gr} to both pickers` : `Nothing new to add from ${gr}`);
+  });
 
   // ---- the prompts of the two takes: kept in the record and read whole by the keeper and the prompt writers on request; never burned into the image, never
   // compared by the app (the agents judge what changed). Each can be filled from the run's request file of the version picked above, or pasted.
@@ -124,13 +178,13 @@ export async function work(qs) {
   const wrongPrompt = h('textarea', { placeholder: 'The prompt that produced Video A (as generated). Optional.', style: mono }, miss ? miss.wrong_prompt || '' : '');
   const fixedPrompt = h('textarea', { placeholder: 'The prompt of Video B (the corrected take). Optional.', style: mono }, miss ? miss.fixed_prompt || '' : '');
   const promptNote = h('input', { value: miss ? miss.prompt_note || '' : '', placeholder: 'What in the prompt made the difference, in your words (optional, one line)', style: 'width:100%' });
-  const fillPrompt = (key, ta) => h('button', { class: 'btn sm', type: 'button', title: 'reads the prompt from the request file of the attempt the version picked above belongs to (the attempt folder it sits in, or the attempt it is a copy of); you keep or change it', onclick: async () => {
-    if (!qs.run || !qs.video) { toast('This report has no run and video: paste the prompt', true); return; }
+  const fillPrompt = (key, ta) => h('button', { class: 'btn sm', type: 'button', title: 'reads the prompt from the request file of the attempt the version picked above belongs to (the attempt folder it sits in, or the attempt it is a copy of; a take of another video or run is read in its own run; the original video has none); you keep or change it', onclick: async () => {
     const path = state[key];
     if (!path) { toast(key === 'wrong' ? 'Pick Video A first' : 'Pick Video B first', true); return; }
     try {
-      const d = await api('GET', `/api/request-prompt?run=${encodeURIComponent(qs.run)}&video=${encodeURIComponent(qs.video)}&path=${encodeURIComponent(path)}`);
-      if (d.prompt) { ta.value = d.prompt; toast('Filled from ' + d.request + (d.attempt ? ' (attempt a' + d.attempt + ')' : '')); } else toast(d.note || 'No request file with a prompt was found for that version: paste it', true);
+      const d = await api('GET', `/api/request-prompt?run=${encodeURIComponent(qs.run || '')}&video=${encodeURIComponent(qs.video || '')}&path=${encodeURIComponent(path)}`);
+      if (d.prompt) { ta.value = d.prompt; toast('Filled from ' + d.request + (d.attempt ? ' (attempt a' + d.attempt + ')' : '')); }
+      else toast(d.note || (qs.run && qs.video ? 'No request file with a prompt was found for that version: paste it' : 'This report has no run and video: paste the prompt'), true);
     } catch (e) { toast(e.message, true); }
   } }, key === 'wrong' ? 'Fill from the run (Video A)' : 'Fill from the run (Video B)');
   const promptsBox = h('details', { style: 'margin-top:10px', open: !!(miss && (miss.wrong_prompt || miss.fixed_prompt || miss.prompt_note)) },
@@ -191,6 +245,11 @@ export async function work(qs) {
   // The marks are kept in the picture's own 0..1 coordinates and belong to one frame (shape.fid).
   const COLOR = { wrong: '#ff2d2d', right: '#16a34a', example: '#3b6edc' };
   const SRC_NAME = { wrong: 'Video A · as generated', fixed: 'Video B · correct version' };
+  const srcName = (key) => {       // what each video is, on a frame's own picker: the original video, a take of another video or run, else its side's own name
+    const v = versions.find((x) => x.path === state[key]);
+    const what = !v ? '' : v.role === 'original' ? 'original video' : v.group === 'other' ? 'video ' + v.video : v.group || '';
+    return what ? (key === 'wrong' ? 'Video A · ' : 'Video B · ') + what : SRC_NAME[key];
+  };
   const MAX_FRAMES = 12;
   const frames = [];
   let fseq = 0;
@@ -287,6 +346,7 @@ export async function work(qs) {
     f.btnWrong.classList.toggle('on', f.role === 'wrong'); f.btnRight.classList.toggle('on', f.role === 'right'); f.btnExample.classList.toggle('on', f.role === 'example');
     f.el.classList.toggle('role-wrong', f.role === 'wrong'); f.el.classList.toggle('role-right', f.role === 'right'); f.el.classList.toggle('role-example', f.role === 'example');
     f.srcSel.value = f.src; f.srcSel.options[0].disabled = !state.wrong; f.srcSel.options[1].disabled = !state.fixed;
+    f.srcSel.options[0].textContent = srcName('wrong'); f.srcSel.options[1].textContent = srcName('fixed');
   };
   const loadFrame = (f) => { const path = state[f.src]; if (path) { f.video.src = videoUrl(path); f.video.currentTime = f.t; } else f.video.removeAttribute('src'); };
   const mkFrame = (src, role, t) => {
@@ -298,7 +358,7 @@ export async function work(qs) {
     f.btnWrong = h('button', { class: 'btn sm rolebtn wrong', title: 'This frame shows the miss', onclick: () => setRole(f, 'wrong') }, 'Wrong');
     f.btnRight = h('button', { class: 'btn sm rolebtn right', title: 'This frame shows how it should be', onclick: () => setRole(f, 'right') }, 'Right');
     f.btnExample = h('button', { class: 'btn sm rolebtn example', title: 'Keep this frame as an example for the QC keeper to understand and remember: neither a miss nor the right look (blue marks)', onclick: () => setRole(f, 'example') }, 'Example');
-    f.srcSel = h('select', { class: 'srcsel', title: 'which video this frame is taken from' }, h('option', { value: 'wrong' }, SRC_NAME.wrong), h('option', { value: 'fixed' }, SRC_NAME.fixed));
+    f.srcSel = h('select', { class: 'srcsel', title: 'which video this frame is taken from' }, h('option', { value: 'wrong' }, srcName('wrong')), h('option', { value: 'fixed' }, srcName('fixed')));
     f.srcSel.addEventListener('change', () => setFrameSrc(f, f.srcSel.value));
     f.snd = h('button', { class: 'btn sm', onclick: () => { f.video.muted = !f.video.muted; f.snd.textContent = f.video.muted ? 'Sound off' : 'Sound on'; } }, 'Sound off');
     f.rm = h('button', { class: 'btn sm danger', title: 'Remove this frame', onclick: () => removeFrame(f) }, '✕');
@@ -447,10 +507,11 @@ export async function work(qs) {
       h('a', { class: 'btn', href: '#/misses' }, '← Reports')),
     h('div', { class: 'card' },
       h('div', { class: 'grid g2' },
-        h('div', {}, h('label', { class: 'f', style: 'margin-top:0' }, 'Video A: the version as generated (optional)'), wrongSel),
-        h('div', {}, h('label', { class: 'f', style: 'margin-top:0' }, 'Video B: the right version (optional: the corrected take, a QC fix, your feedback, or the client’s update)'), fixedSel,
-          h('div', { class: 'row', style: 'margin-top:6px' }, h('button', { class: 'btn sm', onclick: () => fileIn.click() }, 'Upload the right video…'), fileIn, prog, pathIn, addPath))),
-      hasGenerated ? h('div', { class: 'muted small', style: 'margin-top:6px' }, h('label', {}, allBox, ' Also list the other files of this video (conformed, trimmed, copies, previews, deliverables). Normally only the video each attempt generated at Higgsfield is listed: its clean video and preview are made from it, and the prompt below is filled from that attempt’s request.')) : null,
+        h('div', {}, h('label', { class: 'f', style: 'margin-top:0' }, 'Video A: the version as generated (optional; or the original video, or another generation)'), wrongSel, mkAdd('wrong')),
+        h('div', {}, h('label', { class: 'f', style: 'margin-top:0' }, 'Video B: the right version (optional: the corrected take, a QC fix, your feedback, the client’s update, the original video, or another generation)'), fixedSel, mkAdd('fixed'))),
+      hasGenerated ? h('div', { class: 'muted small', style: 'margin-top:6px' }, h('label', {}, allBox, ' Also list the other files of this video and of the run’s other videos (conformed, trimmed, copies, previews, deliverables). Normally only the video each attempt generated at Higgsfield is listed: its clean video and preview are made from it, and the prompt below is filled from that attempt’s request.')) : null,
+      h('div', { class: 'row', style: 'margin-top:6px' }, otherBtn, h('span', { class: 'muted small' }, 'Either side can be any video: the pickers also list the original video the generation was made from (as the run recorded it) and the generated takes of the run’s other videos; another run’s takes are one choice away. Each frame’s tag in the saved image says which it is.')),
+      otherBox,
       promptsBox),
     h('div', { class: 'card' },
       h('div', { class: 'tools' }, tb('arrow', 'Arrow'), tb('circle', 'Circle'), tb('rect', 'Box'), tb('text', 'Text'),
@@ -472,7 +533,7 @@ export async function work(qs) {
       h('details', { style: 'margin-top:8px' }, h('summary', { class: 'muted small', style: 'cursor:pointer' }, 'Model, mode, product'),
         h('div', { class: 'row', style: 'margin-top:6px' }, h('span', { class: 'muted small' }, 'model'), model, h('span', { class: 'muted small' }, 'mode'), mode, h('span', { class: 'muted small' }, 'product'), product)),
       h('div', { class: 'row', style: 'margin-top:14px' }, saveBtn, cancelEdit, saveNote,
-        h('span', { class: 'muted small' }, 'One click: saves the report, cuts every frame at its own time, and builds one image: the frames tagged WRONG or RIGHT with your marks, a zoom of each, and this text.'))),
+        h('span', { class: 'muted small' }, 'One click: saves the report, cuts every frame at its own time, and builds one image: the frames tagged WRONG, RIGHT or EXAMPLE with your marks, a zoom of each frame you marked with a circle, arrow or box, and this text.'))),
     result,
     h('div', { class: 'card' }, h('h2', {}, 'Saved moments'), moments));
   return root;

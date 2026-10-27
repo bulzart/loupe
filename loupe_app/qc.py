@@ -152,7 +152,7 @@ def sample_lines(s: dict, with_path: bool = True) -> str:
             t.append(f"  image (a text card with the admin's words and the product sample; this scenario has no frames): {s['composite_path']}")
         else:
             fl = ", ".join(f"{f['role'].upper()} @ {f['t']:.2f}s ({f['desc']})" for f in s.get("frames", []))
-            t.append(f"  image ({s['n_frames']} frame(s), each tagged WRONG in red, RIGHT in green or EXAMPLE in blue with its time and the admin's marks, a zoom of each below, the admin's words at the bottom; frames: {fl})"
+            t.append(f"  image ({s['n_frames']} frame(s), each tagged WRONG in red, RIGHT in green or EXAMPLE in blue with its time, its source and the admin's marks, a zoom under each frame marked with a circle, arrow or box, the admin's words at the bottom; frames: {fl})"
                      + ("; this sample has NO right version, it is a miss example only" if kind == "miss-only" else "") + f": {s['composite_path']}")
     return "\n".join(t)
 
@@ -214,7 +214,9 @@ READING_FIELDS = ("the_miss", "right_version", "product_and_scene", "mechanism",
 EXTRACT_ROLE = (
     "You read ONE sample of a video-generation pipeline's library of generation misses, once, so that the library's keeper can hold what it shows. "
     "A sample is a picture (a composite of frames of a generated video, each tagged WRONG in red, RIGHT in green or EXAMPLE in blue with its time, the admin's marks "
-    "drawn on them, a zoom of each below and the admin's words at the bottom) plus the admin's notes and, sometimes, the prompts of the two takes. "
+    "drawn on them, a zoom under each frame the admin marked with a circle, arrow or box, and the admin's words at the bottom; a tag also names its frame's source: as generated, "
+    "correct version, or original video (the source the generation was made from, not generated), with the other video or run it was taken from when there is one) "
+    "plus the admin's notes and, sometimes, the prompts of the two takes. "
     "You MUST Read the composite image before you answer, and Read a single frame file too when the marked detail is small. Describe only what you can see in "
     "the frames and what the admin wrote; never invent a detail, a cause or a right version. Where the picture and the admin's words disagree, the admin's words "
     "win and you say what you saw. Write every field as a condition tied to this sample's product details and scene, never as a universal rule. You only READ: "
@@ -586,7 +588,7 @@ def _boot(lib_n: int, sig: str, model: str) -> tuple[dict, float]:
 
 
 ROLE = ("You are the Loupe keeper of a video-generation pipeline. You hold a library of samples: each is a generation miss (a frame of a wrong "
-        "video with the admin's marks) and, when there is one, the right frame to compare, each frame tagged WRONG (red) or RIGHT (green) with its time (a right frame can come from the right version or from an earlier part of the same video), with the admin's own words. Rules for every question: you only "
+        "video with the admin's marks) and, when there is one, the right frame to compare, each frame tagged WRONG (red) or RIGHT (green) with its time (a right frame can come from the right version or from an earlier part of the same video) and its source (as generated; correct version; original video, the source clip the generation was made from, which was not generated; with '· video NN' or '· run R video NN' when the admin took the frame from another video or run), with the admin's own words. Rules for every question: you only "
         "READ; you never write, edit or create anything, and you never add to the library (only the admin does, in the web app). Cite only sample ids "
         "that exist in your library; never invent a sample or a rule; judge only from the samples and the admin's words, never from general knowledge "
         "of video models. Some samples are marked NO RIGHT VERSION: they are miss examples only (nothing was corrected); never invent what a right "

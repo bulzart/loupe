@@ -443,7 +443,10 @@ def main(with_keeper=False):
                                                                          {"src": "wrong", "role": "example", "t": 2.5}],
                                                               "shapes": [{"type": "rect", "frame": 0, "x1": .2, "y1": .3, "x2": .6, "y2": .5}]})
     four = Image.open(core.DATA / "samples" / str(d["moment"]["moment_id"]) / "composite.png").convert("RGB")
-    check("four frames: three in a row with their zoom row, and the fourth alone in its row beside its close range", s == 200 and four.getpixel((319, 1659)) == (59, 110, 220) and four.getpixel((903, 1659)) == (70, 74, 90) and four.getpixel((27 + 584 * 2, 55)) == (255, 45, 45), f"{four.size} {four.getpixel((319, 1659))} {four.getpixel((903, 1659))}")
+    check("four frames: three in a row with a zoom under the marked one only, and the fourth (unmarked) alone in its row with no close range", s == 200
+          and four.getpixel((612, 1659)) == (59, 110, 220) and four.getpixel((1400, 1900)) == (245, 245, 247) and four.getpixel((27 + 584 * 2, 55)) == (255, 45, 45)
+          and four.getpixel((304, 1354)) != (245, 245, 247) and four.getpixel((888, 1354)) == (245, 245, 247),
+          f"{four.size} {four.getpixel((612, 1659))} {four.getpixel((1400, 1900))} {four.getpixel((304, 1354))} {four.getpixel((888, 1354))}")
     s, d, _ = req("PATCH", f"/api/misses/{wm['id']}", {"wrong_path": ""})
     s2, d2, _ = req("GET", f"/api/misses/{wm['id']}")
     check("clearing Video A drops the frames that came from it and leaves the words", s == 200 and all(x["n_frames"] == 0 for x in d2["miss"]["moments"]) and any(x["idea"] for x in d2["miss"]["moments"]))
@@ -481,6 +484,52 @@ def main(with_keeper=False):
     nim3 = Image.open(ndir / "composite.png").convert("RGB")
     check("clearing it makes the miss an example again", s == 200 and not (ndir / "fixed.png").exists() and nim3.getpixel((611, 55)) == (70, 74, 90) and grey(nim3))
     s, d, _ = req("DELETE", f"/api/misses/{nid}")
+    print("\n[either side can be any video: the original from the run's records, a take of another video of the run; the tags say which]")
+    atp_run = TMP / "atp" / "runs" / "20261001-000000-07"
+    given = TMP / "client"                                   # the client's own folder, outside the run
+    mkvideo(given / "source-clip.mp4", "0x205020", "white")
+    mkvideo(atp_run / "10-media" / "V05" / "prepared" / "source.mp4", "0x206030", "white")      # the source as the request sent it to the model (prepared)
+    (atp_run / "00-inventory").mkdir(exist_ok=True)
+    (atp_run / "00-inventory" / "inventory.json").write_text(json.dumps({"items": [{"id": "V05", "kind": "video", "path": str(given / "source-clip.mp4")}]}))
+    _rq = json.loads((atp_run / "50-requests" / "video-03-request.json").read_text(encoding="utf-8"))
+    _rq.update({"reference": "V05 (the clip this video recreates)", "source_prepared": "10-media/V05/prepared/source.mp4: silent, as sent"})
+    (atp_run / "50-requests" / "video-03-request.json").write_text(json.dumps(_rq))
+    req("POST", "/api/settings", {"allowed_roots": [str(given)]})
+    ov = [v for v in runs.video_versions("20261001-000000-07", "03") if v["role"] == "original"]
+    check("a video's originals come from the run's own records: the clip its request names as the inventory holds it, and the source as the request sent it",
+          [v["label"] for v in ov] == ["original · source-clip.mp4 (V05, the source clip as given)", "original as sent with a1 · source.mp4"], str([v["label"] for v in ov]))
+    orig = ov[0]["path"] if ov else str(given / "source-clip.mp4")
+    d = fill(orig)
+    check("the original fills no prompt and says it was not generated", d.get("prompt") == "" and "original video" in d.get("note", ""), str(d)[:200])
+    mkvideo(atp_run / "60-outputs" / "video-04" / "a1" / "raw.mp4", "0x503010", "yellow")
+    (atp_run / "50-requests" / "video-04-request.json").write_text(json.dumps({"params": {"model": "wan3_0_prime", "duration": 5, "prompt": "Video four: the can on the shelf.",
+                                                                                         "medias": [{"role": "image_references", "value": "m1"}]}, "medias_meaning": {"Image 2": "The shelf can: A14"}}))
+    four_take = str(atp_run / "60-outputs" / "video-04" / "a1" / "raw.mp4")
+    d = fill(four_take)
+    check("a take of another video of the run fills its own video's prompt, never this video's", d.get("prompt", "").startswith("Video four") and d.get("request") == "video-04-request.json", str(d)[:200])
+    s, d, _ = req("GET", "/api/product-sample?run=20261001-000000-07&video=03&wrong=" + quote(four_take))
+    check("and its product sample is read from its own video's request", s == 200 and [x["label"] for x in d["samples"]] == ["The shelf can"], str(d)[:200])
+    s, d, _ = req("POST", "/api/misses", {"run": "20261001-000000-07", "video": "03", "title": "The pen became a can", "model": "wan3_0_prime",
+                                          "wrong_path": wrong, "fixed_path": orig, "fixed_label": ov[0]["label"] if ov else ""})
+    om = d["miss"]["id"]
+    s, d, _ = req("POST", f"/api/misses/{om}/moments", {"frames": [{"src": "wrong", "role": "wrong", "t": 1.0}, {"src": "fixed", "role": "example", "t": 1.0}],
+                                                         "shapes": [{"type": "circle", "frame": 0, "cx": .4, "cy": .45, "rx": .1, "ry": .06}], "details": "The pen became a can."})
+    om_mo = d["moment"]
+    om_dir = core.DATA / "samples" / str(om_mo["moment_id"])
+    meta = json.loads((om_dir / "meta.json").read_text(encoding="utf-8"))
+    check("a frame of the original is tagged 'original video' (never 'correct version') in the image's record and in what QC and the keeper read",
+          s == 200 and [f["from"] for f in meta["frames"]] == ["as generated", "original video"] and [f["desc"] for f in om_mo["frames"]] == ["as generated", "original video"], str(meta["frames"]))
+    oim = Image.open(om_dir / "composite.png").convert("RGB")
+    check("only the frame with a circle has a zoom; the unmarked frame of the original has none", oim.getpixel((300, 1354)) != (245, 245, 247) and oim.getpixel((888, 1354)) == (245, 245, 247),
+          f"{oim.getpixel((300, 1354))} {oim.getpixel((888, 1354))}")
+    s, d, _ = req("POST", "/api/qc/brief", {"q": "the pen became a can", "model": "wan3_0_prime"}, key=kq)
+    check("the brief names the original video as that frame's source", "(original video)" in d["text"], d["text"][:600])
+    s, d, _ = req("PATCH", f"/api/misses/{om}", {"wrong_path": orig, "wrong_label": ov[0]["label"] if ov else "", "fixed_path": four_take, "fixed_label": "video 04 · a1 · raw.mp4"})
+    s, d, _ = req("GET", f"/api/misses/{om}")
+    fr2 = d["miss"]["moments"][0]["frames"] if s == 200 and d["miss"]["moments"] else []
+    check("the original on side A and a take of video 04 on side B: the tags say 'original video' and 'correct version · video 04'",
+          [f["desc"] for f in fr2] == ["original video", "correct version · video 04"], str(fr2))
+    req("DELETE", f"/api/misses/{om}")
     print("\n[the keeper's readings of the pictures: one JSON per sample, only new or changed samples are read]")
     from loupe_app import qc as _qc
     if not _qc.library():

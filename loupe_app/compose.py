@@ -15,6 +15,7 @@ INK = (24, 26, 32)
 PAPER = (245, 245, 247)
 MUTED = (120, 124, 134)
 MAX_FRAMES = 12
+MARK_SHAPES = ("arrow", "circle", "rect")        # the marks that point at a place: a frame gets a close range (zoom) only for one of these, never for a text label alone
 _fonts: dict = {}
 
 
@@ -202,6 +203,26 @@ def _fmt_t(t) -> str:
     return f"{m}:{t - m * 60:05.2f}"
 
 
+SOURCE_WORDS = {"as generated": "video A (the version as generated", "correct version": "video B (the right version, a different video",
+                "original video": "the original video (the source clip the generation was made from, not generated"}
+
+
+def sources_legend(descs: list[str]) -> str:
+    """What the frames' source tags mean, said in the image itself (the QC keeper and the agents see only this file): one clause per tag, and a tag that
+    names another video or run ('correct version · video 04', 'as generated · run R video 03') says where the frame was taken from."""
+    parts = []
+    for x in descs:
+        base, _sep, where = x.partition(" · ")
+        words = SOURCE_WORDS.get(base)
+        if not words:
+            continue
+        if where:
+            words += ", taken from " + (where if where.startswith("run ") else where + " of the same run")
+        parts.append(f"frames tagged '{x}' are from {words})")
+    s = "; ".join(parts)
+    return s[:1].upper() + s[1:] + "." if s else ""
+
+
 def build(frames: list[dict], meta: dict, details: str, correct_note: str, include_zoom: bool = True, product_samples: list | None = None,
           idea: str = "", better: str = "", missed: str = ""):
     """(composite, zoom_or_None, [annotated frame, ...]).
@@ -209,9 +230,12 @@ def build(frames: list[dict], meta: dict, details: str, correct_note: str, inclu
     frames: [{"img": a PIL image, "role": "wrong" | "right" | "example", "desc": where it comes from, "t": seconds, "shapes": [its marks]}] in the order the admin chose;
     there may be none at all (a report that is only words).
     One image: every frame in a panel with a tag (red WRONG, green RIGHT or blue EXAMPLE, where it comes from, its time) and exactly the marks the admin drew on it (nothing is
-    copied or added), two panels in a row up to two frames and three in a row beyond that, every row centred.  Under a row of two or three frames, a zoom of each frame cut around
-    its own marks (around all the marks when it has none).  A frame that sits alone in its row (a one-frame sample, or the last frame of a row of three) is shown the other way:
-    the normal-range shot on the left and, next to it, its close range at the same height, so no row is left half empty.  A lone miss frame also carries a grey NO RIGHT VERSION
+    copied or added), two panels in a row up to two frames and three in a row beyond that, every row centred.  Under a row of two or three frames, the close range (zoom) of
+    each frame the admin marked with a circle, an arrow or a box, cut around that frame's own marks and set under it; a frame with no such mark (unmarked, or a text label
+    only) has none, and neither has a frame whose marks cover most of it (it would repeat the panel), so a row with no close range has no zoom row.  A frame that sits
+    alone in its row (a one-frame sample, or the last frame of a row of three) and has a close range is shown the other way: the normal-range shot on the left and, next
+    to it, its close range at the same height, so no row is left half empty.  Each tag says where its frame comes from (desc: as generated, correct version, original
+    video, and the other video or run it was taken from); frames from more than one source get a legend of the tags.  A lone miss frame also carries a grey NO RIGHT VERSION
     tag.  The words are burned in at the bottom with the product sample beside them: the title, the explanation, and the admin's idea (what was meant to happen), what could have
     been better and what the AI agents missed or could not understand, each when given.  The marks are drawn after each picture has its final size, thin and at the same weight in
     the panels and in the zoom."""
@@ -219,10 +243,11 @@ def build(frames: list[dict], meta: dict, details: str, correct_note: str, inclu
     n = len(fr)
     colr = lambda role: {"wrong": RED, "right": GREEN_DARK}.get(role, EXAMPLE)      # noqa: E731
     annotated = [draw_shapes(f["img"], f["shapes"], colr(f["role"])) if f["shapes"] else f["img"].copy() for f in fr]      # the full-size files
-    nbox = region_norm([s for f in fr for s in f["shapes"]])           # the place that matters: every mark on every frame
     has_right = any(f["role"] == "right" for f in fr)
-    big = bool(nbox) and (nbox[2] - nbox[0]) * (nbox[3] - nbox[1]) > 0.6      # the marks cover most of the frame: a close range would show the same picture again
-    has_zoom = bool(include_zoom and nbox and not big)
+    # each frame's own close range: the place its own marks hold, only for a frame with a circle, an arrow or a box (never cut around another frame's marks)
+    own = [region_norm(f["shapes"]) if any(s["type"] in MARK_SHAPES for s in f["shapes"]) else None for f in fr]
+    big = [bool(b) and (b[2] - b[0]) * (b[3] - b[1]) > 0.6 for b in own]       # its marks cover most of the frame: a close range would show the same picture again
+    zb = [b if (include_zoom and b and not g) else None for b, g in zip(own, big)]
     cols = max(1, n) if n <= 2 else 3
 
     PW, M = 560, 24
@@ -241,7 +266,8 @@ def build(frames: list[dict], meta: dict, details: str, correct_note: str, inclu
         pic = im.resize((pw, hi), Image.LANCZOS)
         pics.append(draw_shapes(pic, fr[i]["shapes"], colr(fr[i]["role"]), lw=lwp, ref_h=ph) if fr[i]["shapes"] else pic)
     rows = [list(range(k, min(k + cols, n))) for k in range(0, n, cols)]
-    pair = [has_zoom and len(row) == 1 for row in rows]          # a frame alone in its row: the normal range and its close range side by side
+    pair = [len(row) == 1 and zb[row[0]] is not None for row in rows]          # a frame alone in its row: the normal range and its close range side by side
+    zrow = [not pair[r] and any(zb[i] is not None for i in row) for r, row in enumerate(rows)]      # a zoom row under a row of frames only when one of them has a close range
     cols_w = max(cols, 2)                # never narrower than two panels, so the words always have room
     W = M * (cols_w + 1) + pw * cols_w
     row_x = lambda k: (W - (k * pw + (k - 1) * M)) // 2      # noqa: E731  every row is centred
@@ -250,7 +276,7 @@ def build(frames: list[dict], meta: dict, details: str, correct_note: str, inclu
 
     def zoomed(i: int, height: int):
         im, marks = fr[i]["img"], fr[i]["shapes"]
-        bx0, by0, bx1, by1 = to_px(region_norm(marks) or nbox, im.width, im.height)       # around this frame's own marks, else around all the marks
+        bx0, by0, bx1, by1 = to_px(zb[i], im.width, im.height)       # around this frame's own marks
         cw_, ch_ = max(1, bx1 - bx0), max(1, by1 - by0)
         sc = min(pw / cw_, height / ch_)
         nw, nh = max(1, round(cw_ * sc)), max(1, round(ch_ * sc))
@@ -261,20 +287,23 @@ def build(frames: list[dict], meta: dict, details: str, correct_note: str, inclu
             canvas = draw_shapes(canvas, marks, colr(fr[i]["role"]), lw=lwp, box=(ox - bx0 * sc, oy - by0 * sc, im.width * sc, im.height * sc), ref_h=ph)
         return canvas
 
-    zoom_rows: list[Image.Image] = []        # the zoom file: every frame's close range, one row per row of frames
-    if has_zoom:
-        for row in rows:
-            zr = Image.new("RGB", (W, zh + M), PAPER)
-            x0 = row_x(len(row))
-            for c, i in enumerate(row):
-                cell = zoomed(i, zh)
-                ImageDraw.Draw(cell).text((6, 4), "zoom: marked place", font=font(15, True), fill=(255, 255, 255))
-                zr.paste(cell, (x0 + c * (M + pw), 0))
-            zoom_rows.append(zr)
+    zoom_rows: dict[int, Image.Image] = {}        # the zoom file: the close ranges of a row of frames, each under its own frame (a frame without one leaves its place empty)
+    for r, row in enumerate(rows):
+        if not zrow[r]:
+            continue
+        zr = Image.new("RGB", (W, zh + M), PAPER)
+        x0 = row_x(len(row))
+        for c, i in enumerate(row):
+            if zb[i] is None:
+                continue
+            cell = zoomed(i, zh)
+            ImageDraw.Draw(cell).text((6, 4), "zoom: marked place", font=font(15, True), fill=(255, 255, 255))
+            zr.paste(cell, (x0 + c * (M + pw), 0))
+        zoom_rows[r] = zr
     zoom = None
     if zoom_rows:
         zoom = Image.new("RGB", (W, (zh + M) * len(zoom_rows)), PAPER)
-        for k, zr in enumerate(zoom_rows):
+        for k, zr in enumerate(zoom_rows.values()):
             zoom.paste(zr, (0, k * (zh + M)))
 
     # the burned words (bottom): the title, the explanation, the idea, what could be better, what the agents missed, what the right frame shows
@@ -297,10 +326,13 @@ def build(frames: list[dict], meta: dict, details: str, correct_note: str, inclu
     if correct_note.strip() and has_right:
         cap.append((f_cap, (150, 235, 185), _wrap(scratch, "Right: " + correct_note.strip(), f_cap, cap_w)))
     legend = []        # what the tags mean, said in the image itself: the QC keeper and the agents see only this file
-    if len({str(f.get("desc") or "") for f in fr}) > 1:
-        legend.append("Frames tagged 'as generated' are from video A (the version as generated); frames tagged 'correct version' are from video B (the right version, a different video).")
-    if big:
-        legend.append("The marks cover most of the frame, so no close range is shown: compare the whole panels.")
+    descs = list(dict.fromkeys(str(f.get("desc") or "") for f in fr))
+    if len(descs) > 1 or any(" · " in x for x in descs):         # frames from two sources, or taken from another video or run
+        said = sources_legend(descs)
+        if said:
+            legend.append(said)
+    if any(big):
+        legend.append("Where the marks cover most of a frame, no close range is shown for it: compare the whole panels.")
     f_leg = font(19)
     for t in reversed(legend):          # the legend reads first, above the admin's words
         cap.insert(0, (f_leg, (170, 174, 184), _wrap(scratch, t, f_leg, cap_w)))
@@ -309,7 +341,7 @@ def build(frames: list[dict], meta: dict, details: str, correct_note: str, inclu
 
     head_h, tag_room = (74 if n else 40), 40
     row_h = [max(pics[i].height for i in row) for row in rows]
-    H = (head_h + sum(rh + M + ((zh + M) if (has_zoom and not pr) else 0) for rh, pr in zip(row_h, pair)) + tag_room * max(0, len(rows) - 1)
+    H = (head_h + sum(rh + M + ((zh + M) if z else 0) for rh, z in zip(row_h, zrow)) + tag_room * max(0, len(rows) - 1)
          + max(cap_h, 60 if not rows else 0))
     img = Image.new("RGB", (W, H), PAPER)
     d = ImageDraw.Draw(img)
@@ -317,10 +349,23 @@ def build(frames: list[dict], meta: dict, details: str, correct_note: str, inclu
     d.text((M, 10), sub[:150], font=font(16), fill=MUTED)
     fb = font(17, True)
 
-    def tag(x: int, y: int, text: str, fill):
-        d.rectangle([x, y - 32, x + d.textlength(text, font=fb) + 20, y - 6], fill=fill)
-        d.text((x + 10, y - 29), text, font=fb, fill=(255, 255, 255))
-        return int(x + d.textlength(text, font=fb) + 20)
+    def tag(x: int, y: int, text, fill, maxw: int = 0):
+        """A coloured tag above a panel.  Given as parts [verdict, source, time] with the panel's width, a source too long for the panel shrinks the letters,
+        then is shortened, so a tag never runs over the next panel and its time always shows."""
+        parts = list(text) if isinstance(text, (list, tuple)) else [text]
+        join = lambda ps: " · ".join(p for p in ps if p)      # noqa: E731
+        f = fb
+        if maxw:
+            for size in range(17, 10, -1):
+                f = font(size, True)
+                if d.textlength(join(parts), font=f) + 20 <= maxw:
+                    break
+            while len(parts) == 3 and d.textlength(join(parts), font=f) + 20 > maxw and len(parts[1]) > 6:
+                parts[1] = parts[1][:-2].rstrip(" ·") + "…"
+        s = join(parts)
+        d.rectangle([x, y - 32, x + d.textlength(s, font=f) + 20, y - 6], fill=fill)
+        d.text((x + 10, y - 29 + (fb.size - f.size) // 2), s, font=f, fill=(255, 255, 255))
+        return int(x + d.textlength(s, font=f) + 20)
 
     y = head_h
     for r, row in enumerate(rows):
@@ -330,7 +375,7 @@ def build(frames: list[dict], meta: dict, details: str, correct_note: str, inclu
         for c, i in enumerate(row):
             f = fr[i]
             x = x0 + c * (M + pw)
-            end = tag(x, y, " · ".join(t for t in ({"wrong": "WRONG", "right": "RIGHT"}.get(f["role"], "EXAMPLE"), str(f.get("desc") or ""), _fmt_t(f.get("t"))) if t), colr(f["role"]))
+            end = tag(x, y, [{"wrong": "WRONG", "right": "RIGHT"}.get(f["role"], "EXAMPLE"), str(f.get("desc") or ""), _fmt_t(f.get("t"))], colr(f["role"]), maxw=pw)
             if n == 1 and f["role"] == "wrong":
                 tag(end + 8, y, "NO RIGHT VERSION", (96, 100, 112))      # no right frame to compare with: said in the image itself
             img.paste(pics[i], (x, y))
@@ -338,7 +383,7 @@ def build(frames: list[dict], meta: dict, details: str, correct_note: str, inclu
                 tag(x0 + M + pw, y, "CLOSE RANGE", (70, 74, 90))
                 img.paste(zoomed(i, pics[i].height), (x0 + M + pw, y))
         y += row_h[r] + M
-        if has_zoom and not pair[r]:
+        if zrow[r]:
             img.paste(zoom_rows[r], (0, y))
             y += zh + M
     if cap or ps:

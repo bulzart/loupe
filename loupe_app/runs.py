@@ -235,8 +235,9 @@ def library_matches(run: str, nn: str) -> list[dict]:
 
 def video_versions(run: str, nn: str) -> list[dict]:
     """Every file of one video a report can be made from.  `role` says what a file is: 'generated' (the video as the service returned it, raw.mp4 of an attempt:
-    its clean video and preview are made from it), 'processed' (conformed, trimmed, with the original audio, copies, previews), 'deliverable' or 'client-fix';
-    `attempt` is the attempt folder a file sits in; `delivered` marks the attempt whose finished file is the run's clean video, byte for byte."""
+    its clean video and preview are made from it), 'processed' (conformed, trimmed, with the original audio, copies, previews), 'deliverable', 'client-fix' or
+    'original' (the original video it was made from, as the run recorded it: video_originals); `attempt` is the attempt folder a file sits in; `delivered`
+    marks the attempt whose finished file is the run's clean video, byte for byte."""
     d = run_dir(run)
     if not d:
         return []
@@ -262,11 +263,185 @@ def video_versions(run: str, nn: str) -> list[dict]:
         for p in sorted(dd.glob(f"video-{nn}-*.mp4")):
             out.append(_version(p, f"deliverables/{p.name}", "deliverable", role="deliverable"))
     out += [dict(v, role="client-fix") for v in library_matches(run, nn)]
+    out += video_originals(d, nn)
     n_del = delivered_attempt(d, nn)
     for v in out:
         if v.get("attempt"):
             v["delivered"] = bool(n_del) and v["attempt"] == n_del
     return out
+
+
+# ------------------------------------------------------------------ the original video a video was made from (read from the run's own records, never guessed)
+CLIP_ID = re.compile(r"\bV\d{2,3}\b")
+PATH_IN_TEXT = re.compile(r"(?:[A-Za-z]:[\\/]|\b\d\d-[\w.-]+[\\/])[^\s\"'<>|*?(),;]*?\.(?:mp4|mov|webm|mkv|m4v)\b", re.I)
+
+
+def _paths_in(text, rd: Path) -> list[Path]:
+    """The video files a free text of the run names (an absolute path, or one inside the run such as 10-media/V08/prepared/source.mp4), existing ones only."""
+    out: list[Path] = []
+    for m in PATH_IN_TEXT.findall(str(text or "")):
+        p = Path(m) if Path(m).is_absolute() else rd / m
+        if p.is_file() and p not in out:
+            out.append(p)
+    return out
+
+
+def _video_inputs(req: dict) -> list[str]:
+    """What a request says of each of its video inputs, in order: the meaning attached to each video reference (params.medias[].meaning), else its
+    medias_meaning entries Video 1, Video 2 ..."""
+    prm = req.get("params") if isinstance(req.get("params"), dict) else req
+    said = [str(m.get("meaning") or "") for m in (prm.get("medias") or []) if isinstance(m, dict) and m.get("role") == "video_references"]
+    if any(said):
+        return said
+    meaning = next((req[k] for k in ("medias_meaning", "media_meaning") if isinstance(req.get(k), dict)), {})
+    named = [(k, v) for k, v in meaning.items() if re.fullmatch(r"@?video\s*\d+", str(k).strip(), re.I)]
+    return [str(v) for _k, v in sorted(named, key=lambda kv: int(re.sub(r"\D", "", str(kv[0])) or 0))]
+
+
+def _clip_file(rd: Path, clip: str) -> Path | None:
+    """The file the run's inventory holds for a source clip (V08): the original as the client gave it."""
+    inv = _json(rd / "00-inventory" / "inventory.json") or {}
+    for it in (inv.get("items") or []) if isinstance(inv, dict) else []:
+        if isinstance(it, dict) and it.get("id") == clip and it.get("path") and Path(str(it["path"])).is_file():
+            return Path(str(it["path"]))
+    v = (_json(rd / "10-media" / clip / "video.json") or {}).get("video")
+    return Path(v) if isinstance(v, str) and v and Path(v).is_file() else None
+
+
+def _request_tag(name: str, nn: str) -> str:
+    """The generation a request file is for, from its name: video-03-c1-a2-request.json is c1-a2; a name with no attempt in it is the first attempt
+    (video-03-request.json is a1, video-03-c1-request.json is c1-a1)."""
+    t = name[len(f"video-{nn}"):] if name.startswith(f"video-{nn}") else name
+    t = (t[:-len("request.json")] if t.endswith("request.json") else t).strip("-")
+    return t if re.search(r"(?:^|-)a\d+", t) else (t + "-a1" if t else "a1")
+
+
+def _tag_order(t: str):
+    m = re.search(r"(?:^|-)a(\d+)", t)
+    return int(m.group(1)) if m else 1, t
+
+
+def video_originals(rd: Path, nn: str) -> list[dict]:
+    """The original video a video of the run was made from, as the run recorded it, never guessed: the source clip as the client gave it (the inventory's
+    file for the clip the video's records name: its request's ref or reference, the meaning of its first video input, its prepared source, its Recreate pick
+    in state.json, its own entry there) and, when it is another file, the source as each attempt sent it to the model (the prepared, cut or flipped copy its
+    request names: source_prepared, else the first video input, else source), which keeps the take's own timing and orientation.  A video whose records
+    name no source clip and send no source video (a Create video, an older run) has none."""
+    nn = core.nn(nn)
+    st = _json(rd / "state.json") or {}
+    clips: list[str] = []
+
+    def clip_in(text):
+        m = CLIP_ID.search(str(text or ""))
+        if m and m.group(0) not in clips:
+            clips.append(m.group(0))
+
+    sent: list[tuple[Path, str, bool]] = []        # (the file, the generation that sent it, named by a request file)
+    for rf in video_request_files(rd, nn):
+        req = _json(rf) or {}
+        vin = _video_inputs(req)
+        for text in (req.get("ref"), req.get("reference"), vin[0] if vin else "", req.get("source_prepared")):
+            clip_in(text)
+        src = req.get("source") if isinstance(req.get("source"), str) else ""
+        found = (_paths_in(req.get("source_prepared"), rd)[-1:] or _paths_in(vin[0] if vin else "", rd)[:1]
+                 or ([Path(src)] if src and Path(src).is_file() else []))
+        if not found:       # an older record: the first video input as Loupe resolves it from the run's uploads
+            found = [Path(i["path"]) for i in request_inputs(rd, req) if i["role"] == "video_references" and i["path"]][:1]
+        if found:
+            sent.append((found[0], _request_tag(rf.name, nn), True))
+    led = _json(rd / "50-requests" / f"video-{nn}-uploads.json") or {}       # the video's uploads record: what each label was uploaded from
+    for key, u in (led.get("uploads") or {}).items() if isinstance(led, dict) and isinstance(led.get("uploads"), dict) else []:
+        m = re.match(r"^\s*(?:(\S+)\s+)?@?video\s*1\b", str(key), re.I)          # the first video input: "Video 1", "a1 Video 1: original reference"
+        f = u.get("file") if isinstance(u, dict) else None
+        if m and isinstance(f, str) and f and Path(f).is_file():
+            sent.append((Path(f), m.group(1) or "", False))
+    for p in st.get("recreate_picks") or []:
+        if isinstance(p, dict) and core.nn(p.get("n") if p.get("n") is not None else p.get("video")) == nn:
+            clip_in(p.get("ref"))
+    ent = next((v for v in (st.get("videos") or []) if isinstance(v, dict) and core.nn(v.get("video")) == nn), {})
+    for k in ("ref", "reference"):
+        clip_in(ent.get(k))
+    out: list[dict] = []
+    for clip in clips:
+        p = _clip_file(rd, clip)
+        if p and not any(_same_file(p, Path(o["path"])) for o in out):
+            out.append(_version(p, f"original · {p.name} ({clip}, the source clip as given)", "original", role="original", clip=clip))
+    groups: list[list] = []        # [file, generations its request files name, generations the uploads record names]: a byte-for-byte copy is listed once
+    for p, tag, by_request in sent:
+        if any(_same_file(p, Path(o["path"])) for o in out):
+            continue
+        g = next((g for g in groups if _same_file(g[0], p)), None)
+        if g is None:
+            g = [p, [], []]
+            groups.append(g)
+        named = g[1] if by_request else g[2]
+        if tag and tag not in named:
+            named.append(tag)
+    groups.sort(key=lambda g: min((_tag_order(t) for t in (g[1] or g[2])), default=(99, "")))       # in the order of the generations that sent them
+    for p, by_requests, by_record in groups:
+        tags = sorted(by_requests or by_record, key=_tag_order)        # the request files name the generations; the uploads record only when none does
+        out.append(_version(p, f"original as sent{' with ' + ', '.join(tags) if tags else ''} · {p.name}", "original", role="original", sent_with=tags))
+    return out
+
+
+def is_original(rd: Path, nn: str, path) -> bool:
+    """True when a file is one of the video's originals as the run recorded them (video_originals): the file itself, or a copy of it."""
+    try:
+        p = Path(str(path or ""))
+        if not str(path or "") or not p.is_file():
+            return False
+    except (OSError, ValueError):
+        return False
+    return any(_same_file(p, Path(o["path"])) for o in video_originals(rd, nn))
+
+
+def locate(path) -> tuple[str, str] | None:
+    """The run and video a file inside a run folder belongs to, read from where it sits: (run, NN) under 60-outputs/video-NN/, 55-references/video-NN/ or
+    deliverables/video-NN-*, (run, "") anywhere else in a run, None outside every run (an upload, a client fix, a typed path, a label)."""
+    try:
+        p = Path(str(path or "")).resolve()
+    except (OSError, ValueError):
+        return None
+    for root in runs_roots():
+        try:
+            parts = p.relative_to(root.resolve()).parts
+        except (OSError, ValueError):
+            continue
+        if len(parts) < 2 or not (root / parts[0] / "state.json").is_file():
+            return None
+        if len(parts) >= 3 and parts[1] in ("60-outputs", "55-references"):
+            m = re.fullmatch(r"video-(\d+)", parts[2])
+            if m:
+                return parts[0], core.nn(m.group(1))
+        if parts[1] == "deliverables":
+            m = re.match(r"video-(\d+)-", parts[-1])
+            if m:
+                return parts[0], core.nn(m.group(1))
+        return parts[0], ""
+    return None
+
+
+def origin(run: str, video: str, path) -> dict:
+    """What a file picked for a report on (run, video) is: {"original": True} for one of that video's originals; {"run": R, "video": NN} for a file of another
+    run and {"video": NN} for a file of another video of the same run (each with "original": True when it is that video's original); {} for the video's own
+    files, an upload or a typed path."""
+    rd = run_dir(run) if run else None
+    if rd and video and is_original(rd, core.nn(video), path):
+        return {"original": True}
+    loc = locate(path) if path else None
+    if not loc:
+        return {}
+    r, v = loc
+    if rd is None or r != rd.name:
+        res = {"run": r, "video": v}
+    elif v and v != core.nn(video):
+        res = {"video": v}
+    else:
+        return {}
+    od = run_dir(r)
+    if v and od and is_original(od, v, path):
+        res["original"] = True
+    return res
 
 
 def run_detail(run: str) -> dict | None:
@@ -348,11 +523,15 @@ def _request_files(rd: Path, video: str, attempt: int) -> list[Path]:
     return sorted(files, key=lambda f: (_attempt_in_name(f.name), f.name), reverse=True)
 
 
-def product_samples(run: str, video: str, wrong: str = "") -> list[dict]:
+def product_samples(run: str, video: str, wrong: str = "", path: str = "") -> list[dict]:
     """The product image(s) a video's request used, as the original files in the client's own reference folder.  The request names each image input
     (by its asset id, "<what it is>: A14", or by the product code in its prepared file name, "P08-front.jpg"); the run's registry says which ids and
-    codes are products; the run's asset inventory maps an id to the original file.  The attempt of the wrong version (a1, a2 ...) picks the request.
+    codes are products; the run's asset inventory maps an id to the original file.  The attempt of the wrong version (a1, a2 ...) picks the request; a wrong
+    version that is a take of another video or of another run (its `path`, else `wrong`, sits there) reads that video's own request.
     Nothing found: an empty list (the report then has no product sample)."""
+    loc = locate(path or wrong) if (path or wrong) else None
+    if loc and loc[1] and (loc[0], loc[1]) != (run, core.nn(video)):
+        run, video, wrong = loc[0], loc[1], path or wrong
     rd = run_dir(run)
     if not rd or not video:
         return []
@@ -406,12 +585,17 @@ def product_samples(run: str, video: str, wrong: str = "") -> list[dict]:
 
 def request_prompt_for(run: str, video: str, hint: str = "") -> dict:
     """The prompt of the request file a version of a video came from: the attempt the version belongs to picks the request (its attempt folder, or the attempt it
-    is a copy of, or the attempt word of a label such as 'a2 · raw.mp4'); a file whose attempt cannot be told takes the latest attempt's request.  Requests for stills
-    (start frames, guide plates) are never taken.  Read only: the report form fills a prompt field with it and the admin keeps or changes
-    it.  {prompt, request, attempt} or {} when nothing was found."""
+    is a copy of, or the attempt word of a label such as 'a2 · raw.mp4'); a take of another video or of another run is read in its own run; the original video
+    and a file whose attempt cannot be told fill nothing and say why.  Requests for stills (start frames, guide plates) are never taken.  Read only: the report
+    form fills a prompt field with it and the admin keeps or changes it.  {prompt, request, attempt}, {prompt: "", note} or {} when nothing was found."""
+    loc = locate(hint) if hint else None
+    if loc and loc[1] and (loc[0], loc[1]) != (run, core.nn(video)):      # a take of another video or of another run fills from its own run's request
+        run, video = loc
     rd = run_dir(run)
     if not rd or not video:
         return {}
+    if is_original(rd, core.nn(video), hint):
+        return {"prompt": "", "attempt": 0, "note": "this is the original video the generation was made from: it was not generated, so it has no prompt"}
     attempt = attempt_for(rd, video, hint)
     if not attempt:        # never a guess: the admin picks the generated take the file came from, or pastes the prompt
         return {"prompt": "", "attempt": 0, "note": "which attempt this file came from cannot be told: it sits in no attempt folder, equals no attempt's file and is not "
