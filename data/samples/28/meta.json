@@ -1,0 +1,43 @@
+{
+ "moment": 28,
+ "miss": 19,
+ "title": "The package size and proportion is excellent,  do not strictly ever render packages beyond this size, all packs have this size except the pouch version which is bigger but different form, the render details lightning and texture are a bit off and a bit faded but the size is correct keep that in mind. ",
+ "model": "seedance_2_5",
+ "run": "20261026-222435-26",
+ "video": "06",
+ "t_wrong": 4.333,
+ "t_fixed": 4.333,
+ "sample": "S28",
+ "frames": [
+  {
+   "n": 1,
+   "role": "example",
+   "from": "as generated",
+   "t": 4.333
+  },
+  {
+   "n": 2,
+   "role": "example",
+   "from": "as generated",
+   "t": 2.633
+  }
+ ],
+ "shapes": [
+  {
+   "type": "arrow",
+   "frame": 1,
+   "x1": 0.2659783677482792,
+   "y1": 0.5610619266476251,
+   "x2": 0.47050147492625366,
+   "y2": 0.7132743565382156
+  },
+  {
+   "type": "arrow",
+   "frame": 1,
+   "x1": 0.8952802359882005,
+   "y1": 0.7203539620458552,
+   "x2": 0.6215340193276794,
+   "y2": 0.7398230291045873
+  }
+ ]
+}
