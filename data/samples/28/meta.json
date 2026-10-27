@@ -22,6 +22,13 @@
    "t": 2.633
   }
  ],
+ "product_samples": [
+  {
+   "asset": "A38",
+   "label": "P7 Energy & Focus 6-piece Peppermint carton",
+   "file": "EF_Gum_6 piece_Peppermint_Single-Front.png"
+  }
+ ],
  "shapes": [
   {
    "type": "arrow",

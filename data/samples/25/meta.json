@@ -18,8 +18,20 @@
   {
    "n": 2,
    "role": "example",
-   "from": "correct version",
+   "from": "original video",
    "t": 4.867
+  }
+ ],
+ "product_samples": [
+  {
+   "asset": "A14",
+   "label": "the sealed CELSIUS Cherry Cola can",
+   "file": "cherry cola front - cans usa.png"
+  },
+  {
+   "asset": "A38",
+   "label": "the CELSIUS Peach Vibe can front",
+   "file": "peach vibe front - cans usa.png"
   }
  ],
  "shapes": [
