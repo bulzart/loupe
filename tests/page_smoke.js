@@ -14,6 +14,7 @@ const sent = [];
 let withMoment = false;
 let noRight = false;
 let withOthers = false;      // the run also has video 04, and video 03 has an original
+let withSample = false;      // the video's request names a product
 const savedMoment = { moment_id: 5, id: 'S5', image_url: '/x?a=5', updated: 'u', details: 'the pack is right early', correct_note: 'c', has_right: true,
   frames: [{ src: 'wrong', role: 'right', t: 0.5, desc: 'as generated' }, { src: 'wrong', role: 'wrong', t: 3.0, desc: 'as generated' }, { src: 'fixed', role: 'right', t: 3.25, desc: 'correct version' }],
   shapes: [{ type: 'rect', frame: 1, x1: 0.1, y1: 0.1, x2: 0.4, y2: 0.4 }] };
@@ -35,7 +36,7 @@ const api = async (method, url, body) => {
   if (url.startsWith('/api/misses/1') && method === 'GET') return { miss: { id: 1, title: 'T', explanation: '', kinds: [], model: 'm', mode: 'x', product: '', wrong_path: 'A.mp4', fixed_path: noRight ? '' : 'B.mp4', moments: [], product_sample: true } };
   if (url.startsWith('/api/misses/1') && method === 'PATCH') return { miss: { id: 1, title: 'T', explanation: '', kinds: [], wrong_path: 'A.mp4', fixed_path: noRight ? '' : 'B.mp4', moments: [], product_sample: true } };
   if (url.endsWith('/moments')) return { moment: { id: 'S1', moment_id: 1, image_url: '/x?a=1', updated: 'u' } };
-  if (url.startsWith('/api/product-sample')) return { samples: [] };
+  if (url.startsWith('/api/product-sample')) return { samples: withSample ? [{ asset_id: 'A14', label: 'the sealed test can', name: 'x.png', image_url: '/x.png' }] : [] };
   return {};
 };
 const code = read('v_misses.js').replace(/^import .*$/gm, '').replace(/^export (async )?function/gm, '$1function') + '\nreturn { work };';
@@ -181,6 +182,14 @@ const ok = (name, cond, info = '') => { console.log((cond ? '  ok   ' : '  FAIL 
   const vidSel7 = sels7()[3];
   vidSel7.value = '07'; (vidSel7.listeners.change || []).forEach((f) => f());
   ok('its video’s generated takes join both pickers under a heading of their own, its original does not', [0, 1].every((i) => groupsOf(sels7()[i]).includes('Other generations: R2 · video 07: R2 · video 07 · a1 · generated at Higgsfield') && !groupsOf(sels7()[i]).includes('x.mp4')), groupsOf(sels7()[1]));
+  // a new report takes the product its request used as its product, until the admin types one
+  withSample = true; withOthers = false; withMoment = false; noRight = false;
+  const root8 = await work({ run: 'R', video: '03' });
+  await new Promise((r) => setTimeout(r, 0));
+  const prodIn = walk(root8, (e) => e.tag === 'input' && (e.attrs.placeholder || '').startsWith('the product and its details'))[0];
+  ok('a new report takes the product its request used, in the request\'s own words', prodIn && prodIn.value === 'the sealed test can', prodIn && prodIn.value);
+  ok('and shows its picture beside the words', walk(root8, (e) => e.tag === 'img' && e.attrs.alt === 'the sealed test can').length === 1);
+  withSample = false;
   console.log(fails ? `${fails} failed` : 'all passed');
   process.exit(fails ? 1 : 0);
 })().catch((e) => { console.log('FAIL the page threw: ' + (e && e.stack || e)); process.exit(1); });

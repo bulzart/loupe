@@ -214,6 +214,8 @@ export async function work(qs) {
   const model = h('input', { value: miss ? miss.model : (runInfo ? runInfo.model || '' : ''), size: 18 });
   const mode = h('input', { value: miss ? miss.mode : (runInfo ? [runInfo.mode, runInfo.submode].filter(Boolean).join('-') : ''), size: 18 });
   const product = h('input', { value: miss ? miss.product : ((runInfo && runInfo.products && runInfo.products[0]) || ''), size: 22, placeholder: 'the product and its details: form, size, opening, natural posture' });
+  let productTyped = false;      // a new report takes the product its request used (below) until the admin types one
+  product.addEventListener('input', () => { productTyped = true; });
 
   const useSample = h('input', { type: 'checkbox', checked: miss ? miss.product_sample !== false : true });
   const sampleBox = h('div', { class: 'small', style: 'margin-top:12px' });
@@ -222,6 +224,7 @@ export async function work(qs) {
     const wl = state.wrong || '';      // the path: the server reads the attempt from it
     try {
       const d = await api('GET', `/api/product-sample?run=${encodeURIComponent(qs.run)}&video=${encodeURIComponent(qs.video)}&wrong=${encodeURIComponent(wl)}`, undefined, true);
+      if (!miss && !productTyped && d.samples.length) product.value = d.samples.map((x) => x.label).join(' + ');
       sampleBox.replaceChildren(...(d.samples.length ? [h('div', { class: 'row', style: 'gap:12px;align-items:center' },
         ...d.samples.map((x) => h('img', { src: x.image_url, alt: x.label, style: 'height:92px;border-radius:6px;border:1px solid var(--line);background:#cdd0d6' })),
         h('div', {}, h('label', { class: 'small' }, useSample, ' Show the product sample in the saved image (right half of the bottom band)'),

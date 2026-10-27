@@ -469,7 +469,11 @@ def run_detail(run: str) -> dict | None:
 
 
 def _products(d: Path) -> list[str]:
-    """Product names the run's asset registry mentions (free text from its own file, for tagging; never a built-in list)."""
+    """Product names of the run: the names its product registry in state.json holds (a product, and each variant with its flavour), else the names its
+    registry.md mentions (free text from its own file, for tagging; never a built-in list)."""
+    names = [v["name"] for v in _registry_products(_json(d / "state.json") or {}).values() if v.get("name")]
+    if names:
+        return list(dict.fromkeys(names))[:12]
     p = d / "30-assets" / "registry.md"
     if not p.is_file():
         return []
@@ -502,16 +506,80 @@ def _expand(spec) -> list[str]:
 
 
 def _registry_products(st: dict) -> dict:
-    """The run's product registry: key -> {name, canonical, ids}; an entry marked unused is left out."""
+    """The run's product registry: key -> {name, canonical, ids}; an entry marked unused is left out.  Two forms: assets.products (one entry per product,
+    with canonical, files and other_files) and assets.product (one entry per product with its variants: P1 -> P1-CC with its flavour, its label image
+    as the canonical one and its views)."""
     a = st.get("assets") if isinstance(st.get("assets"), dict) else {}
     res = {}
-    for key, v in ((a.get("products") or {}) if isinstance(a.get("products"), dict) else {}).items():
+
+    def ids_of(*vals) -> list[str]:
+        out: list[str] = []
+        for v in vals:
+            out += _expand(v) if isinstance(v, (list, str)) else []
+        return list(dict.fromkeys(out))
+
+    flat = (a.get("products") or {}) if isinstance(a.get("products"), dict) else {}
+    for key, v in flat.items():
         if not isinstance(v, dict) or v.get("unused"):
             continue
-        ids = _expand(v.get("canonical") or "") + _expand(v.get("files")) + _expand(v.get("other_files"))
-        res[str(key)] = {"name": str(v.get("name") or v.get("flavour") or v.get("role") or "").strip(), "canonical": (_expand(v.get("canonical") or "") or ids[:1] or [""])[0],
-                         "ids": list(dict.fromkeys(ids))}
+        ids = ids_of(v.get("canonical"), v.get("label"), v.get("files"), v.get("other_files"), v.get("views"), v.get("geometry"), v.get("opened"))
+        name = str(v.get("name") or "").strip()
+        parent = flat.get(str(key).rsplit("-", 1)[0]) if "-" in str(key) else None       # a variant entry (P01-WM) beside its product entry (P01)
+        if not name and v.get("flavour"):
+            name = " · ".join(x for x in (str(parent.get("name") or "").strip() if isinstance(parent, dict) else "", str(v["flavour"]).strip()) if x)
+        res[str(key)] = {"name": name or str(v.get("role") or "").strip(), "canonical": (ids_of(v.get("canonical"), v.get("label")) or ids[:1] or [""])[0], "ids": ids}
+    for key, p in ((a.get("product") or {}) if isinstance(a.get("product"), dict) else {}).items():      # by product, each with its variants
+        if not isinstance(p, dict) or p.get("unused"):
+            continue
+        base = str(p.get("name") or "").strip()
+        own = ids_of(p.get("canonical"), p.get("label"), p.get("canonical_geometry"), p.get("files"), p.get("views"))
+        if own:
+            res[str(key)] = {"name": base, "canonical": own[0], "ids": own}
+        for vk, v in ((p.get("variants") or {}) if isinstance(p.get("variants"), dict) else {}).items():
+            if not isinstance(v, dict) or v.get("unused"):
+                continue
+            ids = ids_of(v.get("label"), v.get("canonical"), v.get("opened"), v.get("views"), v.get("files"))
+            if ids:
+                res[str(vk)] = {"name": " · ".join(x for x in (base, str(v.get("flavour") or v.get("name") or "").strip()) if x), "canonical": ids[0], "ids": ids}
     return res
+
+
+def _input_meanings(req: dict) -> dict:
+    """What a request says of each of its inputs, by label (Image 1, Video 1 ...): its medias_meaning (or media_meaning) table, and the meaning written on
+    each input of params.medias (the newer form), the k-th input of a role being '<Role> k'."""
+    meaning = dict(next((req[k] for k in ("medias_meaning", "media_meaning") if isinstance(req.get(k), dict)), {}))
+    prm = req.get("params") if isinstance(req.get("params"), dict) else req
+    counts: dict = {}
+    for m in prm.get("medias") or []:
+        if not isinstance(m, dict):
+            continue
+        role = str(m.get("role", ""))
+        counts[role] = counts.get(role, 0) + 1
+        base = ROLE_LABEL.get(role)
+        if base and m.get("meaning"):
+            meaning.setdefault(f"{base} {counts[role]}", str(m["meaning"]))
+    return meaning
+
+
+def _said(text: str, aid: str) -> str:
+    """What a request itself calls an input: its words before the asset id, without a leading 'Image 2 (...):' label or file path ('Test can, sealed:
+    A14' is 'Test can, sealed'; 'Image 2: the sealed can (A14 front, ...)' is 'the sealed can'); empty when only a code is left (then the registry's
+    name is used)."""
+    head = text.split(aid, 1)[0]
+    head = re.sub(r"^\s*@?image\s*\d+\s*(?:\([^)]*\))?\s*[:,.-]?\s*", "", head, flags=re.I)      # a leading 'Image 2 (...):' label
+    head = re.sub(r"^(?:[A-Za-z]:[\\/]|\d\d-[\w.-]+[\\/])\S*\s*", "", head)                       # a leading file path
+    head = head.strip(" \t:;,.(-–")
+    return "" if not head or P_CODE.fullmatch(head) or A_ID.fullmatch(head) else head
+
+
+def _ledger_entry(led: dict, label: str, tag: str):
+    """The entry a video's uploads record (50-requests/video-NN-uploads.json) holds for an input label of a request (Image 2: the key 'Image 2', or
+    'a1 Image 2: P01-CC front padded' with the attempt first): (its key and role as text, its file), the request's own generation first; None."""
+    hits = [(k, v) for k, v in led.items() if isinstance(v, dict) and re.search(rf"(?:^|\s){re.escape(label)}\b", str(k), re.I)]
+    if not hits:
+        return None
+    k, v = next(((k, v) for k, v in hits if str(k).split()[0] == tag), hits[0])
+    return f"{k} {v.get('role') or ''}".strip(), str(v.get("file") or "")
 
 
 def _request_files(rd: Path, video: str, attempt: int) -> list[Path]:
@@ -525,7 +593,8 @@ def _request_files(rd: Path, video: str, attempt: int) -> list[Path]:
 
 def product_samples(run: str, video: str, wrong: str = "", path: str = "") -> list[dict]:
     """The product image(s) a video's request used, as the original files in the client's own reference folder.  The request names each image input
-    (by its asset id, "<what it is>: A14", or by the product code in its prepared file name, "P08-front.jpg"); the run's registry says which ids and
+    (by its asset id, "<what it is>: A14" in its medias_meaning or on the input itself in params.medias, or by the product code in its prepared file name,
+    "P08-front.jpg"); the run's registry says which ids and
     codes are products; the run's asset inventory maps an id to the original file.  The attempt of the wrong version (a1, a2 ...) picks the request; a wrong
     version that is a take of another video or of another run (its `path`, else `wrong`, sits there) reads that video's own request.
     Nothing found: an empty list (the report then has no product sample)."""
@@ -541,6 +610,8 @@ def product_samples(run: str, video: str, wrong: str = "", path: str = "") -> li
     inv = {it["id"]: it for it in ((_json(rd / "30-assets" / "project" / "asset-inventory.json") or {}).get("items") or []) if isinstance(it, dict) and it.get("id")}
     roots = [Path(x) for x in (st.get("assets_paths") or []) if isinstance(x, str)]
     attempt = attempt_for(rd, video, wrong)
+    led = (_json(rd / "50-requests" / f"video-{core.nn(video)}-uploads.json") or {}).get("uploads")
+    led = led if isinstance(led, dict) else {}
 
     def file_of(aid: str):
         it = inv.get(aid) or {}
@@ -551,8 +622,15 @@ def product_samples(run: str, video: str, wrong: str = "", path: str = "") -> li
 
     for rf in _request_files(rd, video, attempt):
         req = _json(rf) or {}
-        meaning = next((req[k] for k in ("medias_meaning", "media_meaning") if isinstance(req.get(k), dict)), {})
-        files = req.get("media_files") if isinstance(req.get("media_files"), dict) else {}
+        meaning = _input_meanings(req)
+        files = dict(req["media_files"]) if isinstance(req.get("media_files"), dict) else {}
+        prm = req.get("params") if isinstance(req.get("params"), dict) else req
+        n_img = sum(1 for m in (prm.get("medias") or []) if isinstance(m, dict) and m.get("role") == "image_references")
+        for k in range(1, n_img + 1):         # an image input the request does not describe: the video's uploads record names it (its key, role and file)
+            lab = f"Image {k}"
+            hit = None if lab in meaning else _ledger_entry(led, lab, _request_tag(rf.name, core.nn(video)))
+            if hit:
+                meaning[lab], files[lab] = hit
         out, seen = [], set()
         for label, text in meaning.items():
             if not str(label).lower().startswith("image"):
@@ -562,20 +640,19 @@ def product_samples(run: str, video: str, wrong: str = "", path: str = "") -> li
             found = A_ID.findall(text)
             aid = next((a for a in found if a in id_owner), None)           # the request names the asset itself
             key = id_owner.get(aid or "")
-            from_text = aid is not None
             if aid is None:                                                 # or the product code of its prepared file: the registry's canonical original
                 code = next((c for c in P_CODE.findall(hay) if c in prods), None)
                 if code:
                     key, aid = code, prods[code]["canonical"] or None
             if aid is None and not prods and found and not NOT_PRODUCT.search(text):      # an older run with no registry
                 aid = found[-1]
-            if not aid or aid in seen:
+            if not aid or aid in seen or (key and key in seen):
                 continue
             path = file_of(aid)
             if not path:
                 continue
-            seen.add(aid)
-            said = re.split(r":\s*A\d", text)[0].strip() if from_text else ""       # what the request itself called it, else the registry's name
+            seen.update({aid, key} - {None, ""})       # one picture per product: another view of the same product is not shown again
+            said = _said(text, aid) if aid in found else ""       # what the request itself called it, else the registry's name
             name = said or (prods.get(key or "") or {}).get("name") or aid
             out.append({"asset_id": aid, "label": name[:90], "path": path, "name": path.name, "request": rf.name})
         if out:

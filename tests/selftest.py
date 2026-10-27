@@ -509,6 +509,32 @@ def main(with_keeper=False):
     check("a take of another video of the run fills its own video's prompt, never this video's", d.get("prompt", "").startswith("Video four") and d.get("request") == "video-04-request.json", str(d)[:200])
     s, d, _ = req("GET", "/api/product-sample?run=20261001-000000-07&video=03&wrong=" + quote(four_take))
     check("and its product sample is read from its own video's request", s == 200 and [x["label"] for x in d["samples"]] == ["The shelf can"], str(d)[:200])
+    five_take = str(atp_run / "60-outputs" / "video-05" / "a1" / "raw.mp4")
+    mkvideo(Path(five_take), "0x305020", "white")
+    (atp_run / "50-requests" / "video-05-request.json").write_text(json.dumps({"params": {"model": "wan3_0_prime", "duration": 5, "prompt": "Video five.", "medias": [
+        {"role": "image_references", "value": "m8", "meaning": "Image 1: C04 identity (A28 crop): facial identity only"},
+        {"role": "image_references", "value": "m1", "meaning": "Image 2: the sealed test can (A14 front, tab flat), padded: structure, label"}]}}))
+    s, d, _ = req("GET", "/api/product-sample?run=20261001-000000-07&video=05&wrong=" + quote(five_take))
+    check("a request that writes the meaning on each input of its media list (the newer form) gives its product sample too, in the request's own words",
+          s == 200 and [(x["asset_id"], x["label"]) for x in d["samples"]] == [("A14", "the sealed test can")], str(d)[:300])
+    reg = runs._registry_products({"assets": {"product": {"P1": {"name": "Slim can", "canonical_geometry": "A06", "variants": {
+        "P1-CC": {"flavour": "Cola", "label": "A14", "views": ["A15", "A04:Cola#2E221D"]}, "P1-OR": {"flavour": "Orange", "unused": "not this run", "label": "A35"}}}}}})
+    check("a registry by product with its variants is read: each variant with its flavour and label image, an unused one left out",
+          reg.get("P1-CC", {}).get("canonical") == "A14" and reg["P1-CC"]["ids"] == ["A14", "A15"] and reg["P1-CC"]["name"] == "Slim can · Cola"
+          and reg.get("P1", {}).get("ids") == ["A06"] and "P1-OR" not in reg, str(reg))
+    reg2 = runs._registry_products({"assets": {"products": {"P01": {"name": "Slim can", "geometry": ["A07"]}, "P01-WM": {"flavour": "Watermelon", "label": "A45", "views": ["A47"], "contents": ["A04"]}}}})
+    check("a flat registry whose variants carry a label and views is read too, each variant named with its product (its contents images left out)",
+          reg2.get("P01-WM") == {"name": "Slim can · Watermelon", "canonical": "A45", "ids": ["A45", "A47"]} and reg2.get("P01", {}).get("ids") == ["A07"], str(reg2))
+    six_take = str(atp_run / "60-outputs" / "video-06" / "a1" / "raw.mp4")
+    mkvideo(Path(six_take), "0x302050", "white")
+    (atp_run / "50-requests" / "video-06-request.json").write_text(json.dumps({"params": {"model": "wan3_0_prime", "duration": 5, "prompt": "Video six.", "medias": [
+        {"role": "video_references", "value": "v1"}, {"role": "image_references", "value": "m8"}, {"role": "image_references", "value": "m1"}]}}))
+    (atp_run / "50-requests" / "video-06-uploads.json").write_text(json.dumps({"video": "06", "schema": 1, "uploads": {
+        "a1 Image 1: C04 head": {"media_id": "m8", "file": str(atp_run / "55-references" / "video-06" / "a1" / "image1-character-C04-head.jpg"), "role": "image_references"},
+        "a1 Image 2: P1 front padded": {"media_id": "m1", "file": str(atp_run / "55-references" / "video-06" / "a1" / "image2-product-P1-front-padded.png"), "role": "image_references"}}}))
+    s, d, _ = req("GET", "/api/product-sample?run=20261001-000000-07&video=06&wrong=" + quote(six_take))
+    check("a request that describes none of its inputs still gives its product sample through the video's uploads record (the product code in its key and file)",
+          s == 200 and [x["asset_id"] for x in d["samples"]] == ["A14"], str(d)[:300])
     s, d, _ = req("POST", "/api/misses", {"run": "20261001-000000-07", "video": "03", "title": "The pen became a can", "model": "wan3_0_prime",
                                           "wrong_path": wrong, "fixed_path": orig, "fixed_label": ov[0]["label"] if ov else ""})
     om = d["miss"]["id"]
