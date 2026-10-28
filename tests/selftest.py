@@ -458,9 +458,9 @@ def main(with_keeper=False):
                                                               "shapes": [{"type": "rect", "frame": 0, "x1": .2, "y1": .3, "x2": .6, "y2": .5}]})
     four = Image.open(core.DATA / "samples" / str(d["moment"]["moment_id"]) / "composite.png").convert("RGB")
     check("four frames: three in a row with a zoom under the marked one only, and the fourth (unmarked) alone in its row with no close range", s == 200
-          and four.getpixel((612, 1659)) == (59, 110, 220) and four.getpixel((1400, 1900)) == (245, 245, 247) and four.getpixel((27 + 584 * 2, 55)) == (255, 45, 45)
-          and four.getpixel((304, 1354)) != (245, 245, 247) and four.getpixel((888, 1354)) == (245, 245, 247),
-          f"{four.size} {four.getpixel((612, 1659))} {four.getpixel((1400, 1900))} {four.getpixel((304, 1354))} {four.getpixel((888, 1354))}")
+          and four.getpixel((612, 1689)) == (59, 110, 220) and four.getpixel((1400, 1960)) == (245, 245, 247) and four.getpixel((27 + 584 * 2, 55)) == (255, 45, 45)
+          and four.getpixel((304, 1384)) != (245, 245, 247) and four.getpixel((888, 1384)) == (245, 245, 247),
+          f"{four.size} {four.getpixel((612, 1689))} {four.getpixel((1400, 1960))} {four.getpixel((304, 1384))} {four.getpixel((888, 1384))}")
     s, d, _ = req("PATCH", f"/api/misses/{wm['id']}", {"wrong_path": ""})
     s2, d2, _ = req("GET", f"/api/misses/{wm['id']}")
     check("clearing Video A drops the frames that came from it and leaves the words", s == 200 and all(x["n_frames"] == 0 for x in d2["miss"]["moments"]) and any(x["idea"] for x in d2["miss"]["moments"]))
@@ -581,6 +581,10 @@ def main(with_keeper=False):
     req("DELETE", f"/api/misses/{pm}")
     print("\n[a take joined from several generations: the prompt of each generation a sample's frames come from, under the seconds it made]")
 
+    def _qcs_digest_lines():
+        from loupe_app import qc as _q
+        return _q._digest().splitlines()
+
     def mkclip(path, secs):
         path.parent.mkdir(parents=True, exist_ok=True)
         cp = subprocess.run([media.find_tool("ffmpeg"), "-y", "-loglevel", "error", "-f", "lavfi", "-i", f"color=c=0x203040:s=360x640:r=30:d={secs}",
@@ -600,7 +604,7 @@ def main(with_keeper=False):
     segs7 = d.get("segments") or []
     check("a take joined from two generations fills one prompt per generation, in clip order, each as long as its clip's trimmed file",
           s == 200 and [(x["clip"], x["t_from"], x["t_to"]) for x in segs7] == [("c1", 0.0, 2.0), ("c2", 2.0, 5.0)] and segs7[0]["prompt"].startswith("PROMPT-C1")
-          and segs7[1]["prompt"].startswith("PROMPT-C2") and "from second 2 to second 5 of this video (generation 2 of 2 · clip c2" in d.get("prompt", "")
+          and segs7[1]["prompt"].startswith("PROMPT-C2") and "generated second 2 to second 5 of this video (generation 2 of 2 · clip c2" in d.get("prompt", "")
           and "this file 5.000 s" in d.get("note", ""), str(d)[:400])
     s, d, _ = req("GET", "/api/request-prompt?run=20261001-000000-07&video=07&path=" + quote(str(v7 / "c2" / "a1" / "trimmed.mp4")))
     check("a take of one clip fills that clip's own prompt (c2's take is never given c1's)", s == 200 and d.get("prompt", "").startswith("PROMPT-C2") and d.get("clip") == "c2", str(d)[:300])
@@ -609,8 +613,8 @@ def main(with_keeper=False):
     sm = d["miss"]["id"] if s == 200 else 0
     wp = d["miss"]["wrong_prompt"] if s == 200 else ""
     check("generations sent with no text: the field is written from them, each prompt under the seconds of Video A it is responsible for", s == 200 and len(d["miss"]["wrong_segments"]) == 2
-          and wp.startswith("This is the prompt responsible for the frames generated from second 0 to second 2 of Video A (generation 1 of 2 · clip c1 · video-07-c1-request.json).\nPROMPT-C1")
-          and "from second 2 to second 5 of Video A (generation 2 of 2" in wp and d["miss"]["wrong_segments"][0]["src"] == "wrong" and d["miss"]["prompts"] == "wrong", str(d)[:400])
+          and wp.startswith("This is the prompt that generated second 0 to second 2 of Video A (generation 1 of 2 · clip c1 · video-07-c1-request.json).\nPROMPT-C1")
+          and "generated second 2 to second 5 of Video A (generation 2 of 2" in wp and d["miss"]["wrong_segments"][0]["src"] == "wrong" and d["miss"]["prompts"] == "wrong", str(d)[:400])
     s, d, _ = req("PATCH", f"/api/misses/{sm}", {"wrong_prompt": "The field as the form wrote it.", "wrong_segments": segs7})
     check("the field's text is kept as the form wrote it, with the take's generations beside it", s == 200 and d["miss"]["wrong_prompt"] == "The field as the form wrote it."
           and len(d["miss"]["wrong_segments"]) == 2, str(d)[:300])
@@ -622,12 +626,24 @@ def main(with_keeper=False):
     pt = smp.get("prompts_text", "")
     check("the sample served with its prompts says which frames each prompt made", s == 200 and len(ws) == 2 and [f["n"] for f in ws[0]["frames"]] == [1] and [f["n"] for f in ws[1]["frames"]] == [2]
           and [(x["gen"], x["of"]) for x in ws] == [(1, 2), (2, 2)], str(ws)[:300])
-    check("the judge's text: the prompt responsible for second 0 to 2 with frame 1, then the one for second 2 to 5 with frame 2",
-          "This is the prompt responsible for the frames generated from second 0 to second 2 of Video A (generation 1 of 2" in pt and "Frame 1 (WRONG at 1.00 s)" in pt
-          and "from second 2 to second 5 of Video A (generation 2 of 2" in pt and "Frame 2 (WRONG at 4.00 s)" in pt and pt.index("PROMPT-C1") < pt.index("PROMPT-C2"), pt[:600])
+    check("the judge's text: the prompt responsible for Frame 1 (second 0 to 2), then the one responsible for Frame 2 (second 2 to 5), the frames named as the image tags them",
+          "This is the prompt responsible for Frame 1 (WRONG, 0:01.00) of this sample: it generated second 0 to second 2 of Video A (generation 1 of 2" in pt
+          and "This is the prompt responsible for Frame 2 (WRONG, 0:04.00) of this sample: it generated second 2 to second 5 of Video A (generation 2 of 2" in pt
+          and pt.index("PROMPT-C1") < pt.index("PROMPT-C2"), pt[:600])
+    meta7 = json.loads((core.DATA / "samples" / str(smo) / "meta.json").read_text(encoding="utf-8"))
+    check("each frame of the image is numbered, names its video and the generation that made it (meta), as the prompts name it",
+          [(f["n"], f["video"], (f.get("generation") or {}).get("gen"), (f.get("generation") or {}).get("clip")) for f in meta7["frames"]] == [(1, "A", 1, "c1"), (2, "A", 2, "c2")]
+          and meta7["frames"][1]["generation"]["t_from"] == 2.0, str(meta7["frames"])[:300])
+    im7 = Image.open(core.DATA / "samples" / str(smo) / "composite.png").convert("RGB")
+    check("each frame's tag has a second line under FRAME n (its video, source and generation, on a dark ground)", im7.getpixel((27, 55)) == (255, 45, 45)
+          and im7.getpixel((27, 85)) == (46, 50, 60), f"{im7.getpixel((27, 55))} {im7.getpixel((27, 85))}")
+    dg7 = [ln for ln in _qcs_digest_lines() if ln.startswith(f"S{smo} ")]
+    check("the keeper's digest names each frame as its tag does: number, role, time, video, source and generation",
+          dg7 and "Frame 1 WRONG 0:01.00, Video A (as generated), generation 1 of 2 · clip c1 (0–2 s)" in dg7[0]
+          and "Frame 2 WRONG 0:04.00, Video A (as generated), generation 2 of 2 · clip c2 (2–5 s)" in dg7[0], (dg7 or [""])[0][:500])
     from loupe_app import qc as _qcs
     got = _qcs._fulfil({"kind": "sample_origin", "id": f"S{smo}"}, {}, TMP / "fulfil", False)
-    check("sample_origin hands the judge the same text", got.get("ok") and "from second 2 to second 5 of Video A" in got.get("text", "") and "Frame 2 (WRONG at 4.00 s)" in got.get("text", ""), str(got)[:300])
+    check("sample_origin hands the judge the same text", got.get("ok") and "it generated second 2 to second 5 of Video A" in got.get("text", "") and "Frame 2 (WRONG, 0:04.00)" in got.get("text", ""), str(got)[:300])
     s, d, _ = req("POST", f"/api/misses/{sm}/moments", {"frames": [{"src": "wrong", "role": "wrong", "t": 3.0}, {"src": "wrong", "role": "wrong", "t": 4.5},
                                                                   {"src": "wrong", "role": "right", "t": 0.5}], "details": "Both misses after the cut."})
     smo2 = d["moment"]["moment_id"] if s == 200 else 0
@@ -637,7 +653,7 @@ def main(with_keeper=False):
     s, d, _ = req("PATCH", f"/api/misses/{sm}", {"fixed_prompt": "", "fixed_segments": [dict(x, src="wrong") for x in segs7]})
     pp3 = _qcs.misses.prompts_of(smo2) or {}
     check("a RIGHT frame taken from Video A: the corrected take's side gives Video A's generation that made it", [x["gen"] for x in pp3.get("fixed_segments") or []] == [1]
-          and "of Video A (generation 1 of 2" in pp3.get("text", "").split("the corrected take")[-1] and "Frame 3 (RIGHT at 0.50 s)" in pp3.get("text", ""), pp3.get("text", "")[-500:])
+          and "of Video A (generation 1 of 2" in pp3.get("text", "").split("the corrected take")[-1] and "Frame 3 (RIGHT, 0:00.50)" in pp3.get("text", ""), pp3.get("text", "")[-500:])
     check("the keeper's digest says the wrong take was made of two generations", "the wrong take was made of 2 generations" in _qcs._digest())
     s, d, _ = req("GET", "/api/generation-assets?run=20261001-000000-07&video=07&wrong=" + quote(clean7))
     check("the product sample's images come from both generations' requests", s == 200 and {a["request"] for a in d.get("assets", [])} >= {"video-07-c1-request.json"}
@@ -658,8 +674,8 @@ def main(with_keeper=False):
     check("a frame of the original is tagged 'original video' (never 'correct version') in the image's record and in what QC and the keeper read",
           s == 200 and [f["from"] for f in meta["frames"]] == ["as generated", "original video"] and [f["desc"] for f in om_mo["frames"]] == ["as generated", "original video"], str(meta["frames"]))
     oim = Image.open(om_dir / "composite.png").convert("RGB")
-    check("only the frame with a circle has a zoom; the unmarked frame of the original has none", oim.getpixel((300, 1354)) != (245, 245, 247) and oim.getpixel((888, 1354)) == (245, 245, 247),
-          f"{oim.getpixel((300, 1354))} {oim.getpixel((888, 1354))}")
+    check("only the frame with a circle has a zoom; the unmarked frame of the original has none", oim.getpixel((300, 1384)) != (245, 245, 247) and oim.getpixel((888, 1384)) == (245, 245, 247),
+          f"{oim.getpixel((300, 1384))} {oim.getpixel((888, 1384))}")
     s, d, _ = req("POST", "/api/qc/brief", {"q": "the pen became a can", "model": "wan3_0_prime"}, key=kq)
     check("the brief names the original video as that frame's source", "(original video)" in d["text"], d["text"][:600])
     s, d, _ = req("PATCH", f"/api/misses/{om}", {"wrong_path": orig, "wrong_label": ov[0]["label"] if ov else "", "fixed_path": four_take, "fixed_label": "video 04 · a1 · raw.mp4"})

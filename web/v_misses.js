@@ -190,6 +190,10 @@ export async function work(qs) {
   const ROLE_UP = { wrong: 'WRONG', right: 'RIGHT', example: 'EXAMPLE' };
   const secs = (x) => String(+(+x).toFixed(3));
   const inGen = (t, s, last) => t >= s.t_from - 1e-6 && (last ? t <= s.t_to + 1e-3 : t < s.t_to);
+  const frameWords = (list) => {      // "Frame 1 (WRONG, 0:03.00) and Frame 3 (WRONG, 0:05.20)": the frames as the saved image tags them (FRAME n, role, time)
+    const it = list.map(({ f, n }) => `Frame ${n} (${ROLE_UP[f.role] || String(f.role).toUpperCase()}, ${fmtT(f.t)})`);
+    return it.length === 1 ? it[0] : it.slice(0, -1).join(', ') + ' and ' + it[it.length - 1];
+  };
   const takes = {};          // path -> what the run says of that take ({prompt, request, attempt, clip, segments, note}); false while it is being read
   const gens = { wrong: [], fixed: [] };       // the generations of the take(s) behind each field, when joined from several: saved with it
   const typed = { wrong: false, fixed: false };
@@ -222,11 +226,12 @@ export async function work(qs) {
         used.push({ ...s, src });
         const its = mine.filter(({ f }) => inGen(f.t, s, k === of - 1));
         if (mine.length && !its.length) return;       // none of this field's frames comes from this generation: its prompt stays out
-        parts.push(`This is the prompt responsible for the frames generated from second ${secs(s.t_from)} to second ${secs(s.t_to)} of ${VNAME[src]} (generation ${k + 1} of ${of} · clip ${s.clip || '-'} · ${s.request || 'request not named'})`
-          + (its.length ? `; the frames of this sample from it: ${its.map(({ f, n }) => `Frame ${n} (${ROLE_UP[f.role] || String(f.role).toUpperCase()} at ${(+f.t).toFixed(2)} s)`).join(', ')}.` : '.') + '\n' + (s.prompt || ''));
+        const where = `second ${secs(s.t_from)} to second ${secs(s.t_to)} of ${VNAME[src]} (generation ${k + 1} of ${of} · clip ${s.clip || '-'} · ${s.request || 'request not named'})`;
+        parts.push((its.length ? `This is the prompt responsible for ${frameWords(its)} of this sample: it generated ${where}.` : `This is the prompt that generated ${where}; no frame of this sample comes from it.`)
+          + '\n' + (s.prompt || ''));
       });
       const past = mine.filter(({ f }) => !segs.some((s, k) => inGen(f.t, s, k === of - 1)));
-      if (past.length) parts.push(`${past.map(({ n, f }) => `Frame ${n} (${(+f.t).toFixed(2)} s)`).join(', ')}: after the end of the last generation (second ${secs(segs[of - 1].t_to)}), so no prompt above made ${past.length > 1 ? 'them' : 'it'}.`);
+      if (past.length) parts.push(`${frameWords(past)}: after the end of the last generation (second ${secs(segs[of - 1].t_to)}), so no prompt above made ${past.length > 1 ? 'them' : 'it'}.`);
     }
     return { text: parts.join('\n\n'), gens: used.length > 1 ? used : [], wait };
   };

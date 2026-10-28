@@ -108,12 +108,27 @@ def _numbered(segs: list[dict], side: str) -> list[dict]:
     return out
 
 
+def _mmss(t) -> str:
+    t = max(0.0, float(t or 0))
+    return f"{int(t // 60)}:{t - int(t // 60) * 60:05.2f}"
+
+
+def frames_words(frames: list[dict]) -> str:
+    """'Frame 1 (WRONG, 0:03.00) and Frame 3 (WRONG, 0:05.20)': the frames as the sample's image tags them (FRAME n, the role, the time)."""
+    it = [f"Frame {f['n']} ({ROLE_WORD.get(f['role'], str(f['role']).upper())}, {_mmss(f['t'])})" for f in frames]
+    return it[0] if len(it) == 1 else ", ".join(it[:-1]) + " and " + it[-1]
+
+
 def segment_line(s: dict) -> str:
-    """The line over a generation's prompt: the seconds of which video it is responsible for, and the frames of the sample that come from it."""
-    fr = ", ".join(f"Frame {f['n']} ({ROLE_WORD.get(f['role'], str(f['role']).upper())} at {float(f['t']):.2f} s)" for f in s.get("frames") or [])
-    return (f"This is the prompt responsible for the frames generated from second {_secs(s['t_from'])} to second {_secs(s['t_to'])} of "
-            f"{VIDEO_NAME.get(s.get('src') or '', 'this video')} (generation {s.get('gen') or 1} of {s.get('of') or 1} · clip {s.get('clip') or '-'} · "
-            f"{s.get('request') or 'request not named'})" + (f"; the frames of this sample from it: {fr}." if fr else "."))
+    """The line over a generation's prompt (the user, 2026-10-28): the frames of the sample it is responsible for, named as the image tags them, then the
+    seconds of which video it generated; with no frame known, only the seconds."""
+    where = (f"second {_secs(s['t_from'])} to second {_secs(s['t_to'])} of {VIDEO_NAME.get(s.get('src') or '', 'this video')} (generation "
+             f"{s.get('gen') or 1} of {s.get('of') or 1} · clip {s.get('clip') or '-'} · {s.get('request') or 'request not named'})")
+    if "frames" not in s:
+        return f"This is the prompt that generated {where}."
+    if s["frames"]:
+        return f"This is the prompt responsible for {frames_words(s['frames'])} of this sample: it generated {where}."
+    return f"This is the prompt that generated {where}; no frame of this sample comes from it."
 
 
 def compose_text(segs: list[dict], side: str = "") -> str:
@@ -229,7 +244,8 @@ def frames_of(row, miss: dict) -> list[dict]:
         raw = None
     if raw not in (None, ""):          # saved with frames, possibly none: that is a scenario in words only, not an older moment
         try:
-            return [{"src": f["src"], "role": "example" if f["role"] == "neutral" else f["role"], "t": f["t"], **({"desc": str(f["desc"])} if f.get("desc") else {})}
+            return [{"src": f["src"], "role": "example" if f["role"] == "neutral" else f["role"], "t": f["t"], **({"desc": str(f["desc"])} if f.get("desc") else {}),
+                     **({"video": str(f["video"])} if f.get("video") else {}), **({"gen": f["gen"]} if isinstance(f.get("gen"), dict) else {})}
                     for f in json.loads(raw) if isinstance(f, dict) and "t" in f]
         except (TypeError, ValueError):
             pass
@@ -520,8 +536,47 @@ def side_desc(miss: dict, src: str) -> str:
     return f"{base} · {where}" if where else base
 
 
+VIDEO_LETTER = {"wrong": "A", "fixed": "B"}
+
+
+def _take_generations(miss: dict, src: str) -> list[dict]:
+    """The generations one of the report's videos was made of, each with its clip and seconds: the ones kept with the prompt fields for that video (src),
+    else read from the run (runs.prompt_segments: a take joined from clips, or a take of one clip); [] for a video of one generation or one that cannot be
+    read.  Facts only: they number a frame's generation in its tag, so a frame ties back to the prompt that made it."""
+    saved: list[dict] = []
+    for side in ("wrong", "fixed"):
+        raw = miss.get(f"{side}_segments")
+        for s in (_segments_of(raw) if isinstance(raw, str) or raw is None else raw):
+            if (s.get("src") or side) == src and not any(x.get("clip") == s.get("clip") and abs(float(x["t_from"]) - float(s["t_from"])) < 1e-3 for x in saved):
+                saved.append(s)
+    if len(saved) >= 2:
+        return sorted(saved, key=lambda s: float(s["t_from"]))
+    path = miss.get("fixed_path" if src == "fixed" else "wrong_path") or ""
+    if not path:
+        return []
+    try:
+        seg = runs.prompt_segments(miss.get("run") or "", miss.get("video") or "", path)
+    except Exception:  # noqa: BLE001  (a run that cannot be read: the frame keeps its video, with no generation)
+        return []
+    return (seg.get("segments") or []) if seg.get("kind") in ("clips", "clip") else []
+
+
+def _frame_generation(segs: list[dict], t: float) -> dict | None:
+    """The generation of a take that made the frame at t: its number in the take, its clip and its seconds; after the last one, where that one ends."""
+    if not segs:
+        return None
+    n = len(segs)
+    for k, s in enumerate(segs):
+        a, b = float(s["t_from"]), float(s["t_to"])
+        if a - 1e-6 <= t and (t <= b + 1e-3 if k == n - 1 else t < b):
+            return {"gen": k + 1, "of": n, "clip": str(s.get("clip") or ""), "t_from": round(a, 3), "t_to": round(b, 3)}
+    return {"after": round(float(segs[-1]["t_to"]), 3)} if t > float(segs[-1]["t_to"]) else None
+
+
 def regenerate(mid: int):
-    """Cut every frame of the moment, draw the admin's marks on each, build the composite and the zoom, and store them."""
+    """Cut every frame of the moment, draw the admin's marks on each, build the composite and the zoom, and store them.  Every frame is numbered as the saved
+    prompts number it (FRAME n), names its video (VIDEO A or B) and, for a take made of several generations, the generation that made it (the user,
+    2026-10-28: the frame must tie back to the prompt that made it, in the image and wherever the pipeline reads the sample)."""
     con = core.db()
     try:
         mr = con.execute("SELECT * FROM moments WHERE id=?", (mid,)).fetchone()
@@ -531,17 +586,21 @@ def regenerate(mid: int):
     frames = frames_of(mr, dict(miss))
     shapes = compose.clean_shapes(json.loads(mr["shapes"] or "[]"))
     descs = {src: side_desc(dict(miss), src) for src in ("wrong", "fixed")}       # what each video is: the take as generated, the right version, the original, another video's take
+    takes = {src: _take_generations(dict(miss), src) for src in {f["src"] for f in frames}}
+    gens = [_frame_generation(takes.get(f["src"]) or [], f["t"]) for f in frames]
     items, pngs = [], []
     for i, f in enumerate(frames):
         path = miss["fixed_path"] if f["src"] == "fixed" else miss["wrong_path"]
         if not path:             # its video was cleared from the report
             continue
         png = media.frame_file(media.resolve_media(path), f["t"])
-        items.append({"img": Image.open(png).convert("RGB"), "role": f["role"], "desc": descs[f["src"]], "t": f["t"], "shapes": [s for s in shapes if s["frame"] == i]})
+        items.append({"img": Image.open(png).convert("RGB"), "role": f["role"], "desc": descs[f["src"]], "t": f["t"], "shapes": [s for s in shapes if s["frame"] == i],
+                      "n": i + 1, "video": VIDEO_LETTER[f["src"]], "gen": gens[i]})
         pngs.append(png)
     tw, tf = _times(frames)
     meta = {"title": miss["title"], "model": miss["model"], "run": miss["run"], "video": miss["video"], "t_wrong": tw, "t_fixed": tf, "sample": f"S{mid}",
-            "frames": [{"n": k + 1, "role": it["role"], "from": it["desc"], "t": it["t"]} for k, it in enumerate(items)]}
+            "frames": [{"n": it["n"], "role": it["role"], "from": it["desc"], "video": it["video"], "t": it["t"], **({"generation": it["gen"]} if it["gen"] else {})}
+                       for it in items]}
     samples = []
     if miss["sample_on"] != 0:
         try:       # the files the admin ticked, else the product image(s) the video used, straight from the client's reference folder; never a reason to fail the save
@@ -574,7 +633,9 @@ def regenerate(mid: int):
     if zoom:
         zoom.save(d / "zoom.png", optimize=True)
     # a moment saved with frames keeps each frame's source words with it, so the listings (the QC library, the keeper's digest) never read the run again
-    stored = core.jdump([dict(f, desc=descs[f["src"]]) for f in frames]) if "frames" in mr.keys() and mr["frames"] not in (None, "") else None
+    stored = (core.jdump([{**{k: v for k, v in f.items() if k != "gen"}, "desc": descs[f["src"]], "video": VIDEO_LETTER[f["src"]], **({"gen": g} if g else {})}
+                          for f, g in zip(frames, gens)])
+              if "frames" in mr.keys() and mr["frames"] not in (None, "") else None)
     con = core.db()
     try:
         wh = (items[0]["img"].width if items else None, items[0]["img"].height if items else None, core.now())
@@ -609,7 +670,8 @@ def moment_view(r, miss: dict) -> dict:
     d = sample_dir(mid)
     frames = frames_of(r, miss)
     has_wrong, has_right = any(f["role"] == "wrong" for f in frames), any(f["role"] == "right" for f in frames)
-    return {"moment_id": mid, "frames": [dict(f, desc=f.get("desc") or FRAME_DESC[f["src"]]) for f in frames], "n_frames": len(frames), "has_right_version": miss.get("fixed_path") or "",
+    return {"moment_id": mid, "frames": [dict(f, desc=f.get("desc") or FRAME_DESC[f["src"]], video=f.get("video") or VIDEO_LETTER[f["src"]]) for f in frames],
+            "n_frames": len(frames), "has_right_version": miss.get("fixed_path") or "",
             "has_wrong_version": miss.get("wrong_path") or "", "has_wrong": has_wrong, "sample_kind": ("pair" if has_right else "miss-only") if has_wrong else "scenario",
             "idea": r["idea"] or "", "better": r["better"] or "", "missed": r["missed"] or "", "id": f"S{mid}", "miss_id": miss["id"], "title": miss["title"], "explanation": miss["explanation"], "details": r["details"],
             "correct_note": r["correct_note"], "kinds": kinds, "model": miss["model"], "mode": miss["mode"], "product": miss["product"],

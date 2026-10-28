@@ -151,8 +151,8 @@ def sample_lines(s: dict, with_path: bool = True) -> str:
         if not s.get("n_frames"):
             t.append(f"  image (a text card with the admin's words and the product sample; this scenario has no frames): {s['composite_path']}")
         else:
-            fl = ", ".join(f"{f['role'].upper()} @ {f['t']:.2f}s ({f['desc']})" for f in s.get("frames", []))
-            t.append(f"  image ({s['n_frames']} frame(s), each tagged WRONG in red, RIGHT in green or EXAMPLE in blue with its time, its source and the admin's marks, a zoom under each frame marked with a circle, arrow or box, the admin's words at the bottom; frames: {fl})"
+            fl = "; ".join(frame_words(f, i + 1) for i, f in enumerate(s.get("frames", [])))
+            t.append(f"  image ({s['n_frames']} frame(s), each tagged FRAME n with WRONG in red, RIGHT in green or EXAMPLE in blue and its time, and under that its video (VIDEO A or B), its source and, for a take made of several generations, the generation that made it (the prompt that names the frame); the admin's marks, a zoom under each frame marked with a circle, arrow or box, the admin's words at the bottom; frames: {fl})"
                      + ("; this sample has NO right version, it is a miss example only" if kind == "miss-only" else "") + f": {s['composite_path']}")
     return "\n".join(t)
 
@@ -172,12 +172,20 @@ def _t(t) -> str:
     return f"{int(t // 60)}:{t - int(t // 60) * 60:05.2f}"
 
 
+def frame_words(f: dict, n: int) -> str:
+    """One frame as its tag in the image names it: 'Frame 1 WRONG 0:03.00, Video A (as generated), generation 1 of 2 · clip c1 (0–6.1 s)'."""
+    gen = misses.compose.gen_words(f.get("gen"))
+    return (f"Frame {n} {({'wrong': 'WRONG', 'right': 'RIGHT'}).get(f['role'], 'EXAMPLE')} {_t(f['t'])}, Video {f.get('video') or misses.VIDEO_LETTER.get(f.get('src'), '?')} "
+            f"({f['desc']})" + (f", {gen}" if gen else ""))
+
+
 def frames_text(s: dict) -> str:
-    """What the sample's image holds: every frame, called WRONG or RIGHT by the admin, where it comes from and its time."""
+    """What the sample's image holds: every frame as its tag names it (its number, WRONG, RIGHT or EXAMPLE, its time, its video, where it comes from and,
+    for a take made of several generations, the generation that made it: the words the saved prompts use)."""
     fr = s.get("frames") or []
     if not fr:
         return "no frames (the admin's words only)"
-    return f"{len(fr)} frame{'' if len(fr) == 1 else 's'}: " + ", ".join(f"{({'wrong': 'WRONG', 'right': 'RIGHT'}).get(f['role'], 'EXAMPLE')} {_t(f['t'])} {f['desc']}" for f in fr)
+    return f"{len(fr)} frame{'' if len(fr) == 1 else 's'}: " + "; ".join(frame_words(f, i + 1) for i, f in enumerate(fr))
 
 
 LIB_HEADER = ("One line per sample: id | kinds | model | title (the admin's own words) | the admin's other notes when there are any | "
@@ -219,8 +227,10 @@ EXTRACT_ROLE = (
     "separate session) holds what its picture shows. You give NO verdict: never say what went wrong, why it went wrong, when it would happen again, what a "
     "check should be, or which frame, take or prompt is better; the judge decides all of that from what you collect, the admin's words and the record. "
     "A sample is a picture (a composite of frames of a generated video, each tagged WRONG in red, RIGHT in green or EXAMPLE in blue with its time, the admin's marks "
-    "drawn on them, a zoom under each frame the admin marked with a circle, arrow or box, and the admin's words at the bottom; a tag also names its frame's source: as generated, "
-    "correct version, or original video (the source the generation was made from, not generated), with the other video or run it was taken from when there is one) "
+    "drawn on them, a zoom under each frame the admin marked with a circle, arrow or box, and the admin's words at the bottom; a tag also names its frame's number "
+    "(FRAME n, the number the saved prompts use), its video (VIDEO A or B) and its source: as generated, "
+    "correct version, or original video (the source the generation was made from, not generated), with the other video or run it was taken from when there is one, "
+    "and, for a take made of several generations, the generation that made it) "
     "plus the admin's notes. "
     "You MUST Read the composite image before you answer, and Read a single frame file too when a marked detail is small. Describe only what you can see in "
     "the frames, and restate what the admin wrote without adding to it; never invent a detail, a cause, a right version or an opinion. You only READ: "
@@ -590,7 +600,7 @@ def _boot(lib_n: int, sig: str, model: str) -> tuple[dict, float]:
 
 
 ROLE = ("You are the Loupe keeper of a video-generation pipeline. You hold a library of samples: each is a generation miss (a frame of a wrong "
-        "video with the admin's marks) and, when there is one, the right frame to compare, each frame tagged WRONG (red) or RIGHT (green) with its time (a right frame can come from the right version or from an earlier part of the same video) and its source (as generated; correct version; original video, the source clip the generation was made from, which was not generated; with '· video NN' or '· run R video NN' when the admin took the frame from another video or run), with the admin's own words. Rules for every question: you only "
+        "video with the admin's marks) and, when there is one, the right frame to compare, each frame tagged WRONG (red) or RIGHT (green) with its time (a right frame can come from the right version or from an earlier part of the same video) and its source (as generated; correct version; original video, the source clip the generation was made from, which was not generated; with '· video NN' or '· run R video NN' when the admin took the frame from another video or run; since 2026-10-28 a frame is also numbered FRAME n and names its video, VIDEO A or B, and, for a take made of several generations, the generation that made it with its clip and seconds: the prompts saved with the sample name the same frames under the generation whose prompt made them), with the admin's own words. Rules for every question: you only "
         "READ; you never write, edit or create anything, and you never add to the library (only the admin does, in the web app). Cite only sample ids "
         "that exist in your library; never invent a sample or a rule; judge only from the samples and the admin's words, never from general knowledge "
         "of video models. Some samples are marked NO RIGHT VERSION: they are miss examples only (nothing was corrected); never invent what a right "

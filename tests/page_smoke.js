@@ -227,9 +227,9 @@ const ok = (name, cond, info = '') => { console.log((cond ? '  ok   ' : '  FAIL 
   const fieldA = () => field('The prompt that produced Video A'), fieldB = () => field('The prompt of Video B');
   ok('one prompt field per side, none per generation', walk(root10, (e) => e.tag === 'textarea' && /prompt/i.test(e.attrs.placeholder || '')).length === 2 && !walk(root10, (e) => !!(e.attrs && e.attrs['data-seg'])).length);
   ok('Video A’s field fills itself with the prompt of the generation the Wrong frame comes from (frame 1 at 0 s: generation 1 only), under the line with its seconds',
-    fieldA().value.startsWith('This is the prompt responsible for the frames generated from second 0 to second 6.1 of Video A (generation 1 of 2 · clip c1 · video-03-c1-request.json); the frames of this sample from it: Frame 1 (WRONG at 0.00 s).\nP-C1')
+    fieldA().value.startsWith('This is the prompt responsible for Frame 1 (WRONG, 0:00.00) of this sample: it generated second 0 to second 6.1 of Video A (generation 1 of 2 · clip c1 · video-03-c1-request.json).\nP-C1')
     && !fieldA().value.includes('P-C2'), fieldA().value);
-  ok('Video B’s field holds the prompt behind the Right frame, from Video B', fieldB().value.includes('of Video B (generation 1 of 2 · clip c1') && fieldB().value.includes('Frame 2 (RIGHT at 0.00 s)'), fieldB().value);
+  ok('Video B’s field holds the prompt behind the Right frame, from Video B', fieldB().value.includes('of Video B (generation 1 of 2 · clip c1') && fieldB().value.includes('responsible for Frame 2 (RIGHT, 0:00.00) of this sample'), fieldB().value);
   const fr10 = () => walk(root10, (e) => e.className === 'players')[0].children.filter((e) => e.className.split(/\s+/).includes('player') && walk(e, (x) => x.tag === 'canvas').length);
   click(walk(root10, (e) => e.tag === 'button' && e.text === '+ Add a frame')[0]);
   const f3 = fr10()[2];
@@ -238,8 +238,8 @@ const ok = (name, cond, info = '') => { console.log((cond ? '  ok   ' : '  FAIL 
   const st3 = walk(f3, (e) => e.tag === 'input' && e.className.includes('stamp'))[0]; st3.value = '0:07.00'; (st3.listeners.change || []).forEach((f) => f());
   const a2 = fieldA().value;
   ok('Wrong frames from two generations: both prompts in the one field, each under the seconds it is responsible for and its frame',
-    a2.includes('from second 0 to second 6.1 of Video A (generation 1 of 2') && a2.includes('Frame 1 (WRONG at 0.00 s)') && a2.includes('from second 6.1 to second 12.433 of Video A (generation 2 of 2 · clip c2')
-    && a2.includes('Frame 3 (WRONG at 7.00 s)') && a2.indexOf('P-C1') < a2.indexOf('P-C2'), a2);
+    a2.includes('responsible for Frame 1 (WRONG, 0:00.00) of this sample: it generated second 0 to second 6.1 of Video A (generation 1 of 2')
+    && a2.includes('responsible for Frame 3 (WRONG, 0:07.00) of this sample: it generated second 6.1 to second 12.433 of Video A (generation 2 of 2 · clip c2') && a2.indexOf('P-C1') < a2.indexOf('P-C2'), a2);
   fieldA().value = 'My own words for the prompt.'; (fieldA().listeners.input || []).forEach((f) => f());
   st3.value = '0:08.00'; (st3.listeners.change || []).forEach((f) => f());
   ok('a field the admin typed in stays as typed when a frame moves', fieldA().value === 'My own words for the prompt.', fieldA().value);
@@ -249,11 +249,11 @@ const ok = (name, cond, info = '') => { console.log((cond ? '  ok   ' : '  FAIL 
   ok('a typed field is saved as typed, with no generations; Video B’s, still Loupe’s, goes with its take’s two generations', rep10 && rep10.body.wrong_prompt === 'My own words for the prompt.' && rep10.body.wrong_segments.length === 0
     && rep10.body.fixed_segments.length === 2 && rep10.body.fixed_segments.every((x) => x.src === 'fixed') && rep10.body.fixed_prompt.includes('of Video B'), JSON.stringify(rep10 && rep10.body).slice(0, 400));
   await Promise.all(walk(root10, (e) => e.tag === 'button' && e.text === 'Fill from the run (Video A)').flatMap((b) => (b.listeners.click || []).map((f) => f())));
-  ok('Fill writes the field again from the frames', fieldA().value.includes('Frame 3 (WRONG at 8.00 s)') && fieldA().value.includes('P-C2'), fieldA().value);
+  ok('Fill writes the field again from the frames', fieldA().value.includes('Frame 3 (WRONG, 0:08.00)') && fieldA().value.includes('P-C2'), fieldA().value);
   st3.value = '0:03.00'; (st3.listeners.change || []).forEach((f) => f());
-  ok('and it follows them again: both Wrong frames in generation 1 leave only its prompt', fieldA().value.includes('Frame 1 (WRONG at 0.00 s), Frame 3 (WRONG at 3.00 s)') && !fieldA().value.includes('P-C2'), fieldA().value);
+  ok('and it follows them again: both Wrong frames in generation 1 leave only its prompt', fieldA().value.includes('responsible for Frame 1 (WRONG, 0:00.00) and Frame 3 (WRONG, 0:03.00) of this sample') && !fieldA().value.includes('P-C2'), fieldA().value);
   const src2 = walk(fr10()[1], (e) => e.tag === 'select')[0]; src2.value = 'wrong'; (src2.listeners.change || []).forEach((f) => f());
-  ok('a Right frame taken from Video A puts Video A’s generation in Video B’s field', fieldB().value.includes('of Video A (generation 1 of 2') && fieldB().value.includes('Frame 2 (RIGHT at 0.00 s)'), fieldB().value);
+  ok('a Right frame taken from Video A puts Video A’s generation in Video B’s field', fieldB().value.includes('of Video A (generation 1 of 2') && fieldB().value.includes('Frame 2 (RIGHT, 0:00.00)'), fieldB().value);
   sent.length = 0;
   await Promise.all(walk(root10, (e) => e.tag === 'button' && e.text === 'Save report changes').flatMap((b) => (b.listeners.click || []).map((f) => f())));
   const rep10b = sent.find((x) => x.method === 'PATCH' && x.url === '/api/misses/1');
@@ -266,7 +266,7 @@ const ok = (name, cond, info = '') => { console.log((cond ? '  ok   ' : '  FAIL 
   await new Promise((r) => setTimeout(r, 0));
   const fA11 = walk(root11, (e) => e.tag === 'textarea' && (e.attrs.placeholder || '').startsWith('The prompt that produced Video A'))[0];
   ok('a saved field of a joined take is written again for the frames on screen, from its saved prompts', fA11.value.includes('SAVED-C1') && !fA11.value.includes('SAVED-C2')
-    && fA11.value.includes('Frame 1 (WRONG at 0.00 s)') && !sent.some((x) => x.url.startsWith('/api/request-prompt') && x.url.includes('path=A.mp4')), fA11.value);
+    && fA11.value.includes('responsible for Frame 1 (WRONG, 0:00.00) of this sample') && !sent.some((x) => x.url.startsWith('/api/request-prompt') && x.url.includes('path=A.mp4')), fA11.value);
   withSavedSegs = false;
   console.log(fails ? `${fails} failed` : 'all passed');
   process.exit(fails ? 1 : 0);

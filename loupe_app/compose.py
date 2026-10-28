@@ -203,6 +203,22 @@ def _fmt_t(t) -> str:
     return f"{m}:{t - m * 60:05.2f}"
 
 
+def _secs(x) -> str:
+    return f"{float(x):.3f}".rstrip("0").rstrip(".")
+
+
+def gen_words(g: dict | None) -> str:
+    """The generation that made a frame, in a tag's words (the user, 2026-10-28: a frame must tie back to the prompt that made it): 'generation 1 of 2 ·
+    clip c1 (0–6.1 s)' for a take joined from several generations, 'clip c2' for a take of one clip, '' when the take is one generation."""
+    if not g:
+        return ""
+    if g.get("after") is not None:
+        return f"after the last generation ({_secs(g['after'])} s)"
+    if (g.get("of") or 1) > 1:
+        return f"generation {g.get('gen')} of {g.get('of')} · clip {g.get('clip') or '-'} ({_secs(g.get('t_from') or 0)}–{_secs(g.get('t_to') or 0)} s)"
+    return f"clip {g['clip']}" if g.get("clip") else ""
+
+
 SOURCE_WORDS = {"as generated": "video A (the version as generated", "correct version": "video B (the right version, a different video",
                 "original video": "the original video (the source clip the generation was made from, not generated"}
 
@@ -228,7 +244,9 @@ def build(frames: list[dict], meta: dict, details: str, correct_note: str, inclu
     """(composite, zoom_or_None, [annotated frame, ...]).
 
     frames: [{"img": a PIL image, "role": "wrong" | "right" | "example", "desc": where it comes from, "t": seconds, "shapes": [its marks]}] in the order the admin chose;
-    there may be none at all (a report that is only words).
+    there may be none at all (a report that is only words).  A frame that also has "n" (its number in the sample), "video" ("A" or "B") and "gen" (the generation of
+    a joined take that made it, or None) gets a tag of two lines, the same words the saved prompts use: FRAME n, its role and its time on top, and under it VIDEO A
+    or B, where it comes from and its generation (gen_words), with a legend line that ties a frame to its generation's prompt when any frame has one.
     One image: every frame in a panel with a tag (red WRONG, green RIGHT or blue EXAMPLE, where it comes from, its time) and exactly the marks the admin drew on it (nothing is
     copied or added), two panels in a row up to two frames and three in a row beyond that, every row centred.  Under a row of two or three frames, the close range (zoom) of
     each frame the admin marked with a circle, an arrow or a box, cut around that frame's own marks and set under it; a frame with no such mark (unmarked, or a text label
@@ -333,13 +351,18 @@ def build(frames: list[dict], meta: dict, details: str, correct_note: str, inclu
             legend.append(said)
     if any(big):
         legend.append("Where the marks cover most of a frame, no close range is shown for it: compare the whole panels.")
+    two = any(f.get("video") for f in fr)       # numbered frames that name their video and the generation that made them: a second tag line under each
+    if two and any(gen_words(f.get("gen")) for f in fr):
+        legend.append("Each frame is tagged with its number (FRAME n, the number the prompts saved with this sample use) and, under it, its video (VIDEO A "
+                      "as generated, VIDEO B the right version) and the generation of that take that made it (its clip and seconds): the prompt of that "
+                      "generation is the one that names this frame.")
     f_leg = font(19)
     for t in reversed(legend):          # the legend reads first, above the admin's words
         cap.insert(0, (f_leg, (170, 174, 184), _wrap(scratch, t, f_leg, cap_w)))
     text_h = 36 + sum(len(ls) * (f.size + 9) + 12 for f, _c, ls in cap) if cap else 0
     cap_h = max(text_h, 300) if ps else text_h        # the product needs some height to be recognised
 
-    head_h, tag_room = (74 if n else 40), 40
+    head_h, tag_room = ((104 if two else 74) if n else 40), (70 if two else 40)
     row_h = [max(pics[i].height for i in row) for row in rows]
     H = (head_h + sum(rh + M + ((zh + M) if z else 0) for rh, z in zip(row_h, zrow)) + tag_room * max(0, len(rows) - 1)
          + max(cap_h, 60 if not rows else 0))
@@ -367,6 +390,26 @@ def build(frames: list[dict], meta: dict, details: str, correct_note: str, inclu
         d.text((x + 10, y - 29 + (fb.size - f.size) // 2), s, font=f, fill=(255, 255, 255))
         return int(x + d.textlength(s, font=f) + 20)
 
+    def tag2(x: int, y: int, parts: list, maxw: int):
+        """The second line of a numbered frame's tag, on a dark ground: its video, where it comes from and the generation that made it.  It shrinks, then
+        shortens the source words and then the generation's, so it never runs over the next panel; VIDEO A or B always shows."""
+        parts = [p for p in parts if p]
+        join = lambda ps: " · ".join(ps)      # noqa: E731
+        f = font(15, True)
+        for size in range(15, 9, -1):
+            f = font(size, True)
+            if d.textlength(join(parts), font=f) + 20 <= maxw:
+                break
+        k = 1
+        while k < len(parts) and d.textlength(join(parts), font=f) + 20 > maxw:
+            if len(parts[k]) > 6:
+                parts[k] = parts[k][:-2].rstrip(" ·") + "…"
+            else:
+                k += 1
+        s = join(parts)
+        d.rectangle([x, y - 32, x + d.textlength(s, font=f) + 20, y - 6], fill=(46, 50, 60))
+        d.text((x + 10, y - 28 + (15 - f.size) // 2), s, font=f, fill=(235, 238, 245))
+
     y = head_h
     for r, row in enumerate(rows):
         if r:
@@ -375,12 +418,18 @@ def build(frames: list[dict], meta: dict, details: str, correct_note: str, inclu
         for c, i in enumerate(row):
             f = fr[i]
             x = x0 + c * (M + pw)
-            end = tag(x, y, [{"wrong": "WRONG", "right": "RIGHT"}.get(f["role"], "EXAMPLE"), str(f.get("desc") or ""), _fmt_t(f.get("t"))], colr(f["role"]), maxw=pw)
+            role_word = {"wrong": "WRONG", "right": "RIGHT"}.get(f["role"], "EXAMPLE")
+            ty = y - 30 if two else y        # a numbered frame: FRAME n, its role and time on top; its video, source and generation under it
+            if two:
+                end = tag(x, ty, [f"FRAME {f.get('n') or i + 1}", role_word, _fmt_t(f.get("t"))], colr(f["role"]), maxw=pw)
+                tag2(x, y, [f"VIDEO {f.get('video') or '?'}", str(f.get("desc") or ""), gen_words(f.get("gen"))], maxw=pw)
+            else:
+                end = tag(x, y, [role_word, str(f.get("desc") or ""), _fmt_t(f.get("t"))], colr(f["role"]), maxw=pw)
             if n == 1 and f["role"] == "wrong":
-                tag(end + 8, y, "NO RIGHT VERSION", (96, 100, 112))      # no right frame to compare with: said in the image itself
+                tag(end + 8, ty, "NO RIGHT VERSION", (96, 100, 112))      # no right frame to compare with: said in the image itself
             img.paste(pics[i], (x, y))
             if pair[r]:       # the close range next to the normal-range shot, at the same height
-                tag(x0 + M + pw, y, "CLOSE RANGE", (70, 74, 90))
+                tag(x0 + M + pw, ty, "CLOSE RANGE", (70, 74, 90))
                 img.paste(zoomed(i, pics[i].height), (x0 + M + pw, y))
         y += row_h[r] + M
         if zrow[r]:
