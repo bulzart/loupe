@@ -6,7 +6,7 @@ const FPS = 30;
 
 // ------------------------------------------------------------------------------------------ list of reports
 // what a report keeps of its takes' prompts, as the database keeps it (prompt_roles): Video A's generated the flawed version, Video B's is the correct take,
-// and a side whose prompt is an Example's in every sample of the report is just an example
+// and a side whose prompt is an Example's in every sample of the report is a suggestion, neither bad nor correct
 const promptsKept = (m) => {
     const ex = (k) => ((m.prompt_roles || {})[k] === 'example');
     const name = (k) => (ex(k) ? `the example take of Video ${k === 'wrong' ? 'A' : 'B'} (a suggestion)` : (k === 'wrong' ? 'the flawed take (Video A)' : 'the correct take (Video B)'));
@@ -672,7 +672,7 @@ export async function work(qs) {
     h('div', { class: 'card' },
       h('div', { class: 'grid g2' },
         h('div', {}, h('label', { class: 'f', style: 'margin-top:0' }, 'Video A: the version as generated (optional; or the original video, or another generation)'), wrongSel, mkAdd('wrong')),
-        h('div', {}, h('label', { class: 'f', style: 'margin-top:0' }, 'Video B: the right version (optional: the corrected take, a QC fix, your feedback, the client’s update, the original video, or another generation)'), fixedSel, mkAdd('fixed'))),
+        h('div', {}, h('label', { class: 'f', style: 'margin-top:0' }, 'Video B: the right version (optional: the correct take, a QC fix, your feedback, the client’s update, the original video, or another generation)'), fixedSel, mkAdd('fixed'))),
       hasGenerated ? h('div', { class: 'muted small', style: 'margin-top:6px' }, h('label', {}, allBox, ' Also list the other files of this video and of the run’s other videos (conformed, trimmed, copies, previews, deliverables). Normally only the video each attempt generated at Higgsfield is listed: its clean video and preview are made from it, and the prompt below is filled from that attempt’s request.')) : null,
       h('div', { class: 'row', style: 'margin-top:6px' }, otherBtn, h('span', { class: 'muted small' }, 'Either side can be any video: the pickers also list the original video the generation was made from (as the run recorded it) and the generated takes of the run’s other videos; another run’s takes are one choice away. Each frame’s tag in the saved image says which it is.')),
       otherBox,

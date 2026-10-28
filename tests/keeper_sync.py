@@ -52,7 +52,10 @@ def digest_lines() -> dict:
 
 
 def roles_in(line: str) -> list:
-    return sorted(re.findall(r"\b(WRONG|RIGHT|EXAMPLE) \d+:\d\d\.\d\d", line))
+    """The frames a digest line names in its own frames part ("2 frames: Frame 1 WRONG 0:01.00, Video A ..."), not the collector's words under READ,
+    which may quote a frame's tag too."""
+    m = re.search(r"(?:^| \| )(\d+ frames?: .*?)(?= \| |$)", line)
+    return sorted(re.findall(r"\b(WRONG|RIGHT|EXAMPLE) \d+:\d\d\.\d\d", m.group(1))) if m else []
 
 
 def db_rows() -> list:
