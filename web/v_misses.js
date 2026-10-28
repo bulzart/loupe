@@ -5,6 +5,14 @@ const head = (title, sub, ...actions) => h('div', { class: 'head' }, h('div', {}
 const FPS = 30;
 
 // ------------------------------------------------------------------------------------------ list of reports
+// what a report keeps of its takes' prompts, as the database keeps it (prompt_roles): Video A's generated the flawed version, Video B's is the correct take,
+// and a side whose prompt is an Example's in every sample of the report is just an example
+const promptsKept = (m) => {
+    const ex = (k) => ((m.prompt_roles || {})[k] === 'example');
+    const name = (k) => (ex(k) ? `the example take of Video ${k === 'wrong' ? 'A' : 'B'} (just an example)` : (k === 'wrong' ? 'the flawed take (Video A)' : 'the correct take (Video B)'));
+    if (m.prompts === 'pair') return ex('wrong') && ex('fixed') ? ' · prompts of both example takes kept (just examples)' : ` · prompts of ${name('wrong')} and ${name('fixed')} kept`;
+    return m.prompts === 'wrong' || m.prompts === 'fixed' ? ` · prompt of ${name(m.prompts)} kept` : '';
+};
 export async function reports() {
   const d = await api('GET', '/api/misses');
   const reload = () => reports().then((n) => document.querySelector('.main').replaceChildren(n));
@@ -13,7 +21,7 @@ export async function reports() {
       h('a', { class: 'btn primary', href: '#/misses/new' }, 'New report')),
     d.misses.length ? d.misses.map((m) => h('div', { class: 'card' },
       h('div', { class: 'row', style: 'justify-content:space-between' },
-        h('div', {}, h('b', {}, m.title), ' ', status(m.status), h('div', { class: 'muted small' }, `${m.run || 'no run'} · video ${m.video || '-'} · ${m.model || 'any model'} · ${fmtDate(m.created)}${!m.wrong_path && !m.fixed_path ? ' · no video' : (m.fixed_path ? '' : ' · no right version')}${m.prompts === 'pair' ? ' · prompts of both takes kept' : m.prompts === 'wrong' ? ' · prompt of the wrong take kept' : m.prompts === 'fixed' ? ' · prompt of the corrected take kept' : ''}`)),
+        h('div', {}, h('b', {}, m.title), ' ', status(m.status), h('div', { class: 'muted small' }, `${m.run || 'no run'} · video ${m.video || '-'} · ${m.model || 'any model'} · ${fmtDate(m.created)}${!m.wrong_path && !m.fixed_path ? ' · no video' : (m.fixed_path ? '' : ' · no right version')}${promptsKept(m)}`)),
         h('div', { class: 'row' }, h('a', { class: 'btn sm', href: `#/misses/work?run=${encodeURIComponent(m.run)}&video=${m.video}&miss=${m.id}` }, 'Open'),
           h('button', { class: 'btn sm', onclick: async () => { await api('PATCH', '/api/misses/' + m.id, { status: m.status === 'active' ? 'archived' : 'active' }); reload(); } }, m.status === 'active' ? 'Archive' : 'Restore'),
           h('button', { class: 'btn sm danger', onclick: async () => { if (confirmBox(`Delete the report “${m.title}” and its ${m.moments.length} sample(s)?`)) { await api('DELETE', '/api/misses/' + m.id); reload(); } } }, 'Delete'))),
@@ -175,8 +183,8 @@ export async function work(qs) {
   // ---- the prompts of the two takes: kept in the record and read whole by the keeper and the prompt writers on request; never burned into the image, never
   // compared by the app (the agents judge what changed). Each can be filled from the run's request file of the version picked above, or pasted.
   const mono = 'min-height:110px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px';
-  const wrongPrompt = h('textarea', { placeholder: 'The prompt that produced Video A (as generated). Optional.', style: mono, value: miss ? miss.wrong_prompt || '' : '' });
-  const fixedPrompt = h('textarea', { placeholder: 'The prompt of Video B (the corrected take). Optional.', style: mono, value: miss ? miss.fixed_prompt || '' : '' });
+  const wrongPrompt = h('textarea', { placeholder: 'The prompt that produced Video A (as generated: the flawed version). Optional.', style: mono, value: miss ? miss.wrong_prompt || '' : '' });
+  const fixedPrompt = h('textarea', { placeholder: 'The prompt of Video B (the correct take). Optional.', style: mono, value: miss ? miss.fixed_prompt || '' : '' });
   const promptNote = h('input', { value: miss ? miss.prompt_note || '' : '', placeholder: 'What in the prompt made the difference, in your words (optional, one line)', style: 'width:100%' });
   // One field per side (the user, 2026-10-28): Video A's holds the prompt behind the frames called Wrong, Video B's the prompt behind the frames called
   // Right (else the frames taken from that side's video). A take joined from several generations (clips) has one prompt per generation: only the
@@ -207,11 +215,22 @@ export async function work(qs) {
       if (own.length > 1 && path && !takes[path]) takes[path] = { segments: own.map(({ frames: _f, gen: _g, of: _o, ...s }) => ({ ...s, src })) };
     }
   }
-  const sideFrames = (key) => {       // the frames a field speaks for, numbered as on screen
+  const sideFrames = (key) => {       // the frames a field speaks for, numbered as on screen: those called Wrong (Right), else the Examples of its own video
     const all = frames.map((f, i) => ({ f, n: i + 1 })).filter(({ f }) => state[f.src]);
     const byRole = all.filter(({ f }) => f.role === ROLE_OF[key]);
-    return byRole.length ? byRole : all.filter(({ f }) => f.src === key);
+    return byRole.length ? byRole : all.filter(({ f }) => f.src === key && f.role === 'example');
   };
+  // what a field's prompt stands for (the user, 2026-10-28): the frames called Wrong (Right); an Example prompt when the field speaks only for Example
+  // frames, or when every frame on screen is an Example; the side's own meaning when no frame is its. The same rule names it for the judge (prompt_roles).
+  const fieldRole = (key) => {
+    const fr = frames.filter((f) => state[f.src]);
+    if (fr.some((f) => f.role === ROLE_OF[key])) return ROLE_OF[key];
+    return (fr.length && fr.every((f) => f.role === 'example')) || fr.some((f) => f.role === 'example' && f.src === key) ? 'example' : '';
+  };
+  const LABEL = { wrong: 'Prompt of Video A (as generated: the prompt that generated the flawed version)', fixed: 'Prompt of Video B (the correct take)' };
+  const EX_LABEL = { wrong: 'Prompt of Video A (an example take: just an example, its frames are called Example, neither flawed nor correct)', fixed: 'Prompt of Video B (an example take: just an example, its frames are called Example, neither flawed nor correct)' };
+  const promptLabel = { wrong: h('label', { class: 'f', style: 'margin-top:0' }, LABEL.wrong), fixed: h('label', { class: 'f', style: 'margin-top:0' }, LABEL.fixed) };
+  const syncPromptLabels = () => { for (const key of ['wrong', 'fixed']) { const t = fieldRole(key) === 'example' ? EX_LABEL[key] : LABEL[key]; if (promptLabel[key].textContent !== t) promptLabel[key].textContent = t; } };
   const composeFor = (key) => {      // {text, gens, wait}: the field's text from what the run says of the take(s) its frames come from
     const fr = sideFrames(key);
     const srcs = fr.length ? ['wrong', 'fixed'].filter((s) => fr.some(({ f }) => f.src === s)) : (state[key] ? [key] : []);
@@ -243,7 +262,8 @@ export async function work(qs) {
     return takes[path];
   };
   const follows = (key) => !typed[key] && (!PROMPT_FIELD[key].value.trim() || PROMPT_FIELD[key].value === autoText[key]);
-  const followFrames = () => {       // the fields that are empty or still hold what Loupe wrote follow the frames
+  const followFrames = () => {       // the fields that are empty or still hold what Loupe wrote follow the frames; the labels say what each prompt stands for
+    syncPromptLabels();
     for (const key of ['wrong', 'fixed']) {
       if (!follows(key)) continue;
       const c = composeFor(key);
@@ -253,7 +273,7 @@ export async function work(qs) {
     }
   };
   for (const key of ['wrong', 'fixed']) PROMPT_FIELD[key].addEventListener('input', () => { typed[key] = true; });
-  const fillPrompt = (key) => h('button', { class: 'btn sm', type: 'button', title: `writes the prompt of the generation the frames called ${key === 'wrong' ? 'Wrong' : 'Right'} come from, read from its request file in the run (a take joined from several generations: the prompt of each generation they come from, each under the seconds it made; with no such frame, the frames of ${VNAME[key]}, else the whole take); the original video has none. The field then follows the frames again until you type in it.`, onclick: async () => {
+  const fillPrompt = (key) => h('button', { class: 'btn sm', type: 'button', title: `writes the prompt of the generation the frames called ${key === 'wrong' ? 'Wrong' : 'Right'} come from, read from its request file in the run (a take joined from several generations: the prompt of each generation they come from, each under the seconds it made; with no such frame, the frames of ${VNAME[key]} called Example, kept as an Example prompt; else the whole take); the original video has none. The field then follows the frames again until you type in it.`, onclick: async () => {
     const fr = sideFrames(key);
     const paths = [...new Set((fr.length ? fr.map(({ f }) => state[f.src]) : [state[key]]).filter(Boolean))];
     if (!paths.length) { toast(key === 'wrong' ? 'Pick Video A first' : 'Pick Video B first', true); return; }
@@ -267,10 +287,10 @@ export async function work(qs) {
   const promptsBox = h('details', { style: 'margin-top:10px', open: !!(miss && (miss.wrong_prompt || miss.fixed_prompt || miss.prompt_note)) },
     h('summary', { class: 'muted small', style: 'cursor:pointer' }, 'The prompts of the two takes (optional: kept in the record for the QC keeper and the prompt writers, never burned into the image)'),
     h('div', { class: 'grid g2', style: 'margin-top:6px' },
-      h('div', {}, h('label', { class: 'f', style: 'margin-top:0' }, 'Prompt of Video A (as generated)'), wrongPrompt, h('div', { class: 'row', style: 'margin-top:4px' }, fillPrompt('wrong'))),
-      h('div', {}, h('label', { class: 'f', style: 'margin-top:0' }, 'Prompt of Video B (the corrected take)'), fixedPrompt, h('div', { class: 'row', style: 'margin-top:4px' }, fillPrompt('fixed')))),
+      h('div', {}, promptLabel.wrong, wrongPrompt, h('div', { class: 'row', style: 'margin-top:4px' }, fillPrompt('wrong'))),
+      h('div', {}, promptLabel.fixed, fixedPrompt, h('div', { class: 'row', style: 'margin-top:4px' }, fillPrompt('fixed')))),
     h('label', { class: 'f' }, 'What in the prompt made the difference (optional, your words)'), promptNote,
-    h('div', { class: 'muted small', style: 'margin-top:4px' }, 'Video A’s field holds the prompt behind the frames called Wrong, Video B’s the prompt behind the frames called Right. A take joined from several generations gives the prompt of each generation those frames come from, one after the other, each under the line that says which seconds it made and which frames come from it. The fields fill themselves and follow the frames until you type in them; Fill writes them again. Nothing is compared or diffed by the app: the keeper reads both prompts whole when it asks for them, the prompt writers read them for a sample they judged relevant, and each decides what changed.'));
+    h('div', { class: 'muted small', style: 'margin-top:4px' }, 'Video A’s field holds the prompt behind the frames called Wrong, Video B’s the prompt behind the frames called Right. When a field speaks only for frames called Example (or every frame is an Example), its prompt is an Example prompt, just an example: the label says so, the database keeps it so, and the judge and the agents read it as an example, never as the flawed or the correct prompt. Otherwise Video A’s prompt is kept as the one that generated the flawed version and Video B’s as the correct take’s. A take joined from several generations gives the prompt of each generation those frames come from, one after the other, each under the line that says which seconds it made and which frames come from it. The fields fill themselves and follow the frames until you type in them; Fill writes them again. Nothing is compared or diffed by the app: the keeper reads both prompts whole when it asks for them, the prompt writers read them for a sample they judged relevant, and each decides what changed.'));
 
   // ---- the report fields (the title and the explanation are burned into the saved image)
   const title = h('input', { value: miss ? miss.title : '', placeholder: 'One line or a paragraph: what went wrong, or what this scenario is about (e.g. “the third capsule disappears after the hand leaves”)', style: 'width:100%' });

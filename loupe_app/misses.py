@@ -47,7 +47,7 @@ def _kinds(v) -> str:
 FRAME_DESC = {"wrong": "as generated", "fixed": "correct version"}
 ORIGINAL_DESC = "original video"      # either video can be the original the generation was made from, or a take of another video or run: its frames' tags say so (side_desc)
 TITLE_MAX = 2000       # the title is often a whole paragraph and is burned into the image in full: never cut it short
-# The prompts of the two takes: the prompt that produced Video A (the miss) and the prompt of Video B (the corrected take), plus one line of the admin's own
+# The prompts of the two takes: the prompt that generated Video A (the flawed version) and the prompt of Video B (the correct take), plus one line of the admin's own
 # words on what in the prompt made the difference.  They live in the misses table only: never in the composite or its meta, never in the keeper's digest, and
 # nothing here compares or diffs them (the keeper and the agents read both whole, on request, and judge what changed).  Every listing carries only the marker
 # `prompts` (pair | wrong | fixed | empty) and the note; the pair itself is served by prompts_of() to the single-sample route and the keeper's sample_origin fetch.
@@ -136,11 +136,56 @@ def compose_text(segs: list[dict], side: str = "") -> str:
     return "\n\n".join(f"{segment_line(s)}\n{s.get('prompt') or ''}" for s in _numbered(segs, side))
 
 
+ROLE_DEFAULT = {"wrong": "flawed", "fixed": "correct"}      # what a report's two prompts are unless they are an Example's
+
+
+def prompt_roles(frames: list[dict]) -> dict:
+    """What each side's prompt stands for in one sample, from the frames it speaks for (the user, 2026-10-28: a sample whose frames are only Examples has
+    Example prompts, never a flawed or a correct one, so the judge, the keeper and every agent fed with it are never misled; otherwise Video A's prompt is
+    the one that generated the flawed version and Video B's the correct take's).  'example' for a side that speaks only for frames called EXAMPLE (no
+    frame called WRONG for Video A, none called RIGHT for Video B, and an Example taken from that side's video), and for both sides when every frame of
+    the sample is an Example: just an example, neither flawed nor correct; else 'flawed' (Video A) and 'correct' (Video B)."""
+    only_examples = bool(frames) and all(f["role"] == "example" for f in frames)
+    out = {}
+    for side in ("wrong", "fixed"):
+        own = any(f["role"] == SIDE_ROLE[side] for f in frames)
+        out[side] = "example" if not own and (only_examples or any(f["role"] == "example" and f["src"] == side for f in frames)) else ROLE_DEFAULT[side]
+    return out
+
+
+def take_words(side: str, role: str, only_examples: bool = False) -> str:
+    """How a side's take is named to the judge and the agents: the flawed take (its prompt generated the flawed version), the correct take, or an example
+    take of Video A or B (just an example: neither flawed nor correct)."""
+    if role == "example":
+        why = "this sample's frames are all Examples" if only_examples else "the frames of this sample it speaks for are called EXAMPLE"
+        return f"the example take of {VIDEO_NAME[side]} (just an example, {why}: neither flawed nor correct)"
+    return "the flawed take (Video A: its prompt generated the flawed version)" if side == "wrong" else "the correct take (Video B)"
+
+
+def sync_prompt_roles(miss_id: int) -> dict:
+    """Keeps on the report, in the database, what each of its two prompts is (the user, 2026-10-28): Video A's prompt is the one that generated the flawed
+    version ('flawed') and Video B's the correct take's ('correct'), unless in every sample of the report that side's prompt is an Example's ('example':
+    just an example, neither flawed nor correct).  Run after every change to the report or its samples; the samples' own words come from prompt_roles."""
+    con = core.db()
+    try:
+        miss = con.execute("SELECT * FROM misses WHERE id=?", (miss_id,)).fetchone()
+        if not miss:
+            return {}
+        per = [prompt_roles(frames_of(r, dict(miss))) for r in con.execute("SELECT * FROM moments WHERE miss_id=?", (miss_id,)).fetchall()]
+        roles = {side: ("example" if per and all(p[side] == "example" for p in per) else ROLE_DEFAULT[side]) for side in ("wrong", "fixed")}
+        if (miss["wrong_prompt_role"], miss["fixed_prompt_role"]) != (roles["wrong"], roles["fixed"]):
+            con.execute("UPDATE misses SET wrong_prompt_role=?, fixed_prompt_role=? WHERE id=?", (roles["wrong"], roles["fixed"], miss_id))
+            con.commit()
+        return roles
+    finally:
+        con.close()
+
+
 def _with_frames(segs: list[dict], frames: list[dict], side: str) -> list[dict]:
     """The generations of a side's take that a sample's frames come from, each numbered in its take and with those frames (numbered as in the sample's
-    image); every generation, with no frame, when none of them holds one.  A side's frames are the frames called WRONG (the wrong take's prompts) or
-    RIGHT (the corrected take's), else the frames taken from that side's video."""
-    mine = [f for f in frames if f["role"] == SIDE_ROLE[side]] or [f for f in frames if f["src"] == side]
+    image); every generation, with no frame, when none of them holds one.  A side's frames are the frames called WRONG (the flawed take's prompts) or
+    RIGHT (the correct take's), else the frames called EXAMPLE taken from that side's video."""
+    mine = [f for f in frames if f["role"] == SIDE_ROLE[side]] or [f for f in frames if f["src"] == side and f["role"] == "example"]
     out = []
     for s in _numbered(segs, side):
         last = s["gen"] == s["of"]
@@ -154,7 +199,11 @@ def prompts_text(pp: dict) -> str:
     sample's frames come from (all of them when none does), each under the line that says which seconds it is responsible for and which frames of
     this sample it made."""
     lines = []
-    for side, what in (("wrong", "the wrong take"), ("fixed", "the corrected take")):
+    roles, only_ex = pp.get("prompt_roles") or {}, bool(pp.get("examples_only"))
+    if only_ex:
+        lines.append("this sample's frames are all Examples: the prompts below made frames the admin keeps as examples, neither a miss nor the corrected look")
+    for side in ("wrong", "fixed"):
+        what = take_words(side, roles.get(side, ""), only_ex)
         segs = pp.get(f"{side}_segments") or []
         if segs:
             of = max(int(s.get("of") or 0) for s in segs) or len(segs)
@@ -198,7 +247,7 @@ def _prompt_text(v) -> str:
 
 
 def prompts_kind(miss: dict) -> str:
-    """Which prompts the report holds: 'pair' (both takes), 'wrong' (the miss's prompt only), 'fixed' (the corrected take's only) or ''."""
+    """Which prompts the report holds: 'pair' (both takes), 'wrong' (Video A's only: the flawed version's, or an Example's), 'fixed' (Video B's only) or ''."""
     w, f = bool((miss.get("wrong_prompt") or "").strip()), bool((miss.get("fixed_prompt") or "").strip())
     return "pair" if w and f else ("wrong" if w else ("fixed" if f else ""))
 
@@ -311,6 +360,7 @@ def create(data: dict, actor: str) -> dict:
     finally:
         con.close()
     core.audit(actor, "miss.create", f"miss {mid}", data.get("title", ""))
+    sync_prompt_roles(mid)
     return get(mid)
 
 
@@ -322,6 +372,7 @@ def _miss_row(r) -> dict:
     d["sample_files"] = _sample_files(d.get("sample_files"))      # the product sample's files the admin ticked; [] = the automatic pick
     for k in SEGMENT_COLS:          # each generation's prompt and span of a take made of several
         d[k] = _segments_of(d.get(k))
+    d["prompt_roles"] = {side: d.get(f"{side}_prompt_role") or ROLE_DEFAULT[side] for side in ("wrong", "fixed")}      # what each prompt is, as kept in the database
     return d
 
 
@@ -331,6 +382,11 @@ def get(mid: int) -> dict | None:
         r = con.execute("SELECT * FROM misses WHERE id=?", (mid,)).fetchone()
         if not r:
             return None
+        if r["wrong_prompt_role"] is None:          # saved before the roles were kept: written now, from its samples
+            con.close()
+            sync_prompt_roles(mid)
+            con = core.db()
+            r = con.execute("SELECT * FROM misses WHERE id=?", (mid,)).fetchone()
         d = _miss_row(r)
         d["moments"] = [moment_view(m, d) for m in con.execute("SELECT * FROM moments WHERE miss_id=? ORDER BY t_wrong, id", (mid,))]
         return d
@@ -350,7 +406,15 @@ def listing(run: str = "", status: str = "") -> list[dict]:
         if cond:
             sql += " WHERE " + " AND ".join(cond)
         out = []
-        for r in con.execute(sql + " ORDER BY id DESC", args):
+        rows = con.execute(sql + " ORDER BY id DESC", args).fetchall()
+        if any(r["wrong_prompt_role"] is None for r in rows):         # saved before the roles were kept: written now, from their samples
+            con.close()
+            for r in rows:
+                if r["wrong_prompt_role"] is None:
+                    sync_prompt_roles(r["id"])
+            con = core.db()
+            rows = con.execute(sql + " ORDER BY id DESC", args).fetchall()
+        for r in rows:
             d = _miss_row(r)
             ms = con.execute("SELECT * FROM moments WHERE miss_id=? ORDER BY t_wrong, id", (r["id"],)).fetchall()
             d["moments"] = [moment_view(m, d) for m in ms]
@@ -513,11 +577,14 @@ def update_moment(mid: int, patch: dict, actor: str) -> dict | None:
 def delete_moment(mid: int, actor: str):
     con = core.db()
     try:
+        row = con.execute("SELECT miss_id FROM moments WHERE id=?", (mid,)).fetchone()
         con.execute("DELETE FROM moments WHERE id=?", (mid,))
         con.commit()
     finally:
         con.close()
     shutil.rmtree(sample_dir(mid), ignore_errors=True)
+    if row:
+        sync_prompt_roles(row["miss_id"])
     core.audit(actor, "moment.delete", f"moment {mid}")
 
 
@@ -647,6 +714,7 @@ def regenerate(mid: int):
     finally:
         con.close()
     (d / "meta.json").write_text(json.dumps({"moment": mid, "miss": miss["id"], **meta, "shapes": shapes}, ensure_ascii=False, indent=1), encoding="utf-8")
+    sync_prompt_roles(miss["id"])       # what each of the report's prompts is, kept in the database
 
 
 def moment_file(mid: int, kind: str) -> Path | None:
@@ -677,7 +745,7 @@ def moment_view(r, miss: dict) -> dict:
             "correct_note": r["correct_note"], "kinds": kinds, "model": miss["model"], "mode": miss["mode"], "product": miss["product"],
             "run": miss["run"], "video": miss["video"], "t_wrong": r["t_wrong"], "t_fixed": r["t_fixed"], "shapes": compose.clean_shapes(json.loads(r["shapes"] or "[]")),
             "status": r["status"], "miss_status": miss["status"], "created": r["created"], "updated": r["updated"],
-            "prompts": prompts_kind(miss), "prompt_note": miss.get("prompt_note") or "", "prompts_sig": prompts_sig(miss),
+            "prompts": prompts_kind(miss), "prompt_note": miss.get("prompt_note") or "", "prompts_sig": prompts_sig(miss), "prompt_roles": prompt_roles(frames),
             "prompt_generations": {side: _generations(miss, side) for side in ("wrong", "fixed")},
             "has_right": has_right, "image_url": f"/api/moments/{mid}/image?kind=composite", "zoom_url": f"/api/moments/{mid}/image?kind=zoom" if (d / "zoom.png").exists() else "",
             "composite_path": str(d / "composite.png")}
@@ -698,6 +766,8 @@ def prompts_of(mid: int) -> dict | None:
     d = {k: (m.get(k) or "") for k in ("title", "model", "run", "video", "wrong_prompt", "fixed_prompt", "prompt_note")}
     d.update({"id": f"S{mid}", "miss_id": m["id"], "prompts": prompts_kind(d)})
     d["frames"] = [{"n": i + 1, "src": f["src"], "role": f["role"], "t": f["t"]} for i, f in enumerate(frames_of(mr, m))]
+    d["prompt_roles"] = prompt_roles(d["frames"])       # a side that speaks only for Example frames (or a sample of Examples only) has an Example prompt
+    d["examples_only"] = bool(d["frames"]) and all(f["role"] == "example" for f in d["frames"])
     for side in ("wrong", "fixed"):          # a take made of several generations: the prompt of each generation this sample's frames come from, its seconds, those frames
         segs = _segments_of(m.get(f"{side}_segments"))
         d[f"{side}_segments"] = _with_frames(segs, d["frames"], side) if len(segs) >= 2 else []

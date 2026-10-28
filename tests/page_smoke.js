@@ -268,6 +268,25 @@ const ok = (name, cond, info = '') => { console.log((cond ? '  ok   ' : '  FAIL 
   ok('a saved field of a joined take is written again for the frames on screen, from its saved prompts', fA11.value.includes('SAVED-C1') && !fA11.value.includes('SAVED-C2')
     && fA11.value.includes('responsible for Frame 1 (WRONG, 0:00.00) of this sample') && !sent.some((x) => x.url.startsWith('/api/request-prompt') && x.url.includes('path=A.mp4')), fA11.value);
   withSavedSegs = false;
+  // Example frames only: each field's prompt is an Example prompt, its label says so, and its lines name the frames as EXAMPLE
+  withSegs = true; sent.length = 0;
+  const root12 = await work({ run: 'R', video: '03', miss: '1' });
+  await new Promise((r) => setTimeout(r, 0));
+  const fr12 = () => walk(root12, (e) => e.className === 'players')[0].children.filter((e) => e.className.split(/\s+/).includes('player') && walk(e, (x) => x.tag === 'canvas').length);
+  const lab = (start) => walk(root12, (e) => e.tag === 'label' && (e.textContent || '').startsWith(start))[0];
+  const f12 = (start) => walk(root12, (e) => e.tag === 'textarea' && (e.attrs.placeholder || '').startsWith(start))[0];
+  fr12().forEach((fe) => click(walk(fe, (e) => e.tag === 'button' && e.text === 'Example')[0]));
+  ok('with Example frames only, both prompts are labelled as example takes, neither wrong nor right',
+    !!lab('Prompt of Video A (an example take') && !!lab('Prompt of Video B (an example take') && !lab('Prompt of Video A (as generated: the prompt that generated the flawed version)'), walk(root12, (e) => e.tag === 'label').map((e) => e.textContent).join(' | '));
+  ok('each field holds the prompt behind its own video\'s Example frame, named EXAMPLE',
+    f12('The prompt that produced Video A').value.startsWith('This is the prompt responsible for Frame 1 (EXAMPLE, 0:00.00) of this sample: it generated second 0 to second 6.1 of Video A')
+    && f12('The prompt of Video B').value.startsWith('This is the prompt responsible for Frame 2 (EXAMPLE, 0:00.00) of this sample: it generated second 0 to second 6.1 of Video B'),
+    f12('The prompt that produced Video A').value.slice(0, 160) + ' / ' + f12('The prompt of Video B').value.slice(0, 160));
+  click(walk(fr12()[0], (e) => e.tag === 'button' && e.text === 'Wrong')[0]);
+  ok('a frame called Wrong again gives Video A its own label back, while Video B, still behind an Example, stays an example take',
+    !!lab('Prompt of Video A (as generated: the prompt that generated the flawed version)') && !!lab('Prompt of Video B (an example take') && f12('The prompt that produced Video A').value.includes('Frame 1 (WRONG, 0:00.00)'),
+    walk(root12, (e) => e.tag === 'label').map((e) => e.textContent).join(' | '));
+  withSegs = false;
   console.log(fails ? `${fails} failed` : 'all passed');
   process.exit(fails ? 1 : 0);
 })().catch((e) => { console.log('FAIL the page threw: ' + (e && e.stack || e)); process.exit(1); });

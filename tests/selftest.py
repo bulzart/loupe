@@ -654,13 +654,67 @@ def main(with_keeper=False):
     pp3 = _qcs.misses.prompts_of(smo2) or {}
     check("a RIGHT frame taken from Video A: the corrected take's side gives Video A's generation that made it", [x["gen"] for x in pp3.get("fixed_segments") or []] == [1]
           and "of Video A (generation 1 of 2" in pp3.get("text", "").split("the corrected take")[-1] and "Frame 3 (RIGHT, 0:00.50)" in pp3.get("text", ""), pp3.get("text", "")[-500:])
-    check("the keeper's digest says the wrong take was made of two generations", "the wrong take was made of 2 generations" in _qcs._digest())
+    check("the keeper's digest says the flawed take was made of two generations", "the flawed take was made of 2 generations" in _qcs._digest())
     s, d, _ = req("GET", "/api/generation-assets?run=20261001-000000-07&video=07&wrong=" + quote(clean7))
     check("the product sample's images come from both generations' requests", s == 200 and {a["request"] for a in d.get("assets", [])} >= {"video-07-c1-request.json"}
           or {a["request"] for a in d.get("assets", [])} >= {"video-07-c2-request.json"}, str(d)[:300])
     s, d, _ = req("PATCH", f"/api/misses/{sm}", {"wrong_prompt": "One prompt typed by the admin."})
     check("a single prompt typed over the generations' prompts replaces them", s == 200 and d["miss"]["wrong_segments"] == [] and d["miss"]["wrong_prompt"] == "One prompt typed by the admin.", str(d)[:200])
     req("DELETE", f"/api/misses/{sm}")
+
+    print("\n[Example frames only: the prompts are Example prompts, never the wrong or the corrected one]")
+    c2take = str(v7 / "c2" / "a1" / "trimmed.mp4")
+    s, d, _ = req("POST", "/api/misses", {"run": "20261001-000000-07", "video": "07", "title": "Two takes kept as examples", "model": "wan3_0_prime",
+                                          "wrong_path": clean7, "fixed_path": c2take, "wrong_prompt": "EX-PROMPT-A the can on the desk.",
+                                          "fixed_prompt": "EX-PROMPT-B the can in the hand."})
+    em = d["miss"]["id"] if s == 200 else 0
+
+    def emoment(frames):
+        st, dd, _ = req("POST", f"/api/misses/{em}/moments", {"frames": frames, "details": "kept to remember"})
+        return dd["moment"] if st == 200 else {}
+    ex1 = emoment([{"src": "wrong", "role": "example", "t": 1.0}, {"src": "fixed", "role": "example", "t": 0.5}])
+    check("a sample of Example frames only has Example prompts on both sides", ex1.get("prompt_roles") == {"wrong": "example", "fixed": "example"}, str(ex1.get("prompt_roles")))
+
+    def db_roles():
+        con = core.db()
+        try:
+            r = con.execute("SELECT wrong_prompt_role, fixed_prompt_role FROM misses WHERE id=?", (em,)).fetchone()
+            return (r["wrong_prompt_role"], r["fixed_prompt_role"]) if r else None
+        finally:
+            con.close()
+    s, d, _ = req("GET", f"/api/misses/{em}")
+    check("the database keeps that the report's prompts are just examples, and the report says so", db_roles() == ("example", "example")
+          and d["miss"]["prompt_roles"] == {"wrong": "example", "fixed": "example"}, f"{db_roles()} {d['miss'].get('prompt_roles')}")
+    s, d, _ = req("GET", f"/api/qc/samples/{ex1.get('id')}?prompts=1", key=kq)
+    et = (d.get("sample") or {}).get("prompts_text", "")
+    check("the judge reads them as example takes, never as the wrong or the corrected take",
+          s == 200 and (d.get("sample") or {}).get("prompt_roles") == {"wrong": "example", "fixed": "example"} and "this sample's frames are all Examples" in et
+          and "the prompt of the example take of Video A" in et and "the prompt of the example take of Video B" in et and "EX-PROMPT-A" in et
+          and "the prompt of the wrong take" not in et and "the prompt of the corrected take" not in et, et[:500])
+    ex2 = emoment([{"src": "wrong", "role": "example", "t": 1.0}, {"src": "wrong", "role": "right", "t": 1.5}])
+    ex3 = emoment([{"src": "wrong", "role": "wrong", "t": 1.0}, {"src": "fixed", "role": "right", "t": 0.5}])
+    check("an Example frame of Video A beside a Right frame: Video A's prompt is an Example's, Video B's the corrected one; a Wrong frame keeps the wrong take",
+          ex2.get("prompt_roles") == {"wrong": "example", "fixed": "correct"} and ex3.get("prompt_roles") == {"wrong": "flawed", "fixed": "correct"},
+          f"{ex2.get('prompt_roles')} {ex3.get('prompt_roles')}")
+    dlines = {ln.split(" ", 1)[0]: ln for ln in _qcs_digest_lines() if ln.startswith("S")}
+    check("the keeper's digest names Example prompts as such, and a pair as before",
+          "PROMPTS OF BOTH EXAMPLE TAKES SAVED" in dlines.get(ex1.get("id"), "")
+          and "PROMPTS SAVED: THE EXAMPLE TAKE OF VIDEO A (just an example) AND THE CORRECT TAKE (VIDEO B)" in dlines.get(ex2.get("id"), "")
+          and "PROMPTS OF BOTH TAKES SAVED: VIDEO A'S GENERATED THE FLAWED VERSION, VIDEO B'S IS THE CORRECT TAKE" in dlines.get(ex3.get("id"), ""), dlines.get(ex2.get("id"), "")[-300:])
+    check("with a sample whose frames are Wrong and Right, the database keeps Video A's prompt as the one that generated the flawed version and Video B's as the correct take's",
+          db_roles() == ("flawed", "correct"), str(db_roles()))
+    s3, d3, _ = req("GET", f"/api/qc/samples/{ex3.get('id')}?prompts=1", key=kq)
+    t3 = (d3.get("sample") or {}).get("prompts_text", "")
+    check("the judge reads Video A's prompt as the one that generated the flawed version and Video B's as the correct take's",
+          "the prompt of the flawed take (Video A: its prompt generated the flawed version)" in t3 and "the prompt of the correct take (Video B)" in t3, t3[:400])
+    from loupe_app import qc as _qce
+    lib_ex = {x["id"]: x for x in _qce.library()}
+    bl = _qce.sample_lines(lib_ex[ex1["id"]]) if ex1.get("id") in lib_ex else ""
+    check("the brief says the prompts kept are example takes", "Video A's prompt, an example take" in bl and "Video B's prompt, an example take" in bl, bl[:600])
+    req("DELETE", f"/api/moments/{ex2['moment_id']}")
+    req("DELETE", f"/api/moments/{ex3['moment_id']}")
+    check("deleting the other samples makes the report's prompts examples again in the database", db_roles() == ("example", "example"), str(db_roles()))
+    req("DELETE", f"/api/misses/{em}")
     late = media.frame_file(Path(six_take), 999)
     check("a frame asked for past the end of a video is its last picture, never an error", late.is_file())
     s, d, _ = req("POST", "/api/misses", {"run": "20261001-000000-07", "video": "03", "title": "The pen became a can", "model": "wan3_0_prime",

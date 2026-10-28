@@ -65,7 +65,8 @@ CREATE TABLE IF NOT EXISTS filehash(path TEXT PRIMARY KEY, size INTEGER, mtime R
 CREATE TABLE IF NOT EXISTS misses(id INTEGER PRIMARY KEY AUTOINCREMENT, created TEXT, updated TEXT, run TEXT, video TEXT,
   title TEXT, explanation TEXT, kinds TEXT, model TEXT, mode TEXT, product TEXT, status TEXT DEFAULT 'active',
   wrong_path TEXT, wrong_label TEXT, fixed_path TEXT, fixed_label TEXT, sample_on INTEGER DEFAULT 1,
-  wrong_prompt TEXT, fixed_prompt TEXT, prompt_note TEXT, sample_files TEXT, wrong_segments TEXT, fixed_segments TEXT);
+  wrong_prompt TEXT, fixed_prompt TEXT, prompt_note TEXT, sample_files TEXT, wrong_segments TEXT, fixed_segments TEXT,
+  wrong_prompt_role TEXT, fixed_prompt_role TEXT);
 CREATE TABLE IF NOT EXISTS moments(id INTEGER PRIMARY KEY AUTOINCREMENT, miss_id INTEGER, created TEXT, updated TEXT,
   t_wrong REAL, t_fixed REAL, details TEXT, correct_note TEXT, shapes TEXT, kinds TEXT, status TEXT DEFAULT 'active',
   w INTEGER, h INTEGER, frames TEXT, idea TEXT, better TEXT, missed TEXT);
@@ -96,7 +97,8 @@ def db() -> sqlite3.Connection:
                 con.executescript(SCHEMA)
                 if "sample_on" not in [r[1] for r in con.execute("PRAGMA table_info(misses)")]:      # a database made before the product sample existed
                     con.execute("ALTER TABLE misses ADD COLUMN sample_on INTEGER DEFAULT 1")
-                for col in ("wrong_prompt", "fixed_prompt", "prompt_note", "sample_files", "wrong_segments", "fixed_segments"):      # made before the prompts were kept on the report, or before the admin chose the product sample's files
+                for col in ("wrong_prompt", "fixed_prompt", "prompt_note", "sample_files", "wrong_segments", "fixed_segments", "wrong_prompt_role",
+                            "fixed_prompt_role"):      # made before the prompts were kept on the report, the admin chose the product sample's files or the prompts' roles were kept
                     if col not in [r[1] for r in con.execute("PRAGMA table_info(misses)")]:
                         con.execute(f"ALTER TABLE misses ADD COLUMN {col} TEXT")
                 if "frames" not in [r[1] for r in con.execute("PRAGMA table_info(moments)")]:      # a database made before a moment held any number of frames

@@ -18,7 +18,11 @@ export async function gallery() {
     h('img', { src: s.image_url + '&v=' + encodeURIComponent(s.updated), alt: s.title, loading: 'lazy' }),
     h('div', { style: 'margin-top:8px' }, h('b', {}, s.id), ' ', s.title, ' ', s.status !== 'active' || s.miss_status !== 'active' ? status('archived') : null),
     h('div', { class: 'small muted' }, `${s.model || 'any model'} · ${s.run ? s.run.slice(-14) : ''} video ${s.video || '-'} · ${(s.frames || []).length ? s.frames.map((f) => (f.role === 'right' ? 'right ' : f.role === 'wrong' ? 'wrong ' : 'example ') + fmtT(f.t)).join(' / ') : 'words only'}`), h('div', {}, s.sample_kind === 'miss-only' ? h('span', { class: 'chip' }, 'miss example only') : (s.sample_kind === 'scenario' ? h('span', { class: 'chip' }, 'scenario') : null),
-      s.prompts === 'pair' ? h('span', { class: 'chip', title: 'the prompt of the miss and the prompt of the corrected take are kept in the record; the keeper and the prompt writers read them whole on request' }, 'prompts of both takes') : (s.prompts ? h('span', { class: 'chip' }, 'prompt of the ' + (s.prompts === 'wrong' ? 'wrong' : 'corrected') + ' take') : null), chips(s.kinds)));
+      (() => {      // an Example prompt (its frames are called Example) is just an example; otherwise Video A's generated the flawed version, Video B's is the correct take
+        const ex = (k) => (s.prompt_roles || {})[k] === 'example', name = (k) => (ex(k) ? `example take of Video ${k === 'wrong' ? 'A' : 'B'}` : (k === 'wrong' ? 'flawed take (A)' : 'correct take (B)'));
+        if (s.prompts === 'pair') return h('span', { class: 'chip', title: 'the prompts of both takes are kept in the record (Video A: the prompt that generated the flawed version; Video B: the correct take; an example take: just an example); the keeper and the prompt writers read them whole on request' }, ex('wrong') && ex('fixed') ? 'prompts of both example takes' : `prompts: ${name('wrong')} + ${name('fixed')}`);
+        return s.prompts ? h('span', { class: 'chip' }, 'prompt of the ' + name(s.prompts)) : null;
+      })(), chips(s.kinds)));
   const open = (s) => {
     const details = h('textarea', {}, s.details), correct = h('textarea', {}, s.correct_note), idea = h('textarea', {}, s.idea || ''), better = h('textarea', {}, s.better || ''), missed = h('textarea', {}, s.missed || '');
     const titleIn = h('textarea', { style: 'min-height:48px' }, s.title || '');
