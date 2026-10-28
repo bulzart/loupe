@@ -104,15 +104,18 @@ miss is model-independent, three at most, fields cut at a sentence end (600 char
 ## The prompt template (the judge's third job, since 2026-10-28)
 
 The user, 2026-10-28: the judge and the agents write an accurate prompt from what already worked and what failed in earlier generations, rather than
-only inspecting one. `POST /api/qc/consult` with `purpose: template` (`awl.py prompt-template`, X2, before the first request of a video is written) takes
-the producing agent's brief (what it is working on, what the video is about, what it wants to achieve, 8000 characters at most), the locked model's request
+only inspecting one. `POST /api/qc/consult` with `purpose: template` (`awl.py prompt-template`, X4b: after the pipeline planned the video, wrote its own request and checked
+it) takes the whole checked brief (the agent's words: what it is working on, what the video is about, what it wants to achieve; the checked draft
+request's prompt, parameters and inputs; the lines the prompt must carry word for word; 20000 characters at most), the locked model's request
 structure (the pattern card, `structure`) and the generation video model's entry of the pipeline's model index (`video_model`). Step 1: the judge names the
-samples whose saved prompts it needs (at most six, `read`); step 2: Loupe sends both prompts of each whole and the judge answers `template` (the whole
-prompt in that model's structure, for this video, carrying the wording and the mechanism that made a corrected take work where the situation is the same,
-each failure designed out in positive words, `[SLOT: …]` where only the agent knows the specifics), `basis` (per sample: what worked, what failed, which
+samples whose saved prompts it needs (at most six, `read`); step 2: Loupe sends both prompts of each whole and the judge answers `template` (the FINAL
+prompt, which the pipeline puts in the request word for word: built on the checked draft, every must-carry line word for word, within the service's
+limit, in that model's structure, for this video, carrying the wording and the mechanism that made a corrected take work where the situation is the same,
+each failure designed out in positive words, `[SLOT: …]` only for a value the brief does not give), `basis` (per sample: what worked, what failed, which
 part of the template carries it; only samples that exist), `notes`, `changes` (parts of the brief earlier generations say should change) and
-`not_covered`; it may ask with `needs` as in any consult. The agent crafts its request from the template within its own pipeline's rules; the judge is not
-asked again before the generation. After the generation, a QC consult carries what the judge needs to judge an error accurately (`request_prompt`, the
+`not_covered`; it may ask with `needs` as in any consult. The pipeline never rewrites it (`awl.py template-apply` puts it in the
+request and reports the must-carry lines missing, the slots left and the length; a missing line or a length over the limit is asked of the judge once
+more, and only then is the line added word for word or the checked draft kept); the judge is not asked again before the generation. After the generation, a QC consult carries what the judge needs to judge an error accurately (`request_prompt`, the
 prompt the video was generated from; `request_params`, that request's model and parameters; `video_model`; `template`; `brief`), and the QC answer adds
 `cause` (which part of the prompt or of the template let the error happen) and `template_fix` (that part rewritten). The judge weighs every sample by
 the video model that generated it. The consult log shows the purpose as "prompt template".

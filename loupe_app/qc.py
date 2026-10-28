@@ -638,26 +638,31 @@ ROLE = ("You are the Loupe keeper of a video-generation pipeline. You hold a lib
         '{"hints":[{"id":"S12","trigger":"<the plan situation in which this miss arises>","right_outcome":"<what the right version shows, positive>",'
         '"lever":"<which tool, at which beat, how>","caveat":"<when it does not apply>","confidence":"high|medium|low","model_independent":false}],'
         '"none_reason":"<one phrase when hints is empty>"} '
-        "TEMPLATE REQUEST (the video has NOT been generated and its prompt is not written yet; the agent producing it sends its brief: what it is working on, what "
-        "the video is about, what it wants to achieve, and the locked model's request structure from its model guide). You write the prompt template the agent "
-        "crafts its prompt from, so the prompt starts from what already worked and what failed in earlier generations. Step 1: answer ONE JSON object "
+        "TEMPLATE REQUEST (the video has NOT been generated; the pipeline has planned it and written and checked a draft request, and the agent sends the whole "
+        "brief: what it is working on, what the video is about, what it wants to achieve, the checked draft request (its prompt, parameters and inputs), the "
+        "lines the prompt must carry word for word, and the locked model's request structure from its model guide). You write the FINAL prompt this video is "
+        "generated from, so it starts from what already worked and what failed in earlier generations: the pipeline puts your prompt in the request word for "
+        "word and does not rewrite it. Step 1: answer ONE JSON object "
         '{"read":["S12"],"needs":[<optional>]} naming the samples (at most 6, best first) whose saved prompts you need: those whose line says PROMPTS ... SAVED '
         "and whose product detail and scene mechanism match a part of this brief; an empty list when none does. Loupe sends both prompts of each, whole. Step 2: read both prompts of each "
-        "yourself, judge what the corrected take's prompt did that worked and what the wrong take's prompt did that failed, and write the template for THIS video: "
-        "the whole prompt in the request structure the brief gives (its sections, order and syntax; never your general knowledge of the model), with this video's "
-        "beats, product and scene in their place; carry the wording and the mechanism that made a corrected take work wherever the situation is the same, adapted "
+        "yourself, judge what the corrected take's prompt did that worked and what the wrong take's prompt did that failed, and write the final prompt for THIS "
+        "video: the whole prompt in the request structure the brief gives (its sections, order and syntax; never your general knowledge of the model), built on the "
+        "checked draft (its beats, the product's form, sizes and counts, the inputs and their roles stay unless a sample shows a better way for the same "
+        "situation); carry every must-carry line word for word; stay within the service's prompt limit the brief names; carry the wording and the mechanism that "
+        "made a corrected take work wherever the situation is the same, adapted "
         "to this product and scene (never another video's nouns); design each failure out in positive words (the right state written as what the right version "
         "shows, the wrong behaviour never named, no list of negatives, at most one targeted exclusion for the product); and put [SLOT: <what goes here>] only "
-        "where the agent alone knows the specifics (an upload's role tag, an exact time). When no sample applies, the template follows the structure and the "
-        "brief alone and basis is empty. The request names the video model the prompt is for: write the template for that model, carry a sample's wording only "
+        "for a value the brief does not give. When no sample applies, the final prompt is the checked draft, changed only where the structure requires, and "
+        "basis is empty. The request names the video model the prompt is for: write for that model, carry a sample's wording only "
         "from a sample generated with the same model (or one whose mechanism you name as model-independent), and say each basis sample's model in worked. "
         "Answer ONE JSON object and no other text: "
-        '{"template":"<the whole template>","basis":[{"id":"S12","worked":"<what the corrected take\'s prompt did that worked>","failed":"<what the wrong take\'s '
-        'prompt did that failed>","where":"<which part of the template carries it>"}],"notes":"<at most 120 words: what the agent must keep when it fills the '
-        'slots>","changes":[{"what":"<a part of the brief that earlier generations say should change>","why":"<the sample and the mechanism>","id":"S12"}],'
+        '{"template":"<the whole final prompt>","basis":[{"id":"S12","worked":"<what the corrected take\'s prompt did that worked>","failed":"<what the wrong take\'s '
+        'prompt did that failed>","where":"<which part of the prompt carries it>"}],"notes":"<at most 120 words: what you changed from the draft and why>",'
+        '"changes":[{"what":"<a part of the plan that earlier generations say should change, already carried in your prompt>","why":"<the sample and the mechanism>","id":"S12"}],'
         '"not_covered":"<what in the brief the library does not cover, or empty>","needs":[<optional, see ASK, DO NOT GUESS>]}. '
-        "The agent crafts its prompt from your template within the pipeline's own rules (its guardrails, the model guide's limits and the source's story and "
-        "timing win a conflict); you are not asked again before the video is generated, and after it is generated the QC consult brings you the prompt it used. "
+        "The pipeline uses your prompt as it stands: it fills a slot only with a value its plan already decided, asks you once more when a must-carry line is "
+        "missing or the prompt is too long, and only then adds a missing line itself; you are not asked again before the video is generated, and after it is "
+        "generated the QC consult brings you the prompt it used. "
         "ASK, DO NOT GUESS. When you cannot judge something because it is missing or unclear (what this plan intended at a checkpoint, the product registry row, "
         "how the video under QC looks at a time the question does not show, where a sample came from or the prompts of its two takes, or what the QC agent itself sees), put a needs list (at most 3) "
         "in your JSON object instead of guessing (writing the gap in not_covered is not asking: when what is missing is one of the kinds below, ask for it), each item "
@@ -1095,8 +1100,8 @@ def _template_round(parsed, st: dict, ctx: dict):
            + (f" Not sent: {', '.join(left)} (no saved prompts, not in the library, or beyond {TEMPLATE_READ})." if left else "")
            + (f" Files Loupe fetched are in {d} (Read them)." if d else "")
            + ("\n\n" + "\n\n".join(parts) if parts else "")
-           + "\n\nNow write the template: answer with the TEMPLATE JSON object only (template, basis, notes, changes, not_covered); add needs only for what "
-             "Loupe could still fetch and you cannot write the template without.")
+           + "\n\nNow write the final prompt: answer with the TEMPLATE JSON object only (template = the whole final prompt, every must-carry line word for word; "
+             "basis, notes, changes, not_covered); add needs only for what Loupe could still fetch and you cannot write it without.")
     res = _run_claude(msg, st["session_id"], True, st["model"])
     st["chars"] = st.get("chars", 0) + _carried(msg, res)
     return _json_of(res.get("result", "")), read, float(res.get("total_cost_usd") or 0), 1, asked
@@ -1174,12 +1179,12 @@ def consult(key_name: str, ctx: dict, question: str, purpose: str = "qc") -> dic
                 prompt = (f"PLANNING question for {who}. The video has not been generated. The writer's plan, one line per beat:\n{question}\n"
                           f"{delta}\nAnswer with the PLANNING JSON object only (an empty hints list is the normal answer); if you cannot judge something Loupe could fetch (the plan, the product row, a sample's origin), ask with needs instead of guessing.")
             elif tmpl:
-                prompt = (f"TEMPLATE REQUEST for {who}. The video has not been generated and its prompt is not written. The agent's brief (what it is working on, what "
-                          f"the video is about, what it wants to achieve):\n{question}\n\nThe video model the request will be generated with (from the pipeline's "
+                prompt = (f"TEMPLATE REQUEST for {who}. The video has not been generated. The agent's whole brief (what it is working on, what the video is about, "
+                          f"what it wants to achieve, the checked draft request and the lines its prompt must carry):\n{question}\n\nThe video model the request will be generated with (from the pipeline's "
                           f"model index): {_evidence(ctx.get('video_model')) or ctx.get('model') or 'not sent'}\n\nThe locked model's request structure, from the agent's model guide:\n"
                           f"{str(ctx.get('structure') or '').strip()[:EVIDENCE_CHARS] or '(not sent: follow the structure the brief names)'}\n{delta}\n"
                           f"Step 1 of 2: answer with {{\"read\": [...], \"needs\": [...]}} only: the samples whose saved prompts you need (at most {TEMPLATE_READ}, best "
-                          "first; an empty list when none applies). Loupe then sends both prompts of each, whole, and you write the template.")
+                          "first; an empty list when none applies). Loupe then sends both prompts of each, whole, and you write the final prompt.")
             else:
                 ev = "".join(f"\n\n{what}:\n{_evidence(ctx.get(k))[:EVIDENCE_CHARS]}" for k, what in (
                     ("request_prompt", "The prompt this video was generated from (whole, as submitted)"),
