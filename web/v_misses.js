@@ -9,8 +9,8 @@ const FPS = 30;
 // and a side whose prompt is an Example's in every sample of the report is just an example
 const promptsKept = (m) => {
     const ex = (k) => ((m.prompt_roles || {})[k] === 'example');
-    const name = (k) => (ex(k) ? `the example take of Video ${k === 'wrong' ? 'A' : 'B'} (just an example)` : (k === 'wrong' ? 'the flawed take (Video A)' : 'the correct take (Video B)'));
-    if (m.prompts === 'pair') return ex('wrong') && ex('fixed') ? ' · prompts of both example takes kept (just examples)' : ` · prompts of ${name('wrong')} and ${name('fixed')} kept`;
+    const name = (k) => (ex(k) ? `the example take of Video ${k === 'wrong' ? 'A' : 'B'} (a suggestion)` : (k === 'wrong' ? 'the flawed take (Video A)' : 'the correct take (Video B)'));
+    if (m.prompts === 'pair') return ex('wrong') && ex('fixed') ? ' · prompts of both example takes kept (suggestions)' : ` · prompts of ${name('wrong')} and ${name('fixed')} kept`;
     return m.prompts === 'wrong' || m.prompts === 'fixed' ? ` · prompt of ${name(m.prompts)} kept` : '';
 };
 export async function reports() {
@@ -228,7 +228,7 @@ export async function work(qs) {
     return (fr.length && fr.every((f) => f.role === 'example')) || fr.some((f) => f.role === 'example' && f.src === key) ? 'example' : '';
   };
   const LABEL = { wrong: 'Prompt of Video A (as generated: the prompt that generated the flawed version)', fixed: 'Prompt of Video B (the correct take)' };
-  const EX_LABEL = { wrong: 'Prompt of Video A (an example take: just an example, its frames are called Example, neither flawed nor correct)', fixed: 'Prompt of Video B (an example take: just an example, its frames are called Example, neither flawed nor correct)' };
+  const EX_LABEL = { wrong: 'Prompt of Video A (an example: a suggestion of what could have changed or been done another way, neither a bad generation nor a correct one)', fixed: 'Prompt of Video B (an example: a suggestion of what could have changed or been done another way, neither a bad generation nor a correct one)' };
   const promptLabel = { wrong: h('label', { class: 'f', style: 'margin-top:0' }, LABEL.wrong), fixed: h('label', { class: 'f', style: 'margin-top:0' }, LABEL.fixed) };
   const syncPromptLabels = () => { for (const key of ['wrong', 'fixed']) { const t = fieldRole(key) === 'example' ? EX_LABEL[key] : LABEL[key]; if (promptLabel[key].textContent !== t) promptLabel[key].textContent = t; } };
   const composeFor = (key) => {      // {text, gens, wait}: the field's text from what the run says of the take(s) its frames come from
@@ -290,7 +290,7 @@ export async function work(qs) {
       h('div', {}, promptLabel.wrong, wrongPrompt, h('div', { class: 'row', style: 'margin-top:4px' }, fillPrompt('wrong'))),
       h('div', {}, promptLabel.fixed, fixedPrompt, h('div', { class: 'row', style: 'margin-top:4px' }, fillPrompt('fixed')))),
     h('label', { class: 'f' }, 'What in the prompt made the difference (optional, your words)'), promptNote,
-    h('div', { class: 'muted small', style: 'margin-top:4px' }, 'Video A’s field holds the prompt behind the frames called Wrong, Video B’s the prompt behind the frames called Right. When a field speaks only for frames called Example (or every frame is an Example), its prompt is an Example prompt, just an example: the label says so, the database keeps it so, and the judge and the agents read it as an example, never as the flawed or the correct prompt. Otherwise Video A’s prompt is kept as the one that generated the flawed version and Video B’s as the correct take’s. A take joined from several generations gives the prompt of each generation those frames come from, one after the other, each under the line that says which seconds it made and which frames come from it. The fields fill themselves and follow the frames until you type in them; Fill writes them again. Nothing is compared or diffed by the app: the keeper reads both prompts whole when it asks for them, the prompt writers read them for a sample they judged relevant, and each decides what changed.'));
+    h('div', { class: 'muted small', style: 'margin-top:4px' }, 'Video A’s field holds the prompt behind the frames called Wrong, Video B’s the prompt behind the frames called Right. When a field speaks only for frames called Example (or every frame is an Example), its prompt is an Example’s: a suggestion of what could have changed or been done another way, neither a bad generation nor a correct one. The label says so, the database keeps it so, and the judge and the agents read it as one, never as the flawed or the correct prompt. Otherwise Video A’s prompt is kept as the one that generated the flawed version and Video B’s as the correct take’s. A take joined from several generations gives the prompt of each generation those frames come from, one after the other, each under the line that says which seconds it made and which frames come from it. The fields fill themselves and follow the frames until you type in them; Fill writes them again. Nothing is compared or diffed by the app: the keeper reads both prompts whole when it asks for them, the prompt writers read them for a sample they judged relevant, and each decides what changed.'));
 
   // ---- the report fields (the title and the explanation are burned into the saved image)
   const title = h('input', { value: miss ? miss.title : '', placeholder: 'One line or a paragraph: what went wrong, or what this scenario is about (e.g. “the third capsule disappears after the hand leaves”)', style: 'width:100%' });
@@ -508,7 +508,7 @@ export async function work(qs) {
     f.num = h('b', { class: 'fnum' });
     f.btnWrong = h('button', { class: 'btn sm rolebtn wrong', title: 'This frame shows the miss', onclick: () => setRole(f, 'wrong') }, 'Wrong');
     f.btnRight = h('button', { class: 'btn sm rolebtn right', title: 'This frame shows how it should be', onclick: () => setRole(f, 'right') }, 'Right');
-    f.btnExample = h('button', { class: 'btn sm rolebtn example', title: 'Keep this frame as an example for the QC keeper to understand and remember: neither a miss nor the right look (blue marks)', onclick: () => setRole(f, 'example') }, 'Example');
+    f.btnExample = h('button', { class: 'btn sm rolebtn example', title: 'An Example: a suggestion of what could have changed or how it could have been done another way, neither a bad generation nor a correct one (blue marks). A sample with Example frames has only Examples.', onclick: () => setRole(f, 'example') }, 'Example');
     f.srcSel = h('select', { class: 'srcsel', title: 'which video this frame is taken from' }, h('option', { value: 'wrong' }, srcName('wrong')), h('option', { value: 'fixed' }, srcName('fixed')));
     f.srcSel.addEventListener('change', () => setFrameSrc(f, f.srcSel.value));
     f.snd = h('button', { class: 'btn sm', onclick: () => { f.video.muted = !f.video.muted; f.snd.textContent = f.video.muted ? 'Sound off' : 'Sound on'; } }, 'Sound off');
@@ -536,7 +536,7 @@ export async function work(qs) {
     playersBox.style.setProperty('--cols', String(Math.min(Math.max(frames.length + (side ? 1 : 0), 1), 3)));
     frames.forEach((f, i) => { f.num.textContent = 'Frame ' + (i + 1); });
     addBtn.disabled = frames.length >= MAX_FRAMES || (!state.wrong && !state.fixed); sameBtn.style.display = frames.length > 1 ? '' : 'none';
-    syncCorrect(); syncRight(); followFrames();
+    syncCorrect(); syncRight(); syncMix(); followFrames();
   };
   const addFrame = (src, role, t) => {
     const f = mkFrame(src, role, t);
@@ -553,7 +553,7 @@ export async function work(qs) {
     if (frames[0]) range.max = frames[0].video.duration || 10;
     drawPlayers(); refresh();
   };
-  const setRole = (f, role) => { f.role = role; styleFrame(f); redraw(f); syncCorrect(); followFrames(); };
+  const setRole = (f, role) => { f.role = role; styleFrame(f); redraw(f); syncCorrect(); syncMix(); followFrames(); };
   const setFrameSrc = (f, src) => {
     if (src === 'fixed' && !state.fixed) { toast('This report has no right version video yet: choose one above first', true); f.srcSel.value = f.src; return; }
     f.src = src; loadFrame(f); followFrames();
@@ -589,6 +589,7 @@ export async function work(qs) {
   const leaveEdit = () => { ws.editing = null; saveBtn.textContent = 'Mark this moment'; cancelEdit.style.display = 'none'; };
   async function saveMoment() {
     pauseAll();
+    if (mixed()) { toast('A sample is either a miss with its correct take, or Examples only: call every frame Example, or none', true); syncMix(); return; }
     const text = details.value.trim();
     // never blocks: with no title it is cut from the explanation, and with neither it is named by the video and the second
     if (!title.value.trim()) title.value = text ? text.split(/(?<=[.!?])\s/)[0].slice(0, 90) : (frames.length ? `Video ${qs.video || ''} at ${fmtT(frames[0].t)}` : 'A scenario');
@@ -639,6 +640,10 @@ export async function work(qs) {
   const addBtn = h('button', { class: 'btn sm primary', title: 'adds a frame after the last one (0.2 s later, same video, same role); change any of that on the new frame', onclick: () => { const l = frames[frames.length - 1]; if (l) addFrame(l.src, l.role, l.t + 0.2); else if (state.wrong) addFrame('wrong', 'wrong', 0); else addFrame('fixed', 'example', 0); } }, '+ Add a frame');
   const sameBtn = h('button', { class: 'btn sm', title: 'puts every frame on the time of Frame 1', onclick: sameTime }, 'Same time on all frames');
   const correctLbl = h('label', { class: 'f' }, 'What the right frame shows (optional)');
+  // the user, 2026-10-28: a sample is a miss with its correct take, or Examples only; never both (the server refuses a mix too)
+  const mixed = () => frames.some((f) => f.role === 'example') && frames.some((f) => f.role !== 'example');
+  const mixNote = h('div', { class: 'small', style: 'display:none;margin-top:6px;color:#b45309;font-weight:600' }, 'This sample mixes Example frames with Wrong or Right frames: A sample is either a miss with its correct take (frames called Wrong and Right) or Examples only, never both: call every frame Example, or none (an Example is a suggestion of what could have changed or how it could have been done another way, neither a bad generation nor a correct one).');
+  const syncMix = () => { mixNote.style.display = mixed() ? '' : 'none'; };
   const noRightTitle = h('b', {}), noRightText = h('div', { style: 'margin-top:6px;color:#aab;font-size:13px;max-width:320px' });
   const noRightBox = h('div', { class: 'player', style: 'display:none;align-items:center;justify-content:center;text-align:center;min-height:220px' }, h('div', {}, noRightTitle, noRightText));
   const saveNote = h('span', { class: 'small', style: 'color:var(--accent);font-weight:600' });
@@ -676,8 +681,8 @@ export async function work(qs) {
       h('div', { class: 'tools' }, tb('arrow', 'Arrow'), tb('circle', 'Circle'), tb('rect', 'Box'), tb('text', 'Text'),
         undoBtn, redoBtn,
         h('button', { class: 'btn sm', onclick: () => { if (ws.shapes.length) setMarks([]); } }, 'Clear marks'),
-        h('span', { class: 'muted small', style: 'margin-left:10px' }, 'You choose what each frame is: Wrong (red marks), Right (green) or Example (blue: something for the QC keeper to understand and remember), which video it comes from, and its own time. Everything here is optional: a report can have no right version, no wrong frame, even no frames. Nothing is marked or copied for you.')),
-      playersBox,
+        h('span', { class: 'muted small', style: 'margin-left:10px' }, 'You choose what each frame is: Wrong (red marks), Right (green) or Example (blue: a suggestion of what could have changed or been done another way, neither a bad generation nor a correct one; a sample is either Wrong and Right frames or Examples only), which video it comes from, and its own time. Everything here is optional: a report can have no right version, no wrong frame, even no frames. Nothing is marked or copied for you.')),
+      playersBox, mixNote,
       h('div', { class: 'scrub' }, playAll, h('button', { class: 'btn sm', onclick: () => step(-1 / FPS) }, '◀ frame'), range, h('button', { class: 'btn sm', onclick: () => step(1 / FPS) }, 'frame ▶'),
         h('span', { class: 'muted small' }, 'moves all frames together')),
       h('div', { class: 'row' }, addBtn, sameBtn, h('span', { class: 'muted small' }, 'Every frame has its own slider, 1-frame buttons and time box (type 3.25 or 0:03.25 and press Enter). Two frames to start with; add as many as you need, from either video.'))),

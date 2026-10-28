@@ -10,7 +10,7 @@ from PIL import Image, ImageDraw, ImageFont
 RED = (255, 45, 45)
 GREEN = (46, 204, 113)
 GREEN_DARK = (22, 163, 74)
-EXAMPLE = (59, 110, 220)       # a frame the admin keeps as an example: neither a miss nor the right look
+EXAMPLE = (59, 110, 220)       # an example: a suggestion of what could have changed or been done another way, neither a bad generation nor a correct one
 INK = (24, 26, 32)
 PAPER = (245, 245, 247)
 MUTED = (120, 124, 134)
@@ -351,6 +351,9 @@ def build(frames: list[dict], meta: dict, details: str, correct_note: str, inclu
             legend.append(said)
     if any(big):
         legend.append("Where the marks cover most of a frame, no close range is shown for it: compare the whole panels.")
+    if any(f.get("role") == "example" for f in fr):         # what an EXAMPLE is, said in the image itself (the user, 2026-10-28)
+        legend.append("A frame tagged EXAMPLE is neither a bad generation nor a correct one: it is a suggestion of what could have changed or how one thing "
+                      "could have been done another way.")
     two = any(f.get("video") for f in fr)       # numbered frames that name their video and the generation that made them: a second tag line under each
     if two and any(gen_words(f.get("gen")) for f in fr):
         legend.append("Each frame is tagged with its number (FRAME n, the number the prompts saved with this sample use) and, under it, its video (VIDEO A "

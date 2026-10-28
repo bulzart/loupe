@@ -42,7 +42,8 @@ def _kinds(v) -> str:
 
 
 # A moment is any number of frames the admin chose, none at all included (a scenario in words only).  Each frame comes from one of the report's two videos (src "wrong" =
-# the version as generated, "fixed" = the right version), has its own time, and is called WRONG, RIGHT or EXAMPLE (role "example": something the admin keeps for the QC keeper to understand and remember, neither a miss nor the right look) by the admin; the marks belong to a
+# the version as generated, "fixed" = the right version), has its own time, and is called WRONG, RIGHT or EXAMPLE (role "example": a suggestion of what could have changed or how one thing could have been done another way, neither a bad generation nor a correct one; a
+# sample with Example frames has only Examples, one with Wrong or Right frames has none, the user, 2026-10-28) by the admin; the marks belong to a
 # frame (its index).  An older moment holds no frames column at all: it is the miss frame at t_wrong and, when the report has a right version, the right frame at t_fixed.
 FRAME_DESC = {"wrong": "as generated", "fixed": "correct version"}
 ORIGINAL_DESC = "original video"      # either video can be the original the generation was made from, or a take of another video or run: its frames' tags say so (side_desc)
@@ -144,7 +145,7 @@ def prompt_roles(frames: list[dict]) -> dict:
     Example prompts, never a flawed or a correct one, so the judge, the keeper and every agent fed with it are never misled; otherwise Video A's prompt is
     the one that generated the flawed version and Video B's the correct take's).  'example' for a side that speaks only for frames called EXAMPLE (no
     frame called WRONG for Video A, none called RIGHT for Video B, and an Example taken from that side's video), and for both sides when every frame of
-    the sample is an Example: just an example, neither flawed nor correct; else 'flawed' (Video A) and 'correct' (Video B)."""
+    the sample is an Example: an example is a suggestion of what could have changed or how it could have been done another way, neither a bad generation nor a correct one; else 'flawed' (Video A) and 'correct' (Video B)."""
     only_examples = bool(frames) and all(f["role"] == "example" for f in frames)
     out = {}
     for side in ("wrong", "fixed"):
@@ -155,17 +156,17 @@ def prompt_roles(frames: list[dict]) -> dict:
 
 def take_words(side: str, role: str, only_examples: bool = False) -> str:
     """How a side's take is named to the judge and the agents: the flawed take (its prompt generated the flawed version), the correct take, or an example
-    take of Video A or B (just an example: neither flawed nor correct)."""
+    take of Video A or B (a suggestion of what could have changed or how it could have been done another way, neither a bad generation nor a correct one)."""
     if role == "example":
         why = "this sample's frames are all Examples" if only_examples else "the frames of this sample it speaks for are called EXAMPLE"
-        return f"the example take of {VIDEO_NAME[side]} (just an example, {why}: neither flawed nor correct)"
+        return f"the example take of {VIDEO_NAME[side]} ({why}; an example is a suggestion of what could have changed or how it could have been done another way, neither a bad generation nor a correct one)"
     return "the flawed take (Video A: its prompt generated the flawed version)" if side == "wrong" else "the correct take (Video B)"
 
 
 def sync_prompt_roles(miss_id: int) -> dict:
     """Keeps on the report, in the database, what each of its two prompts is (the user, 2026-10-28): Video A's prompt is the one that generated the flawed
     version ('flawed') and Video B's the correct take's ('correct'), unless in every sample of the report that side's prompt is an Example's ('example':
-    just an example, neither flawed nor correct).  Run after every change to the report or its samples; the samples' own words come from prompt_roles."""
+    a suggestion of what could have changed or how it could have been done another way, neither a bad generation nor a correct one).  Run after every change to the report or its samples; the samples' own words come from prompt_roles."""
     con = core.db()
     try:
         miss = con.execute("SELECT * FROM misses WHERE id=?", (miss_id,)).fetchone()
@@ -201,7 +202,7 @@ def prompts_text(pp: dict) -> str:
     lines = []
     roles, only_ex = pp.get("prompt_roles") or {}, bool(pp.get("examples_only"))
     if only_ex:
-        lines.append("this sample's frames are all Examples: the prompts below made frames the admin keeps as examples, neither a miss nor the corrected look")
+        lines.append("this sample's frames are all Examples, each a suggestion of what could have changed or how it could have been done another way, neither a bad generation nor a correct one: the prompts below are the prompts of those example takes")
     for side in ("wrong", "fixed"):
         what = take_words(side, roles.get(side, ""), only_ex)
         segs = pp.get(f"{side}_segments") or []
@@ -275,6 +276,9 @@ def _frames_clean(raw, miss: dict) -> list[dict]:
         if src == "wrong" and not miss.get("wrong_path"):
             raise ValueError("a frame comes from Video A, but this report has none")
         out.append({"src": src, "role": role, "t": round(t, 3)})
+    roles = {f["role"] for f in out}
+    if "example" in roles and roles & {"wrong", "right"}:        # the user, 2026-10-28: Examples never share a sample with a miss or its correct take
+        raise ValueError("a sample is either a miss with its correct take (frames called Wrong and Right) or Examples only, never both: call every frame Example, or none (an Example is a suggestion of what could have changed or how it could have been done another way, neither a bad generation nor a correct one)")
     return out
 
 

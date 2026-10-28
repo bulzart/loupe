@@ -454,11 +454,11 @@ def main(with_keeper=False):
     check("a frame can be kept as an Example (neither wrong nor right): it gets a blue EXAMPLE tag, with its close range beside it at the same height", nf["sample_kind"] == "scenario" and nimg.getpixel((27, 55)) == (59, 110, 220)
           and nimg.getpixel((611, 55)) == (70, 74, 90) and nimg.width == 1192, f"{nimg.getpixel((27, 55))} {nimg.getpixel((611, 55))}")
     s, d, _ = req("POST", f"/api/misses/{wm['id']}/moments", {"frames": [{"src": "wrong", "role": "wrong", "t": 1.0}, {"src": "wrong", "role": "wrong", "t": 1.5}, {"src": "wrong", "role": "wrong", "t": 2.0},
-                                                                         {"src": "wrong", "role": "example", "t": 2.5}],
+                                                                         {"src": "wrong", "role": "wrong", "t": 2.5}],
                                                               "shapes": [{"type": "rect", "frame": 0, "x1": .2, "y1": .3, "x2": .6, "y2": .5}]})
     four = Image.open(core.DATA / "samples" / str(d["moment"]["moment_id"]) / "composite.png").convert("RGB")
     check("four frames: three in a row with a zoom under the marked one only, and the fourth (unmarked) alone in its row with no close range", s == 200
-          and four.getpixel((612, 1689)) == (59, 110, 220) and four.getpixel((1400, 1960)) == (245, 245, 247) and four.getpixel((27 + 584 * 2, 55)) == (255, 45, 45)
+          and four.getpixel((612, 1689)) == (255, 45, 45) and four.getpixel((1400, 1960)) == (245, 245, 247) and four.getpixel((27 + 584 * 2, 55)) == (255, 45, 45)
           and four.getpixel((304, 1384)) != (245, 245, 247) and four.getpixel((888, 1384)) == (245, 245, 247),
           f"{four.size} {four.getpixel((612, 1689))} {four.getpixel((1400, 1960))} {four.getpixel((304, 1384))} {four.getpixel((888, 1384))}")
     s, d, _ = req("PATCH", f"/api/misses/{wm['id']}", {"wrong_path": ""})
@@ -690,17 +690,22 @@ def main(with_keeper=False):
     check("the judge reads them as example takes, never as the wrong or the corrected take",
           s == 200 and (d.get("sample") or {}).get("prompt_roles") == {"wrong": "example", "fixed": "example"} and "this sample's frames are all Examples" in et
           and "the prompt of the example take of Video A" in et and "the prompt of the example take of Video B" in et and "EX-PROMPT-A" in et
+          and "a suggestion of what could have changed or how it could have been done another way, neither a bad generation nor a correct one" in et
           and "the prompt of the wrong take" not in et and "the prompt of the corrected take" not in et, et[:500])
-    ex2 = emoment([{"src": "wrong", "role": "example", "t": 1.0}, {"src": "wrong", "role": "right", "t": 1.5}])
+    s2, d2, _ = req("POST", f"/api/misses/{em}/moments", {"frames": [{"src": "wrong", "role": "example", "t": 1.0}, {"src": "wrong", "role": "right", "t": 1.5}]})
+    s2b, d2b, _ = req("PATCH", f"/api/moments/{ex1['moment_id']}", {"frames": [{"src": "wrong", "role": "example", "t": 1.0}, {"src": "fixed", "role": "wrong", "t": 0.5}]})
+    check("a sample that mixes an Example with a Wrong or Right frame is refused, saved or updated, with the rule in the answer",
+          s2 == 400 and "either a miss with its correct take" in str(d2.get("error", "")) and "neither a bad generation nor a correct one" in str(d2.get("error", ""))
+          and s2b == 400, f"{s2} {d2} {s2b}")
     ex3 = emoment([{"src": "wrong", "role": "wrong", "t": 1.0}, {"src": "fixed", "role": "right", "t": 0.5}])
-    check("an Example frame of Video A beside a Right frame: Video A's prompt is an Example's, Video B's the corrected one; a Wrong frame keeps the wrong take",
-          ex2.get("prompt_roles") == {"wrong": "example", "fixed": "correct"} and ex3.get("prompt_roles") == {"wrong": "flawed", "fixed": "correct"},
-          f"{ex2.get('prompt_roles')} {ex3.get('prompt_roles')}")
+    check("a sample of a Wrong and a Right frame: Video A's prompt generated the flawed version, Video B's is the correct take",
+          ex3.get("prompt_roles") == {"wrong": "flawed", "fixed": "correct"}, str(ex3.get("prompt_roles")))
     dlines = {ln.split(" ", 1)[0]: ln for ln in _qcs_digest_lines() if ln.startswith("S")}
     check("the keeper's digest names Example prompts as such, and a pair as before",
-          "PROMPTS OF BOTH EXAMPLE TAKES SAVED" in dlines.get(ex1.get("id"), "")
-          and "PROMPTS SAVED: THE EXAMPLE TAKE OF VIDEO A (just an example) AND THE CORRECT TAKE (VIDEO B)" in dlines.get(ex2.get("id"), "")
-          and "PROMPTS OF BOTH TAKES SAVED: VIDEO A'S GENERATED THE FLAWED VERSION, VIDEO B'S IS THE CORRECT TAKE" in dlines.get(ex3.get("id"), ""), dlines.get(ex2.get("id"), "")[-300:])
+          "PROMPTS OF BOTH EXAMPLE TAKES SAVED" in dlines.get(ex1.get("id"), "") and "neither a bad generation nor a correct one" in dlines.get(ex1.get("id"), "")
+          and "PROMPTS OF BOTH TAKES SAVED: VIDEO A'S GENERATED THE FLAWED VERSION, VIDEO B'S IS THE CORRECT TAKE" in dlines.get(ex3.get("id"), ""), dlines.get(ex1.get("id"), "")[-300:])
+    m_ex = json.loads((core.DATA / "samples" / str(ex1["moment_id"]) / "meta.json").read_text(encoding="utf-8"))
+    check("an Example sample's frames are tagged EXAMPLE in its record", [f["role"] for f in m_ex["frames"]] == ["example", "example"], str(m_ex["frames"])[:200])
     check("with a sample whose frames are Wrong and Right, the database keeps Video A's prompt as the one that generated the flawed version and Video B's as the correct take's",
           db_roles() == ("flawed", "correct"), str(db_roles()))
     s3, d3, _ = req("GET", f"/api/qc/samples/{ex3.get('id')}?prompts=1", key=kq)
@@ -711,7 +716,6 @@ def main(with_keeper=False):
     lib_ex = {x["id"]: x for x in _qce.library()}
     bl = _qce.sample_lines(lib_ex[ex1["id"]]) if ex1.get("id") in lib_ex else ""
     check("the brief says the prompts kept are example takes", "Video A's prompt, an example take" in bl and "Video B's prompt, an example take" in bl, bl[:600])
-    req("DELETE", f"/api/moments/{ex2['moment_id']}")
     req("DELETE", f"/api/moments/{ex3['moment_id']}")
     check("deleting the other samples makes the report's prompts examples again in the database", db_roles() == ("example", "example"), str(db_roles()))
     req("DELETE", f"/api/misses/{em}")
@@ -720,7 +724,7 @@ def main(with_keeper=False):
     s, d, _ = req("POST", "/api/misses", {"run": "20261001-000000-07", "video": "03", "title": "The pen became a can", "model": "wan3_0_prime",
                                           "wrong_path": wrong, "fixed_path": orig, "fixed_label": ov[0]["label"] if ov else ""})
     om = d["miss"]["id"]
-    s, d, _ = req("POST", f"/api/misses/{om}/moments", {"frames": [{"src": "wrong", "role": "wrong", "t": 1.0}, {"src": "fixed", "role": "example", "t": 1.0}],
+    s, d, _ = req("POST", f"/api/misses/{om}/moments", {"frames": [{"src": "wrong", "role": "wrong", "t": 1.0}, {"src": "fixed", "role": "right", "t": 1.0}],
                                                          "shapes": [{"type": "circle", "frame": 0, "cx": .4, "cy": .45, "rx": .1, "ry": .06}], "details": "The pen became a can."})
     om_mo = d["moment"]
     om_dir = core.DATA / "samples" / str(om_mo["moment_id"])

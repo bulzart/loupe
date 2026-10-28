@@ -277,14 +277,20 @@ const ok = (name, cond, info = '') => { console.log((cond ? '  ok   ' : '  FAIL 
   const f12 = (start) => walk(root12, (e) => e.tag === 'textarea' && (e.attrs.placeholder || '').startsWith(start))[0];
   fr12().forEach((fe) => click(walk(fe, (e) => e.tag === 'button' && e.text === 'Example')[0]));
   ok('with Example frames only, both prompts are labelled as example takes, neither wrong nor right',
-    !!lab('Prompt of Video A (an example take') && !!lab('Prompt of Video B (an example take') && !lab('Prompt of Video A (as generated: the prompt that generated the flawed version)'), walk(root12, (e) => e.tag === 'label').map((e) => e.textContent).join(' | '));
+    !!lab('Prompt of Video A (an example: a suggestion') && !!lab('Prompt of Video B (an example: a suggestion') && !lab('Prompt of Video A (as generated: the prompt that generated the flawed version)'), walk(root12, (e) => e.tag === 'label').map((e) => e.textContent).join(' | '));
   ok('each field holds the prompt behind its own video\'s Example frame, named EXAMPLE',
     f12('The prompt that produced Video A').value.startsWith('This is the prompt responsible for Frame 1 (EXAMPLE, 0:00.00) of this sample: it generated second 0 to second 6.1 of Video A')
     && f12('The prompt of Video B').value.startsWith('This is the prompt responsible for Frame 2 (EXAMPLE, 0:00.00) of this sample: it generated second 0 to second 6.1 of Video B'),
     f12('The prompt that produced Video A').value.slice(0, 160) + ' / ' + f12('The prompt of Video B').value.slice(0, 160));
+  const mixShown = () => walk(root12, (e) => e.tag === 'div' && (e.text || '').startsWith('This sample mixes Example frames')).some((e) => e.style.display !== 'none');
+  ok('Examples only: no warning', !mixShown());
   click(walk(fr12()[0], (e) => e.tag === 'button' && e.text === 'Wrong')[0]);
+  ok('a Wrong frame beside an Example: the form warns that a sample is a miss with its correct take, or Examples only', mixShown());
+  sent.length = 0;
+  await Promise.all(walk(root12, (e) => e.tag === 'button' && e.text === 'Mark this moment').flatMap((b) => (b.listeners.click || []).map((f) => f())));
+  ok('and a mixed sample is never saved', !sent.some((x) => x.method === 'POST' && x.url.endsWith('/moments')), JSON.stringify(sent.map((x) => x.method + ' ' + x.url)));
   ok('a frame called Wrong again gives Video A its own label back, while Video B, still behind an Example, stays an example take',
-    !!lab('Prompt of Video A (as generated: the prompt that generated the flawed version)') && !!lab('Prompt of Video B (an example take') && f12('The prompt that produced Video A').value.includes('Frame 1 (WRONG, 0:00.00)'),
+    !!lab('Prompt of Video A (as generated: the prompt that generated the flawed version)') && !!lab('Prompt of Video B (an example: a suggestion') && f12('The prompt that produced Video A').value.includes('Frame 1 (WRONG, 0:00.00)'),
     walk(root12, (e) => e.tag === 'label').map((e) => e.textContent).join(' | '));
   withSegs = false;
   console.log(fails ? `${fails} failed` : 'all passed');
