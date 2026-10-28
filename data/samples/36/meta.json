@@ -1,0 +1,67 @@
+{
+ "moment": 36,
+ "miss": 25,
+ "title": "On the first frame neurogum's package size is excellent just the graphics looking a bit weary and the problem is that the package seems standing midway nor falling nor staying looking like leaning into something but there's actually nothing to lean to, but in the second frame which is the continuity of the video the package graphics are excellent but the size changes which should not has occured",
+ "model": "wan3_0_prime",
+ "run": "20261027-233328-27",
+ "video": "02",
+ "t_wrong": 0.0,
+ "t_fixed": 0.0,
+ "sample": "S36",
+ "frames": [
+  {
+   "n": 1,
+   "role": "example",
+   "from": "as generated",
+   "video": "A",
+   "t": 0.0,
+   "generation": {
+    "gen": 1,
+    "of": 2,
+    "clip": "c1",
+    "t_from": 0.0,
+    "t_to": 6.1
+   }
+  },
+  {
+   "n": 2,
+   "role": "example",
+   "from": "as generated",
+   "video": "A",
+   "t": 7.533,
+   "generation": {
+    "gen": 2,
+    "of": 2,
+    "clip": "c2",
+    "t_from": 6.1,
+    "t_to": 12.433
+   }
+  }
+ ],
+ "product_sample_chosen": false,
+ "product_samples": [
+  {
+   "asset": "A88",
+   "label": "P3s E&F 9-piece Spearmint carton",
+   "file": "EF_Gum_Spearmint_Single-Front.png"
+  }
+ ],
+ "shapes": [
+  {
+   "type": "arrow",
+   "frame": 0,
+   "x1": 0.6978368468458087,
+   "y1": 0.6424778626028416,
+   "x2": 0.8236972204937929,
+   "y2": 0.7557522934094995
+  },
+  {
+   "type": "arrow",
+   "frame": 1,
+   "x1": 0.901573158646755,
+   "y1": 0.47433626968248754,
+   "x2": 0.8260571265056538,
+   "y2": 0.6778760926913371
+  }
+ ]
+}
