@@ -13,19 +13,22 @@
    "n": 1,
    "role": "wrong",
    "from": "as generated",
+   "video": "A",
    "t": 0.0
   },
   {
    "n": 2,
    "role": "right",
    "from": "correct version",
+   "video": "B",
    "t": 0.0
   }
  ],
+ "product_sample_chosen": false,
  "product_samples": [
   {
    "asset": "A15",
-   "label": "P1 Cherry Cola canonical front (A15), padded, shape, colours and label only",
+   "label": "P1 Cherry Cola canonical front",
    "file": "cherry cola front - cans usa.png"
   }
  ],

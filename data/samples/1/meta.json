@@ -13,9 +13,11 @@
    "n": 1,
    "role": "wrong",
    "from": "as generated",
+   "video": "A",
    "t": 0.0
   }
  ],
+ "product_sample_chosen": false,
  "product_samples": [
   {
    "asset": "A140",

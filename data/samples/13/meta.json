@@ -13,39 +13,46 @@
    "n": 1,
    "role": "wrong",
    "from": "as generated",
+   "video": "A",
    "t": 3.867
   },
   {
    "n": 2,
    "role": "wrong",
    "from": "as generated",
+   "video": "A",
    "t": 3.9
   },
   {
    "n": 3,
    "role": "wrong",
    "from": "as generated",
+   "video": "A",
    "t": 4.167
   },
   {
    "n": 4,
    "role": "wrong",
    "from": "as generated",
+   "video": "A",
    "t": 4.467
   },
   {
    "n": 5,
    "role": "wrong",
    "from": "as generated",
+   "video": "A",
    "t": 5.3
   },
   {
    "n": 6,
    "role": "right",
    "from": "correct version",
+   "video": "B",
    "t": 5.367
   }
  ],
+ "product_sample_chosen": false,
  "shapes": [
   {
    "type": "rect",

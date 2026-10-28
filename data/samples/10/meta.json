@@ -13,15 +13,18 @@
    "n": 1,
    "role": "wrong",
    "from": "as generated",
+   "video": "A",
    "t": 11.033
   },
   {
    "n": 2,
    "role": "right",
    "from": "correct version",
+   "video": "B",
    "t": 11.3
   }
  ],
+ "product_sample_chosen": false,
  "product_samples": [
   {
    "asset": "A40",

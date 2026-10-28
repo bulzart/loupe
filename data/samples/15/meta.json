@@ -13,14 +13,17 @@
    "n": 1,
    "role": "wrong",
    "from": "as generated",
+   "video": "A",
    "t": 4.233
   },
   {
    "n": 2,
    "role": "wrong",
    "from": "as generated",
+   "video": "A",
    "t": 4.367
   }
  ],
+ "product_sample_chosen": false,
  "shapes": []
 }

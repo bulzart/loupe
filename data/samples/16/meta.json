@@ -13,38 +13,45 @@
    "n": 1,
    "role": "wrong",
    "from": "as generated",
+   "video": "A",
    "t": 0.0
   },
   {
    "n": 2,
    "role": "wrong",
    "from": "as generated",
+   "video": "A",
    "t": 0.867
   },
   {
    "n": 3,
    "role": "wrong",
    "from": "as generated",
+   "video": "A",
    "t": 2.933
   },
   {
    "n": 4,
    "role": "wrong",
    "from": "as generated",
+   "video": "A",
    "t": 3.633
   },
   {
    "n": 5,
    "role": "wrong",
    "from": "as generated",
+   "video": "A",
    "t": 4.8
   },
   {
    "n": 6,
    "role": "wrong",
    "from": "as generated",
+   "video": "A",
    "t": 7.533
   }
  ],
+ "product_sample_chosen": false,
  "shapes": []
 }

@@ -13,7 +13,15 @@
    "n": 1,
    "role": "wrong",
    "from": "as generated",
-   "t": 0.0
+   "video": "A",
+   "t": 0.0,
+   "generation": {
+    "gen": 1,
+    "of": 4,
+    "clip": "c1",
+    "t_from": 0.0,
+    "t_to": 3.2
+   }
   }
  ],
  "shapes": [

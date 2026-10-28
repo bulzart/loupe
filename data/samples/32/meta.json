@@ -13,12 +13,14 @@
    "n": 1,
    "role": "example",
    "from": "as generated",
+   "video": "A",
    "t": 0.0
   },
   {
    "n": 2,
    "role": "example",
    "from": "correct version",
+   "video": "B",
    "t": 0.0
   }
  ],

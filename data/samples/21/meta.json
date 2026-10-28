@@ -13,13 +13,15 @@
    "n": 1,
    "role": "wrong",
    "from": "as generated",
+   "video": "A",
    "t": 5.906
   }
  ],
+ "product_sample_chosen": false,
  "product_samples": [
   {
    "asset": "A41",
-   "label": "P2 Peach Vibe canonical front (A41), padded, shape, colours and label only",
+   "label": "P2 Peach Vibe canonical front",
    "file": "peach vibe front - cans usa.png"
   }
  ],

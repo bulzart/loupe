@@ -13,25 +13,57 @@
    "n": 1,
    "role": "example",
    "from": "as generated",
-   "t": 0.0
+   "video": "A",
+   "t": 0.0,
+   "generation": {
+    "gen": 1,
+    "of": 4,
+    "clip": "c1",
+    "t_from": 0.0,
+    "t_to": 3.2
+   }
   },
   {
    "n": 2,
    "role": "example",
    "from": "as generated",
-   "t": 4.067
+   "video": "A",
+   "t": 4.067,
+   "generation": {
+    "gen": 2,
+    "of": 4,
+    "clip": "c2",
+    "t_from": 3.2,
+    "t_to": 5.933
+   }
   },
   {
    "n": 3,
    "role": "example",
    "from": "as generated",
-   "t": 5.4
+   "video": "A",
+   "t": 5.4,
+   "generation": {
+    "gen": 2,
+    "of": 4,
+    "clip": "c2",
+    "t_from": 3.2,
+    "t_to": 5.933
+   }
   },
   {
    "n": 4,
    "role": "example",
    "from": "as generated",
-   "t": 7.1
+   "video": "A",
+   "t": 7.1,
+   "generation": {
+    "gen": 3,
+    "of": 4,
+    "clip": "c3",
+    "t_from": 5.933,
+    "t_to": 8.933
+   }
   }
  ],
  "shapes": [
