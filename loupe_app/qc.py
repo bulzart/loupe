@@ -149,7 +149,7 @@ def _prompts_marker(kind: str, roles: dict) -> str:
     ex = {k for k in ("wrong", "fixed") if (roles or {}).get(k) == "example"}
     if kind == "pair":
         if ex == {"wrong", "fixed"}:
-            return ("PROMPTS OF BOTH EXAMPLE TAKES SAVED (Video A and Video B: the frames are Examples, suggestions of what could have changed or been done "
+            return ("PROMPTS OF BOTH EXAMPLE TAKES SAVED (Video A and Video B, an older sample that took its Examples from two videos: the frames are Examples, suggestions of what could have changed or been done "
                     "another way, neither a bad generation nor a correct one; "
                     "ask sample_origin to read them)")
         if ex:
@@ -158,10 +158,10 @@ def _prompts_marker(kind: str, roles: dict) -> str:
             return f"PROMPTS SAVED: {words['wrong']} AND {words['fixed']} (ask sample_origin to read them)"
         return ("PROMPTS OF BOTH TAKES SAVED: VIDEO A'S GENERATED THE FLAWED VERSION, VIDEO B'S IS THE CORRECT TAKE (ask sample_origin to read them)")
     if kind == "wrong":
-        return ("PROMPT OF THE EXAMPLE TAKE OF VIDEO A SAVED (its frames are Examples: a suggestion, neither a bad generation nor a correct one; ask sample_origin to read it)" if "wrong" in ex
+        return ("PROMPT OF THE EXAMPLE TAKE OF VIDEO A SAVED (the one prompt box of this Examples sample, which takes all its frames from Video A: the prompt of every generation of it, each under the seconds it made; its frames are Examples: a suggestion, neither a bad generation nor a correct one; ask sample_origin to read it)" if "wrong" in ex
                 else "PROMPT OF THE FLAWED TAKE SAVED (Video A: it generated the flawed version), no correct prompt (ask sample_origin to read it)")
     if kind == "fixed":
-        return ("PROMPT OF THE EXAMPLE TAKE OF VIDEO B SAVED (its frames are Examples: a suggestion, neither a bad generation nor a correct one; ask sample_origin to read it)" if "fixed" in ex
+        return ("PROMPT OF THE EXAMPLE TAKE OF VIDEO B SAVED (the one prompt box of this Examples sample, which takes all its frames from Video B: the prompt of every generation of it, each under the seconds it made; its frames are Examples: a suggestion, neither a bad generation nor a correct one; ask sample_origin to read it)" if "fixed" in ex
                 else "PROMPT OF THE CORRECT TAKE SAVED (Video B), no flawed prompt (ask sample_origin to read it)")
     return ""
 # The prompts of a sample's two takes reach the judge whole, as the admin saved them, when it asks for sample_origin; no other session reads or judges them.
@@ -227,7 +227,7 @@ def frames_text(s: dict) -> str:
 LIB_HEADER = ("One line per sample: id | kinds | model | title (the admin's own words) | the admin's other notes when there are any | "
               "where it came from (run, video, time, mode, the product when the admin named it) | its frames (each WRONG, RIGHT or EXAMPLE, with its time) | "
               "its kind | whether the prompts of its two takes are saved (the prompt that generated the flawed version, Video A, and the prompt of the correct take, Video B; "
-              "a prompt named an example take is the prompt of an example, a suggestion of what could have changed or how it could have been done another way, neither a bad generation nor a correct one; they are NOT in this list: "
+              "a prompt named an example take is the prompt of an example, a suggestion of what could have changed or how it could have been done another way, neither a bad generation nor a correct one, and an Examples sample keeps one, its one video's; they are NOT in this list: "
               "ask for them with sample_origin: they come whole, and judging them is yours; the admin's one-line note on the prompt, when there is one, is in the notes) | "
               "READ: what a data collector saw in its picture (what the marks point at, the right frame, the product and scene), collected once by a session that opened "
               "the picture but never the prompts and gave no verdict, with the path of the full collection (what each frame shows, the admin's words, what was unclear), "
@@ -638,13 +638,14 @@ ROLE = ("You are the Loupe keeper of a video-generation pipeline. You hold a lib
         "READ; you never write, edit or create anything, and you never add to the library (only the admin does, in the web app). Cite only sample ids "
         "that exist in your library; never invent a sample or a rule; judge only from the samples and the admin's words, never from general knowledge "
         "of video models. Some samples are marked NO RIGHT VERSION: they are miss examples only (nothing was corrected); never invent what a right "
-        "version would look like. A frame tagged EXAMPLE (blue) is neither a bad generation nor a correct one: it is a suggestion, what could have changed or how one thing could have been done another way; read it together with the admin's words to see what it suggests, and never treat it as a defect or as a model of what is right. A sample with Example frames has only Examples, and a sample with WRONG or RIGHT frames has none. Some samples are SCENARIOS: no frame is called wrong (a text card, or frames the admin called Example or Right); they hold the admin's idea (what was "
+        "version would look like. A frame tagged EXAMPLE (blue) is neither a bad generation nor a correct one: it is a suggestion, what could have changed or how one thing could have been done another way; read it together with the admin's words to see what it suggests, and never treat it as a defect or as a model of what is right. A sample with Example frames has only Examples, all taken from one video, and a sample with WRONG or RIGHT frames has none. Some samples are SCENARIOS: no frame is called wrong (a text card, or frames the admin called Example or Right); they hold the admin's idea (what was "
         "meant to happen), what could have been better and what the AI agents missed or could not understand. They are insight into how the agents misread or under-delivered, not a "
         "visual pattern to match: for QC compare the video with the idea and with what was missed, and for planning let one justify a hint only when a beat of the plan matches the "
         "situation it describes, under the same rules as any hint. For QC a miss example still shows the wrong pattern to look for; for planning, give a hint from one only when the admin's words "
         "let you state the right outcome positively, or the lever is a plain restatement at the matching beat, and then at most medium confidence. "
         "Some samples say PROMPTS OF BOTH TAKES SAVED (or of one take): the admin kept the prompt that generated the flawed version (Video A) and the prompt of the correct take (Video B). "
-        "A sample whose frames are Examples says PROMPTS OF BOTH EXAMPLE TAKES SAVED, or names THE EXAMPLE TAKE OF VIDEO A or B: those prompts made frames the admin "
+        "An Examples sample takes all its frames from one video and keeps that one video's prompt, one box with the prompt of every generation of it under the seconds it made: "
+        "it says PROMPT OF THE EXAMPLE TAKE OF VIDEO A SAVED (or of Video B), and an older one that took its Examples from two videos says PROMPTS OF BOTH EXAMPLE TAKES SAVED: those prompts made frames the admin "
         "keeps as examples, suggestions of what could have changed or been done another way, neither a bad generation nor a correct one; read them as "
         "suggestions, never as the flawed or the correct prompt. "
         "They are not in your digest. In a TEMPLATE request you name the samples whose prompts you need and Loupe sends both whole; before a QC or planning answer "

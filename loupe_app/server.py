@@ -658,7 +658,7 @@ def moments_image(h, mid):
 # ======================================================================= QC (what the QC phase and the keeper use)
 def _qc_sample(s: dict) -> dict:
     return {k: s[k] for k in ("id", "title", "explanation", "details", "correct_note", "kinds", "model", "mode", "product", "run", "video",
-                              "t_wrong", "t_fixed", "frames", "n_frames", "idea", "better", "missed", "prompts", "prompt_note", "sample_kind", "has_right", "image_url", "zoom_url", "composite_path", "created") if k in s}
+                              "t_wrong", "t_fixed", "frames", "n_frames", "idea", "better", "missed", "prompts", "prompt_sides", "prompt_note", "sample_kind", "has_right", "image_url", "zoom_url", "composite_path", "created") if k in s}
 
 
 @route("GET", "/api/qc/samples", scope="qc:read")
@@ -677,7 +677,7 @@ def qc_sample(h, mid):
     out = _qc_sample(s)
     if h.q.get("prompts") in ("1", "true", "yes"):        # the prompts of the two takes, whole: one sample, on request only (never in a list, a brief or the keeper's digest)
         pp = misses.prompts_of(int(mid)) or {}
-        out.update({k: v for k, v in pp.items() if k in ("wrong_prompt", "fixed_prompt", "prompt_note", "wrong_segments", "fixed_segments", "prompt_roles", "examples_only")})
+        out.update({k: v for k, v in pp.items() if k in ("wrong_prompt", "fixed_prompt", "prompt_note", "wrong_segments", "fixed_segments", "prompt_roles", "examples_only", "prompt_sides")})
         out["prompts_text"] = pp.get("text", "")        # as the judge reads them: a take of several generations, each prompt with its seconds and this sample's frames
     h.send_json({"ok": True, "sample": out})
 

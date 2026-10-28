@@ -268,30 +268,54 @@ const ok = (name, cond, info = '') => { console.log((cond ? '  ok   ' : '  FAIL 
   ok('a saved field of a joined take is written again for the frames on screen, from its saved prompts', fA11.value.includes('SAVED-C1') && !fA11.value.includes('SAVED-C2')
     && fA11.value.includes('responsible for Frame 1 (WRONG, 0:00.00) of this sample') && !sent.some((x) => x.url.startsWith('/api/request-prompt') && x.url.includes('path=A.mp4')), fA11.value);
   withSavedSegs = false;
-  // Example frames only: each field's prompt is an Example prompt, its label says so, and its lines name the frames as EXAMPLE
+  // Example frames: an Examples sample takes all its frames from one video and has one prompt box, that video's, with the prompt of every generation of
+  // it under the seconds it made (the user, 2026-10-29); Example frames from two videos are warned about and never saved
   withSegs = true; sent.length = 0;
   const root12 = await work({ run: 'R', video: '03', miss: '1' });
   await new Promise((r) => setTimeout(r, 0));
   const fr12 = () => walk(root12, (e) => e.className === 'players')[0].children.filter((e) => e.className.split(/\s+/).includes('player') && walk(e, (x) => x.tag === 'canvas').length);
   const lab = (start) => walk(root12, (e) => e.tag === 'label' && (e.textContent || '').startsWith(start))[0];
   const f12 = (start) => walk(root12, (e) => e.tag === 'textarea' && (e.attrs.placeholder || '').startsWith(start))[0];
+  const shown12 = (start) => walk(root12, (e) => e.tag === 'div' && (e.text || '').startsWith(start)).some((e) => e.style.display !== 'none');
+  const mixShown = () => shown12('This sample mixes Example frames');
+  const twoShown = () => shown12('This sample takes its Example frames from Video A and Video B');
+  const markMoment = () => Promise.all(walk(root12, (e) => e.tag === 'button' && e.text === 'Mark this moment').flatMap((b) => (b.listeners.click || []).map((f) => f())));
   fr12().forEach((fe) => click(walk(fe, (e) => e.tag === 'button' && e.text === 'Example')[0]));
-  ok('with Example frames only, both prompts are labelled as example takes, neither wrong nor right',
-    !!lab('Prompt of Video A (an example: a suggestion') && !!lab('Prompt of Video B (an example: a suggestion') && !lab('Prompt of Video A (as generated: the prompt that generated the flawed version)'), walk(root12, (e) => e.tag === 'label').map((e) => e.textContent).join(' | '));
-  ok('each field holds the prompt behind its own video\'s Example frame, named EXAMPLE',
-    f12('The prompt that produced Video A').value.startsWith('This is the prompt responsible for Frame 1 (EXAMPLE, 0:00.00) of this sample: it generated second 0 to second 6.1 of Video A')
+  ok('Example frames from Video A and Video B: the form says an Examples sample takes one video, and does not call it a mix', twoShown() && !mixShown());
+  ok('while they stand, each box still names the Example frame of its own video (an older two-video sample reads the same way)',
+    !!lab('Prompt of Video A (an example: a suggestion') && !!lab('Prompt of Video B (an example: a suggestion')
+    && f12('The prompt that produced Video A').value.startsWith('This is the prompt responsible for Frame 1 (EXAMPLE, 0:00.00) of this sample: it generated second 0 to second 6.1 of Video A')
     && f12('The prompt of Video B').value.startsWith('This is the prompt responsible for Frame 2 (EXAMPLE, 0:00.00) of this sample: it generated second 0 to second 6.1 of Video B'),
     f12('The prompt that produced Video A').value.slice(0, 160) + ' / ' + f12('The prompt of Video B').value.slice(0, 160));
-  const mixShown = () => walk(root12, (e) => e.tag === 'div' && (e.text || '').startsWith('This sample mixes Example frames')).some((e) => e.style.display !== 'none');
-  ok('Examples only: no warning', !mixShown());
-  click(walk(fr12()[0], (e) => e.tag === 'button' && e.text === 'Wrong')[0]);
-  ok('a Wrong frame beside an Example: the form warns that a sample is a miss with its correct take, or Examples only', mixShown());
   sent.length = 0;
-  await Promise.all(walk(root12, (e) => e.tag === 'button' && e.text === 'Mark this moment').flatMap((b) => (b.listeners.click || []).map((f) => f())));
+  await markMoment();
+  ok('and an Examples sample from two videos is never saved', !sent.some((x) => x.method === 'POST' && x.url.endsWith('/moments')), JSON.stringify(sent.map((x) => x.method + ' ' + x.url)));
+  click(walk(fr12()[0], (e) => e.tag === 'button' && e.text === 'Wrong')[0]);
+  ok('a Wrong frame beside an Example: the form warns that a sample is a miss with its correct take, or Examples only', mixShown() && !twoShown());
+  sent.length = 0;
+  await markMoment();
   ok('and a mixed sample is never saved', !sent.some((x) => x.method === 'POST' && x.url.endsWith('/moments')), JSON.stringify(sent.map((x) => x.method + ' ' + x.url)));
-  ok('a frame called Wrong again gives Video A its own label back, while Video B, still behind an Example, stays an example take',
+  ok('a frame called Wrong gives Video A its own label back, while Video B, behind an Example of its own video, stays an example take',
     !!lab('Prompt of Video A (as generated: the prompt that generated the flawed version)') && !!lab('Prompt of Video B (an example: a suggestion') && f12('The prompt that produced Video A').value.includes('Frame 1 (WRONG, 0:00.00)'),
     walk(root12, (e) => e.tag === 'label').map((e) => e.textContent).join(' | '));
+  click(walk(fr12()[0], (e) => e.tag === 'button' && e.text === 'Example')[0]);
+  const src12 = walk(fr12()[1], (e) => e.tag === 'select')[0]; src12.value = 'wrong'; (src12.listeners.change || []).forEach((f) => f());
+  const cellB = () => { const ta = f12('The prompt of Video B'); return walk(root12, (e) => e.tag === 'div' && (e.children || []).includes(ta))[0]; };
+  const labA = () => (walk(root12, (e) => e.tag === 'label' && (e.textContent || '').startsWith('Prompt of Video A'))[0] || {}).textContent || '';
+  ok('every frame an Example from Video A: no warning, and one prompt box, Video A’s, named so; Video B’s is neither filled nor shown',
+    !twoShown() && !mixShown() && !!cellB() && cellB().style.display === 'none' && f12('The prompt of Video B').value === ''
+    && labA().startsWith('Prompt of Video A (an example: a suggestion') && labA().includes('the one prompt box of an Examples sample'), labA() + ' / ' + (cellB() ? cellB().style.display : 'no cell'));
+  const a12 = f12('The prompt that produced Video A').value;
+  ok('the one box holds the prompt of every generation of Video A, each under the seconds it made, the one no frame comes from too',
+    a12.startsWith('This is the prompt responsible for Frame 1 (EXAMPLE, 0:00.00) and Frame 2 (EXAMPLE, 0:00.00) of this sample: it generated second 0 to second 6.1 of Video A (generation 1 of 2 · clip c1 · video-03-c1-request.json).\nP-C1')
+    && a12.includes('This is the prompt that generated second 6.1 to second 12.433 of Video A (generation 2 of 2 · clip c2 · video-03-c2-request.json); no frame of this sample comes from it.\nP-C2'), a12);
+  sent.length = 0;
+  await markMoment();
+  const rep12 = sent.find((x) => x.method === 'PATCH' && x.url === '/api/misses/1');
+  const mo12 = sent.find((x) => x.method === 'POST' && x.url.endsWith('/moments'));
+  ok('the Examples sample is saved with Video A’s box and both its generations, and nothing in Video B’s',
+    !!rep12 && !!mo12 && rep12.body.fixed_prompt === '' && rep12.body.fixed_segments.length === 0 && rep12.body.wrong_segments.length === 2 && rep12.body.wrong_prompt.includes('P-C2')
+    && mo12.body.frames.every((f) => f.src === 'wrong' && f.role === 'example'), JSON.stringify(rep12 && rep12.body).slice(0, 300));
   withSegs = false;
   console.log(fails ? `${fails} failed` : 'all passed');
   process.exit(fails ? 1 : 0);
