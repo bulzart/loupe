@@ -1,0 +1,50 @@
+{
+ "moment": 30,
+ "miss": 21,
+ "title": "Wrong sample looks bad graphics and not rendered properly and blended with the environment specs, right/correct sample is perfect",
+ "model": "wan3_0_prime",
+ "run": "20261026-222352-celsius-recreate",
+ "video": "08",
+ "t_wrong": 0.0,
+ "t_fixed": 0.0,
+ "sample": "S30",
+ "frames": [
+  {
+   "n": 1,
+   "role": "wrong",
+   "from": "as generated",
+   "t": 0.0
+  },
+  {
+   "n": 2,
+   "role": "right",
+   "from": "correct version",
+   "t": 0.0
+  }
+ ],
+ "product_samples": [
+  {
+   "asset": "A14",
+   "label": "the sealed CELSIUS Cherry Cola can",
+   "file": "cherry cola front - cans usa.png"
+  }
+ ],
+ "shapes": [
+  {
+   "type": "rect",
+   "frame": 0,
+   "x1": 0.0,
+   "y1": 0.5584070999010474,
+   "x2": 0.4366764755023967,
+   "y2": 1.0
+  },
+  {
+   "type": "rect",
+   "frame": 1,
+   "x1": 0.0,
+   "y1": 0.6026548875116668,
+   "x2": 0.561750053773353,
+   "y2": 1.0
+  }
+ ]
+}

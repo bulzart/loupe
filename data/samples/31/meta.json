@@ -1,0 +1,57 @@
+{
+ "moment": 31,
+ "miss": 22,
+ "title": "Generation is correct but too far, could've placed it where the right example arrow points too, but if the space wasnt enough we wouldn't force it and place it behind the laptop",
+ "model": "seedance_2_5",
+ "run": "20261026-222435-26",
+ "video": "01",
+ "t_wrong": 4.633,
+ "t_fixed": 4.833,
+ "sample": "S31",
+ "frames": [
+  {
+   "n": 1,
+   "role": "example",
+   "from": "as generated",
+   "t": 4.633
+  },
+  {
+   "n": 2,
+   "role": "right",
+   "from": "as generated",
+   "t": 4.833
+  }
+ ],
+ "product_samples": [
+  {
+   "asset": "A135",
+   "label": "P3 Extra Strength Peppermint 90-piece pouch",
+   "file": "NG_XE_MTB90 front ver2.png"
+  }
+ ],
+ "shapes": [
+  {
+   "type": "arrow",
+   "frame": 0,
+   "x1": 0.2069813176007866,
+   "y1": 0.46637172192598864,
+   "x2": 0.2541789577187807,
+   "y2": 0.5088495575221239
+  },
+  {
+   "type": "arrow",
+   "frame": 1,
+   "x1": 0.42015713341937067,
+   "y1": 0.7690265452967281,
+   "x2": 0.8166175024582103,
+   "y2": 0.9548672532613298
+  },
+  {
+   "type": "text",
+   "frame": 1,
+   "x": 0.0866274313237463,
+   "y": 0.9017699081285865,
+   "text": "here"
+  }
+ ]
+}

@@ -1,0 +1,43 @@
+{
+ "moment": 32,
+ "miss": 23,
+ "title": "On the left frame package size and thickness is correct, on the right frame size is correct and graphics too but the thickness not, all the neurogum packages are the same size and thickness like the left frame except the pouch version",
+ "model": "wan3_0",
+ "run": "20261013-230824-13",
+ "video": "02",
+ "t_wrong": 0.0,
+ "t_fixed": 0.0,
+ "sample": "S32",
+ "frames": [
+  {
+   "n": 1,
+   "role": "example",
+   "from": "as generated",
+   "t": 0.0
+  },
+  {
+   "n": 2,
+   "role": "example",
+   "from": "correct version",
+   "t": 0.0
+  }
+ ],
+ "shapes": [
+  {
+   "type": "arrow",
+   "frame": 0,
+   "x1": 0.855162313905789,
+   "y1": 0.75840715391446,
+   "x2": 0.6065880279390977,
+   "y2": 0.8522123826288543
+  },
+  {
+   "type": "arrow",
+   "frame": 1,
+   "x1": 0.675024582104228,
+   "y1": 0.9584070728943411,
+   "x2": 0.4988198669493608,
+   "y2": 0.8628318246486968
+  }
+ ]
+}
