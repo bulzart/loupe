@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 from pathlib import Path
@@ -52,6 +53,31 @@ TITLE_MAX = 2000       # the title is often a whole paragraph and is burned into
 # `prompts` (pair | wrong | fixed | empty) and the note; the pair itself is served by prompts_of() to the single-sample route and the keeper's sample_origin fetch.
 PROMPT_COLS = ("wrong_prompt", "fixed_prompt", "prompt_note")
 PROMPT_MAX = 12000     # per prompt: a storage bound, far above any video model's prompt length
+SAMPLE_FILES_MAX = 4   # images the admin may tick for the product sample (the bottom band splits its half between them)
+
+
+def _sample_files(raw) -> list[dict]:
+    try:
+        v = json.loads(raw or "[]")
+    except (TypeError, ValueError):
+        return []
+    return [x for x in v if isinstance(x, dict) and x.get("path")] if isinstance(v, list) else []
+
+
+def _chosen_files(v, run: str, video: str, wrong_hint: str, wrong_path: str) -> str:
+    """The product sample's files the admin ticked (the user, 2026-10-28), held to the images that take's generation used (runs.generation_assets): JSON
+    [{path, label, asset_id}], or '' for the automatic pick.  A file that is not one of them is refused."""
+    items = [str(x.get("path") if isinstance(x, dict) else x) for x in (v if isinstance(v, list) else []) if x]
+    if not items:
+        return ""
+    allowed = {runs._file_key(a["path"]): a for a in runs.generation_assets(run, video, wrong_hint, path=wrong_path)}
+    out = []
+    for p in items[:SAMPLE_FILES_MAX]:
+        a = allowed.get(runs._file_key(p))
+        if not a:
+            raise ValueError(f"{Path(p).name} is not one of the images this generation used")
+        out.append({"path": str(a["path"]), "label": a["label"], "asset_id": a.get("asset_id", "")})
+    return json.dumps(out, ensure_ascii=False)
 
 
 def _prompt_text(v) -> str:
@@ -148,15 +174,17 @@ def create(data: dict, actor: str) -> dict:
         media.resolve_media(fixed)      # neither video is required: a report can be a scenario in words only (the idea, what could be better, what the agents missed)
     if not str(data.get("title") or "").strip():
         raise ValueError("a title is needed (one line: what went wrong)")
+    chosen = _chosen_files(data.get("sample_files"), str(data.get("run") or ""), core.nn(data.get("video")) if data.get("video") else "",
+                           str(data.get("wrong_label") or wrong), wrong)
     con = core.db()
     try:
         cur = con.execute("""INSERT INTO misses(created,updated,run,video,title,explanation,kinds,model,mode,product,status,wrong_path,wrong_label,
-                             fixed_path,fixed_label,sample_on,wrong_prompt,fixed_prompt,prompt_note) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                             fixed_path,fixed_label,sample_on,wrong_prompt,fixed_prompt,prompt_note,sample_files) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                           (core.now(), core.now(), str(data.get("run") or ""), core.nn(data.get("video")), str(data["title"]).strip()[:TITLE_MAX],
                            str(data.get("explanation") or "").strip(), _kinds(data.get("kinds")), str(data.get("model") or ""),
                            str(data.get("mode") or ""), str(data.get("product") or ""), "active", wrong, str(data.get("wrong_label") or ""),
                            fixed, str(data.get("fixed_label") or ""), 0 if data.get("product_sample") is False else 1,
-                           _prompt_text(data.get("wrong_prompt")), _prompt_text(data.get("fixed_prompt")), _prompt_text(data.get("prompt_note"))[:1000]))
+                           _prompt_text(data.get("wrong_prompt")), _prompt_text(data.get("fixed_prompt")), _prompt_text(data.get("prompt_note"))[:1000], chosen))
         con.commit()
         mid = cur.lastrowid
     finally:
@@ -170,6 +198,7 @@ def _miss_row(r) -> dict:
     d["kinds"] = [k for k in (d.get("kinds") or "").split(",") if k]
     d["product_sample"] = d.get("sample_on") != 0       # the product sample is shown in the saved image unless the admin turned it off
     d["prompts"] = prompts_kind(d)
+    d["sample_files"] = _sample_files(d.get("sample_files"))      # the product sample's files the admin ticked; [] = the automatic pick
     return d
 
 
@@ -225,6 +254,12 @@ def update(mid: int, patch: dict, actor: str) -> dict | None:
     for k in PROMPT_COLS:       # the prompts of the two takes: stored, never burned in (no image is rebuilt for them)
         if k in patch:
             cols[k] = _prompt_text(patch[k])[:1000] if k == "prompt_note" else _prompt_text(patch[k])
+    if "sample_files" in patch:
+        eff = {k: (patch[k] if k in patch else cur.get(k)) for k in ("run", "video", "wrong_label", "wrong_path")}
+        new = _chosen_files(patch["sample_files"], str(eff["run"] or ""), core.nn(eff["video"]) if eff["video"] else "",
+                            str(eff["wrong_label"] or eff["wrong_path"] or ""), str(eff["wrong_path"] or ""))
+        if _sample_files(new) != cur["sample_files"]:
+            cols["sample_files"] = new
     for k in ("wrong_path", "fixed_path"):
         if k in patch and (patch[k] or "") != cur[k]:
             v = str(patch[k] or "")
@@ -251,7 +286,7 @@ def update(mid: int, patch: dict, actor: str) -> dict | None:
                 elif "fixed" in changed and not cur["fixed_path"] and len(fr) == 1 and fr[0]["role"] == "wrong" and fr[0]["src"] == "wrong":
                     fr.append({"src": "fixed", "role": "right", "t": fr[0]["t"]})
                 _write_frames(mo["moment_id"], fr, sh)
-        if any(k in cols for k in ("title", "explanation", "wrong_path", "fixed_path", "model", "run", "video", "sample_on", "wrong_label")):
+        if any(k in cols for k in ("title", "explanation", "wrong_path", "fixed_path", "model", "run", "video", "sample_on", "wrong_label", "sample_files")):
             for m in cur["moments"]:       # the sample image carries the title, the caption and the source of both frames
                 regenerate(m["moment_id"])
     return get(mid)
@@ -360,7 +395,10 @@ def side_desc(miss: dict, src: str) -> str:
     a file of another video of the run, or of another run, adds where it was taken from ('correct version · video 04', 'as generated · run R video 03').
     Read from the run's records and from where the file sits (runs.origin), never judged."""
     path = miss.get("fixed_path" if src == "fixed" else "wrong_path") or ""
-    o = runs.origin(miss.get("run") or "", miss.get("video") or "", path) if path else {}
+    try:
+        o = runs.origin(miss.get("run") or "", miss.get("video") or "", path) if path else {}
+    except Exception:  # noqa: BLE001  (a take whose run cannot be read is still a frame: its tag says only its side)
+        o = {}
     base = ORIGINAL_DESC if o.get("original") else FRAME_DESC[src]
     where = (f"run {o['run']} video {o['video']}" if o.get("video") else f"run {o['run']}") if o.get("run") else (f"video {o['video']}" if o.get("video") else "")
     return f"{base} · {where}" if where else base
@@ -390,8 +428,12 @@ def regenerate(mid: int):
             "frames": [{"n": k + 1, "role": it["role"], "from": it["desc"], "t": it["t"]} for k, it in enumerate(items)]}
     samples = []
     if miss["sample_on"] != 0:
-        try:       # the product image(s) the video used, straight from the client's reference folder; never a reason to fail the save
-            for ps in runs.product_samples(miss["run"], miss["video"], miss["wrong_label"] or miss["wrong_path"], path=miss["wrong_path"] or ""):
+        try:       # the files the admin ticked, else the product image(s) the video used, straight from the client's reference folder; never a reason to fail the save
+            chosen = [x for x in _sample_files(miss["sample_files"] if "sample_files" in miss.keys() else "") if Path(x["path"]).is_file()]
+            picks = ([{"path": Path(x["path"]), "label": x.get("label") or Path(x["path"]).name, "asset_id": x.get("asset_id") or "", "name": Path(x["path"]).name} for x in chosen]
+                     or runs.product_samples(miss["run"], miss["video"], miss["wrong_label"] or miss["wrong_path"], path=miss["wrong_path"] or ""))
+            meta["product_sample_chosen"] = bool(chosen)
+            for ps in picks:
                 samples.append((compose.load_product(ps["path"]), ps["label"]))
                 meta.setdefault("product_samples", []).append({"asset": ps["asset_id"], "label": ps["label"], "file": ps["name"]})
         except Exception as e:  # noqa: BLE001

@@ -273,7 +273,7 @@ def get_settings(h):
 @route("POST", "/api/settings", scope="admin")
 def set_settings(h):
     b = h.body_json()
-    if "keeper_effort" in b and str(b["keeper_effort"]).strip().lower() not in qc.EFFORTS:      # the keeper's and the reader's effort: never below high
+    if "keeper_effort" in b and str(b["keeper_effort"]).strip().lower() not in qc.EFFORTS:      # the judge's and the collector's effort: never below high
         raise ValueError(f"keeper_effort must be one of {', '.join(qc.EFFORTS)}")
     if "allowed_roots" in b:
         roots = []
@@ -424,6 +424,26 @@ def product_sample_image(h):
     if not 0 <= i < len(ps):
         raise LookupError("no such product sample")
     h.serve_file(_product_thumb(ps[i]["path"]), "image/png", cache="private, max-age=300")
+
+
+@route("GET", "/api/generation-assets", scope="runs:read")
+def generation_assets(h):
+    """Every image a take's generation used (the client's original, the file sent, the uploads record's file), the automatic pick marked: the admin ticks
+    the product sample from them (the user, 2026-10-28)."""
+    run, video, wrong = h.q.get("run", ""), h.q.get("video", ""), h.q.get("wrong", "")
+    qs = "run=%s&video=%s&wrong=%s" % (quote(run), quote(video), quote(wrong))
+    h.send_json({"ok": True, "assets": [{"path": str(a["path"]), "name": a["name"], "label": a["label"], "source": a["source"], "asset_id": a["asset_id"],
+                                          "request": a["request"], "suggested": a["suggested"], "image_url": f"/api/generation-assets/image?{qs}&i={i}"}
+                                         for i, a in enumerate(runs.generation_assets(run, video, wrong, path=wrong))]})
+
+
+@route("GET", "/api/generation-assets/image", scope="runs:read")
+def generation_asset_image(h):
+    ga = runs.generation_assets(h.q.get("run", ""), h.q.get("video", ""), h.q.get("wrong", ""), path=h.q.get("wrong", ""))
+    i = int(h.q.get("i") or 0)
+    if not 0 <= i < len(ga):
+        raise LookupError("no such image")
+    h.serve_file(_product_thumb(ga[i]["path"]), "image/png", cache="private, max-age=300")
 
 
 @route("GET", "/api/flags", scope="flags:read")
@@ -670,7 +690,7 @@ def qc_consult(h):
     q = str(b.get("question") or "").strip()
     if not q:
         raise ValueError("a question is needed")
-    h.send_json({"ok": True, **qc.consult(h.pr.name, b, q, "plan" if b.get("purpose") == "plan" else "qc")})
+    h.send_json({"ok": True, **qc.consult(h.pr.name, b, q, b["purpose"] if b.get("purpose") in ("plan", "template") else "qc")})
 
 
 @route("GET", "/api/qc/keeper", scope="admin")
@@ -782,14 +802,25 @@ def _warm():
         time.sleep(300)
 
 
+class OnePortServer(ThreadingHTTPServer):
+    """On Windows SO_REUSEADDR lets a second server bind a port another one already listens on, and the two then split the requests between them
+    (2026-10-28: a test's server for its temp data took 8787 beside the real one for 35 minutes, and the runs' keys were refused on every other
+    call).  There the port is bound plainly, so a second server fails to start instead; elsewhere SO_REUSEADDR only lets a restart reuse the port."""
+    daemon_threads = True
+    allow_reuse_address = __import__("os").name != "nt"
+
+
 def serve(port: int | None = None):
     core.ensure_dirs()
     core.db().close()
     threading.Thread(target=_background, daemon=True).start()
     threading.Thread(target=_warm, daemon=True).start()
     threading.Thread(target=_keeper_watch, daemon=True).start()
-    httpd = ThreadingHTTPServer((core.HOST, port or core.PORT), Handler)
-    httpd.daemon_threads = True
+    try:
+        httpd = OnePortServer((core.HOST, port or core.PORT), Handler)
+    except OSError as e:          # another server already listens there: this one does not start (its data folder's server.json is left alone)
+        print(f"Loupe could not listen on {core.HOST}:{port or core.PORT}: {e}. Another server is running on that port; this one stops.", flush=True)
+        raise SystemExit(2)
     (core.DATA / "server.json").write_text(json.dumps({"port": httpd.server_port, "pid": __import__("os").getpid(), "started": core.now()}), encoding="utf-8")
     print(f"Loupe {VERSION} on http://{core.HOST}:{httpd.server_port}  (data: {core.DATA})", flush=True)
     try:

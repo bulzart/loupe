@@ -123,6 +123,11 @@ def frame_file(p: Path, t: float) -> Path:
             t = max(0.0, dur - 0.04)
         cp = run([find_tool("ffmpeg"), "-hide_banner", "-loglevel", "error", "-nostdin", "-y", "-ss", f"{t:.3f}", "-i", str(p),
                   "-an", "-frames:v", "1", str(tmp)], 90)
+        for back in (0.1, 0.5, 1.0, 2.0):      # a seek near the end can find no picture (a file whose audio runs longer than its video): the nearest earlier one
+            if (cp.returncode == 0 and tmp.exists()) or t <= 0:
+                break
+            cp = run([find_tool("ffmpeg"), "-hide_banner", "-loglevel", "error", "-nostdin", "-y", "-ss", f"{max(0.0, t - back):.3f}", "-i", str(p),
+                      "-an", "-frames:v", "1", str(tmp)], 90)
         if cp.returncode != 0 or not tmp.exists():
             raise RuntimeError("ffmpeg could not extract a frame: " + cp.stderr.decode("utf-8", "replace")[-300:])
     os.replace(tmp, out)

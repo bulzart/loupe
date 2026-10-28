@@ -1,5 +1,5 @@
 import { h, toast, fmtDate, chips, status, fmtT, chipPicker, confirmBox } from './ui.js';
-import { api, upload, videoUrl } from './api.js';
+import { api, upload, videoUrl, frameUrl } from './api.js';
 
 const head = (title, sub, ...actions) => h('div', { class: 'head' }, h('div', {}, h('h1', {}, title), sub ? h('div', { class: 'muted' }, sub) : null), h('div', { class: 'row' }, actions));
 const FPS = 30;
@@ -18,7 +18,7 @@ export async function reports() {
           h('button', { class: 'btn sm', onclick: async () => { await api('PATCH', '/api/misses/' + m.id, { status: m.status === 'active' ? 'archived' : 'active' }); reload(); } }, m.status === 'active' ? 'Archive' : 'Restore'),
           h('button', { class: 'btn sm danger', onclick: async () => { if (confirmBox(`Delete the report “${m.title}” and its ${m.moments.length} sample(s)?`)) { await api('DELETE', '/api/misses/' + m.id); reload(); } } }, 'Delete'))),
       m.explanation ? h('p', {}, m.explanation) : null, h('div', {}, chips(m.kinds)),
-      m.moments.length ? h('div', { class: 'grid g4', style: 'margin-top:8px' }, m.moments.map((s) => h('a', { href: '#/samples', title: s.details }, h('img', { src: s.image_url, style: 'width:100%;height:170px;object-fit:cover;object-position:top;border-radius:8px' })))) : h('div', { class: 'muted small' }, 'No moment marked yet.')))
+      m.moments.length ? h('div', { class: 'grid g4', style: 'margin-top:8px' }, m.moments.map((s) => h('a', { href: `#/misses/work?run=${encodeURIComponent(m.run)}&video=${m.video}&miss=${m.id}&moment=${s.moment_id}`, title: 'Edit this sample where it stands' + (s.details ? ': ' + s.details : '') }, h('img', { src: s.image_url, style: 'width:100%;height:170px;object-fit:cover;object-position:top;border-radius:8px' })))) : h('div', { class: 'muted small' }, 'No moment marked yet.')))
       : h('div', { class: 'card empty' }, 'No report yet. Start one with “New report”.'));
 }
 
@@ -219,26 +219,50 @@ export async function work(qs) {
 
   const useSample = h('input', { type: 'checkbox', checked: miss ? miss.product_sample !== false : true });
   const sampleBox = h('div', { class: 'small', style: 'margin-top:12px' });
-  const loadSample = async () => {      // the product image(s) this video's request used, straight from the reference folder
+  // the product sample: every image the generation of Video A's take used (the client's original, the file sent to the model, the file the uploads record
+  // names), the automatic pick ticked; what the admin ticks is kept with the report (sample_files) and goes into its images
+  let assetsTouched = false;
+  let assetBoxes = [];      // {cb, path} of every image offered
+  const pickedAssets = () => assetBoxes.filter((x) => x.cb.checked).map((x) => x.path);
+  const loadSample = async () => {
     if (!qs.run || !qs.video) { sampleBox.replaceChildren(); return; }
     const wl = state.wrong || '';      // the path: the server reads the attempt from it
     try {
-      const d = await api('GET', `/api/product-sample?run=${encodeURIComponent(qs.run)}&video=${encodeURIComponent(qs.video)}&wrong=${encodeURIComponent(wl)}`, undefined, true);
-      if (!miss && !productTyped && d.samples.length) product.value = d.samples.map((x) => x.label).join(' + ');
-      sampleBox.replaceChildren(...(d.samples.length ? [h('div', { class: 'row', style: 'gap:12px;align-items:center' },
-        ...d.samples.map((x) => h('img', { src: x.image_url, alt: x.label, style: 'height:92px;border-radius:6px;border:1px solid var(--line);background:#cdd0d6' })),
-        h('div', {}, h('label', { class: 'small' }, useSample, ' Show the product sample in the saved image (right half of the bottom band)'),
-          h('div', { class: 'muted small' }, 'Used in this video, taken from the reference folder: ' + d.samples.map((x) => `${x.label} (${x.asset_id}, ${x.name})`).join(' · '))))]
-        : [h('span', { class: 'muted' }, 'No product sample was found for this video in its run, so the description takes the full width of the bottom band.')]));
+      const d = await api('GET', `/api/generation-assets?run=${encodeURIComponent(qs.run)}&video=${encodeURIComponent(qs.video)}&wrong=${encodeURIComponent(wl)}`, undefined, true);
+      const chosen = new Set(((miss && miss.sample_files) || []).map((x) => x.path));
+      const anyChosen = d.assets.some((a) => chosen.has(a.path));
+      if (chosen.size && !anyChosen) assetsTouched = true;      // ticked for another take: this take's automatic pick stands until you tick
+      const ticked = (a) => (anyChosen ? chosen.has(a.path) : a.suggested);
+      if (!miss && !productTyped) { const s = d.assets.filter((a) => a.suggested); if (s.length) product.value = [...new Set(s.map((x) => x.label.replace(/^Image \d+ · /, '')))].join(' + '); }
+      assetBoxes = [];
+      if (!d.assets.length) { sampleBox.replaceChildren(h('span', { class: 'muted' }, 'No image input of this generation was found in its run, so the description takes the full width of the bottom band.')); return; }
+      const cells = d.assets.map((a) => {
+        const cb = h('input', { type: 'checkbox', checked: ticked(a), 'data-asset': a.path });
+        assetBoxes.push({ cb, path: a.path });
+        cb.addEventListener('change', () => {
+          assetsTouched = true;
+          if (pickedAssets().length > 4) { cb.checked = false; toast('At most four images in the product sample', true); }
+          useSample.checked = pickedAssets().length > 0;
+        });
+        return h('label', { class: 'card', style: 'padding:6px;width:150px;margin:0;cursor:pointer', title: `${a.source} · ${a.name}${a.request ? ' · ' + a.request : ''}` },
+          h('img', { src: a.image_url, alt: a.label, style: 'width:100%;height:110px;object-fit:contain;border-radius:6px;background:#cdd0d6' }),
+          h('div', { class: 'row', style: 'gap:4px;margin-top:4px;align-items:flex-start;flex-wrap:nowrap' }, cb, h('span', { class: 'small' }, a.label)),
+          h('div', { class: 'muted small' }, a.source + (a.suggested ? ' · picked automatically' : '')));
+      });
+      sampleBox.replaceChildren(h('div', {},
+        h('label', { class: 'small' }, useSample, ' Show the product sample in the saved image (right half of the bottom band)'),
+        h('div', { class: 'muted small', style: 'margin:4px 0 6px' }, 'Every image this generation used: the client’s original, the file sent to the model and the file the uploads record names. Tick the right one(s), up to four: they go into the saved image. Untouched, the automatic pick is used.'),
+        h('div', { class: 'row', style: 'gap:10px;flex-wrap:wrap;align-items:stretch' }, cells)));
     } catch (_) { sampleBox.replaceChildren(); }
   };
 
   async function saveReport() {
     const body = { run: qs.run || '', video: qs.video || '', title: title.value, explanation: miss ? miss.explanation : details.value, kinds: kinds.get(), model: model.value, mode: mode.value, product: product.value, product_sample: useSample.checked,
       wrong_path: state.wrong, fixed_path: state.fixed, wrong_label: (versions.find((v) => v.path === state.wrong) || {}).label || '', fixed_label: (versions.find((v) => v.path === state.fixed) || {}).label || '',
-      wrong_prompt: wrongPrompt.value, fixed_prompt: fixedPrompt.value, prompt_note: promptNote.value };
+      wrong_prompt: wrongPrompt.value, fixed_prompt: fixedPrompt.value, prompt_note: promptNote.value, ...(assetsTouched ? { sample_files: pickedAssets() } : {}) };
     const wasNoRight = !!miss && !miss.fixed_path, nSaved = miss ? miss.moments.length : 0;
     miss = miss ? (await api('PATCH', '/api/misses/' + miss.id, body)).miss : (await api('POST', '/api/misses', body)).miss;
+    assetsTouched = false;
     if (wasNoRight && miss.fixed_path && nSaved) toast(`The right version was attached to ${nSaved} saved moment(s) at the same seconds: open Edit on each to line it up and mark the right side.`);
     history.replaceState(null, '', `#/misses/work?run=${encodeURIComponent(qs.run || '')}&video=${qs.video || ''}&miss=${miss.id}`);
     return miss;
@@ -258,8 +282,8 @@ export async function work(qs) {
   let fseq = 0;
   const playersBox = h('div', { class: 'players' });
   const marksOf = (f) => ws.shapes.filter((x) => x.fid === f.id);
-  const pic = (f) => {                       // where the picture really is inside the (letterboxed) video element
-    const cw = f.cv.clientWidth, ch = f.cv.clientHeight, vw = f.video.videoWidth, vh = f.video.videoHeight;
+  const pic = (f) => {                       // where the picture really is inside the (letterboxed) video element, or the still that stands in for it
+    const cw = f.cv.clientWidth, ch = f.cv.clientHeight, vw = f.failed ? f.still.naturalWidth : f.video.videoWidth, vh = f.failed ? f.still.naturalHeight : f.video.videoHeight;
     if (!vw || !vh) return { x: 0, y: 0, w: cw, h: ch };
     const k = Math.min(cw / vw, ch / vh), w = vw * k, hh = vh * k;
     return { x: (cw - w) / 2, y: (ch - hh) / 2, w, h: hh };
@@ -280,10 +304,14 @@ export async function work(qs) {
   // the slider, the 1-frame buttons and the time box of a frame move only that frame, so each frame has its own timestamp
   const range = h('input', { type: 'range', min: 0, max: 10, step: 1 / FPS, value: 0, title: 'moves all the frames together, keeping the gaps between them; arrow keys step one frame' });
   const parseT = (v) => { v = String(v).trim(); const m = v.match(/^(\d+):(\d+(?:\.\d+)?)$/); return m ? (+m[1]) * 60 + (+m[2]) : parseFloat(v); };
-  const clampT = (f, t) => Math.min(Math.max(0, +t || 0), f.video.duration || 1e9);
+  const clampT = (f, t) => Math.min(Math.max(0, +t || 0), (f.failed ? f.dur : f.video.duration) || 1e9);
+  const showStill = (f) => {       // a frame whose video cannot play: the still at its time, cut by Loupe (a short wait while a slider moves)
+    clearTimeout(f.stillTimer);
+    f.stillTimer = setTimeout(() => { if (f.failed && state[f.src]) f.still.src = frameUrl(state[f.src], f.t); }, 120);
+  };
   const refresh = () => {
     if (frames[0]) range.value = frames[0].t;
-    for (const f of frames) { f.slider.value = f.t; if (document.activeElement !== f.stamp) f.stamp.value = fmtT(f.t); }
+    for (const f of frames) { f.slider.value = f.t; if (document.activeElement !== f.stamp) f.stamp.value = fmtT(f.t); if (f.failed) showStill(f); }
   };
   const pauseAll = () => { frames.forEach((f) => f.video.pause()); playAll.textContent = 'Play all'; };
   const seekAll = (t) => {                 // every frame, keeping its gap to the first one
@@ -302,15 +330,31 @@ export async function work(qs) {
   const step = (d) => { pauseAll(); if (frames.length) seekAll(frames[0].t + d); };
   const playAll = h('button', { class: 'btn sm', onclick: () => {
     if (!frames.length) return;
-    if (frames[0].video.paused) { frames.forEach((f) => { f.video.currentTime = clampT(f, frames[0].t + f.gap); }); frames.forEach((f) => f.video.play()); playAll.textContent = 'Pause all'; } else pauseAll();
+    if (frames[0].video.paused) { frames.forEach((f) => { f.video.currentTime = clampT(f, frames[0].t + f.gap); }); frames.forEach((f) => { if (!f.failed) f.video.play().catch(() => {}); }); playAll.textContent = 'Pause all'; } else pauseAll();
   } }, 'Play all');
   const tick = () => { if (frames.some((f) => !f.video.paused)) { frames.forEach((f) => { f.t = f.video.currentTime; }); refresh(); } };
   range.addEventListener('input', () => { pauseAll(); seekAll(range.value); });
   // ---- end of the transport
 
+  const failFrame = (f) => {       // the browser cannot play this file (a codec, a damaged file): Loupe cuts its frames as stills, so it can still be moved, marked and saved
+    if (f.failed || !state[f.src]) return;
+    f.failed = true; f.video.style.display = 'none'; f.still.style.display = 'block';
+    api('GET', '/api/probe?path=' + encodeURIComponent(state[f.src]), undefined, true)
+      .then((p) => { f.dur = +p.duration || 0; f.slider.max = f.dur || 10; if (f === frames[0]) range.max = f.dur || 10; f.t = clampT(f, f.t); refresh(); })
+      .catch(() => showStill(f));
+    showStill(f);
+    toast('This video does not play in the browser: its frames are shown as stills cut by Loupe; you can still move, mark and save them', true);
+  };
   const wireDraw = (f) => {
     f.ro = new ResizeObserver(() => redraw(f)); f.ro.observe(f.wrap);
-    f.video.addEventListener('loadedmetadata', () => { redraw(f); f.slider.max = f.video.duration || 10; if (f === frames[0]) range.max = f.video.duration || 10; });
+    f.video.addEventListener('loadedmetadata', () => {
+      if (!f.video.videoWidth) { failFrame(f); return; }       // sound only: the picture cannot be decoded here
+      redraw(f); f.slider.max = f.video.duration || 10; if (f === frames[0]) range.max = f.video.duration || 10;
+      const t = clampT(f, f.t);      // a time past the end of a shorter video (a take of another video or run) is brought back to its last frame
+      if (t !== f.t) { f.t = t; f.video.currentTime = t; refresh(); }
+    });
+    f.video.addEventListener('error', () => failFrame(f));
+    f.still.addEventListener('load', () => redraw(f));
     f.video.addEventListener('timeupdate', tick);
     const norm = (ev) => { const b = f.cv.getBoundingClientRect(), r = pic(f); return [Math.min(1, Math.max(0, (ev.clientX - b.left - r.x) / r.w)), Math.min(1, Math.max(0, (ev.clientY - b.top - r.y) / r.h))]; };
     let start = null;
@@ -351,12 +395,16 @@ export async function work(qs) {
     f.srcSel.value = f.src; f.srcSel.options[0].disabled = !state.wrong; f.srcSel.options[1].disabled = !state.fixed;
     f.srcSel.options[0].textContent = srcName('wrong'); f.srcSel.options[1].textContent = srcName('fixed');
   };
-  const loadFrame = (f) => { const path = state[f.src]; if (path) { f.video.src = videoUrl(path); f.video.currentTime = f.t; } else f.video.removeAttribute('src'); };
+  const loadFrame = (f) => {
+    f.failed = false; f.video.style.display = ''; f.still.style.display = 'none'; f.still.removeAttribute('src'); clearTimeout(f.stillTimer);
+    const path = state[f.src]; if (path) { f.video.src = videoUrl(path); f.video.currentTime = f.t; } else f.video.removeAttribute('src');
+  };
   const mkFrame = (src, role, t) => {
     const f = { id: ++fseq, src, role, t, gap: 0 };
     f.video = h('video', { preload: 'auto', playsinline: true }); f.video.muted = true;
     f.cv = h('canvas', { class: 'pc', title: 'Draw here: red marks on a frame called Wrong, green on Right, blue on Example' });
-    f.wrap = h('div', { class: 'vwrap' }, f.video, f.cv);
+    f.still = h('img', { alt: '', style: 'display:none;width:100%;max-height:62vh;object-fit:contain;background:#000' });
+    f.wrap = h('div', { class: 'vwrap' }, f.video, f.still, f.cv);
     f.num = h('b', { class: 'fnum' });
     f.btnWrong = h('button', { class: 'btn sm rolebtn wrong', title: 'This frame shows the miss', onclick: () => setRole(f, 'wrong') }, 'Wrong');
     f.btnRight = h('button', { class: 'btn sm rolebtn right', title: 'This frame shows how it should be', onclick: () => setRole(f, 'right') }, 'Right');
@@ -396,7 +444,7 @@ export async function work(qs) {
     loadFrame(f); drawPlayers(); refresh(); setTimeout(() => redraw(f), 250);
     return f;
   };
-  const dispose = (f) => { f.video.pause(); f.ro.disconnect(); f.video.removeAttribute('src'); f.video.load(); };
+  const dispose = (f) => { clearTimeout(f.stillTimer); f.video.pause(); f.ro.disconnect(); f.video.removeAttribute('src'); f.video.load(); };
   const removeFrame = (f) => {
     pauseAll();
     if (marksOf(f).length) setMarks(ws.shapes.filter((x) => x.fid !== f.id));
@@ -430,6 +478,14 @@ export async function work(qs) {
   const result = h('div');
   const saveBtn = h('button', { class: 'btn primary big', onclick: () => saveMoment() }, 'Mark this moment');
   const cancelEdit = h('button', { class: 'btn', style: 'display:none', onclick: () => leaveEdit() }, 'Cancel edit');
+  const saveReportBtn = h('button', { class: 'btn', title: 'saves the report’s own fields where they stand (what the miss or scenario is about, the kinds, the videos, the product sample, the prompts, model, mode, product) and rebuilds every saved sample image of it, without marking a new moment; a moment’s frames, marks and texts are saved with “Update moment”', onclick: async () => {
+    saveReportBtn.disabled = true;
+    try {
+      const n = miss ? miss.moments.length : 0;
+      await saveReport(); await refreshMiss();
+      toast(n ? `Report saved where it stands; its ${n} sample image(s) were rebuilt` : 'Report saved');
+    } catch (_) { /* toasted */ } finally { saveReportBtn.disabled = false; }
+  } }, 'Save report changes');
   const leaveEdit = () => { ws.editing = null; saveBtn.textContent = 'Mark this moment'; cancelEdit.style.display = 'none'; };
   async function saveMoment() {
     pauseAll();
@@ -535,10 +591,17 @@ export async function work(qs) {
       h('label', { class: 'f' }, 'Kinds (for the QC search)'), kinds.el, suggestBtn,
       h('details', { style: 'margin-top:8px' }, h('summary', { class: 'muted small', style: 'cursor:pointer' }, 'Model, mode, product'),
         h('div', { class: 'row', style: 'margin-top:6px' }, h('span', { class: 'muted small' }, 'model'), model, h('span', { class: 'muted small' }, 'mode'), mode, h('span', { class: 'muted small' }, 'product'), product)),
-      h('div', { class: 'row', style: 'margin-top:14px' }, saveBtn, cancelEdit, saveNote,
+      h('div', { class: 'row', style: 'margin-top:14px' }, saveBtn, cancelEdit, saveReportBtn, saveNote,
         h('span', { class: 'muted small' }, 'One click: saves the report, cuts every frame at its own time, and builds one image: the frames tagged WRONG, RIGHT or EXAMPLE with your marks, a zoom of each frame you marked with a circle, arrow or box, and this text.'))),
     result,
     h('div', { class: 'card' }, h('h2', {}, 'Saved moments'), moments));
+  // a report opened from one of its samples (&moment=), or a report with a single sample, comes back as it stands: that sample's frames, their times and
+  // roles, its marks and its words, loaded to be changed in place (“Update moment”), never started again from scratch
+  if (miss && miss.moments.length) {
+    const want = qs.moment ? String(qs.moment).replace(/^S/i, '') : (miss.moments.length === 1 ? String(miss.moments[0].moment_id) : '');
+    const m0 = want && miss.moments.find((m) => String(m.moment_id) === want);
+    if (m0) setTimeout(() => loadMoment(m0), 0);
+  }
   return root;
 }
 

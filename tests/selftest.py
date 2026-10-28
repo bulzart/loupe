@@ -318,6 +318,20 @@ def main(with_keeper=False):
     check("one sample without ?prompts=1 carries no prompt text either", s == 200 and "wrong_prompt" not in d["sample"] and d["sample"]["prompts"] == "pair")
     s, d, _ = req("GET", "/api/qc/samples/S1?prompts=1", key=kq)
     check("one sample with ?prompts=1 carries both prompts whole (the agent reads them and judges what changed; nothing is diffed here)", s == 200 and d["sample"]["wrong_prompt"].startswith("PROMPT-A") and d["sample"]["fixed_prompt"].startswith("PROMPT-B") and "diff" not in d["sample"] and "prompt_change" not in d["sample"])
+    # the roles (the user, 2026-10-28): the judge gets both prompts whole from the record; the Haiku collector never sees them and gives no verdict
+    from loupe_app import qc as _qcr
+    longp = "PROMPT-A the can on the desk. " + "A long beat of the plan with the can on the desk. " * 200
+    req("PATCH", "/api/misses/1", {"wrong_prompt": longp})
+    (TMP / "fulfil").mkdir(exist_ok=True)
+    got = _qcr._fulfil({"kind": "sample_origin", "id": "S1"}, {}, TMP / "fulfil", False)
+    check("sample_origin hands the judge both prompts whole from the record, however long (no cut)", got.get("ok") and longp.strip() in got.get("text", "")
+          and "PROMPT-B" in got.get("text", ""), str(got)[:200])
+    ep = _qcr._extract_prompt(next(x for x in _qcr.library() if x["id"] == "S1"))
+    check("the data collector is never given the prompts of the takes and is told to give no verdict", "PROMPT-A" not in ep and "PROMPT-B" not in ep
+          and "give NO verdict" in _qcr.EXTRACT_ROLE and "prompt" not in _qcr.EXTRACT_ROLE.split("Answer ONE JSON")[1], ep[:200])
+    check("the judge runs on Opus 5.5 and the collector on Haiku 5.5 unless the admin sets another model", _qcr.DEFAULT_MODEL == "claude-opus-5-5"
+          and _qcr.EXTRACT_MODEL_DEFAULT == "claude-haiku-5-5")
+    req("PATCH", "/api/misses/1", {"wrong_prompt": "PROMPT-A the can on the desk."})
     s, d, _ = req("POST", "/api/qc/brief", {"model": "wan3_0_prime"}, key=kq)
     check("the brief says the prompts are kept and where to read them, without their text", "prompts of both takes are kept" in d["text"] and "?prompts=1" in d["text"] and "PROMPT-A" not in d["text"], d["text"][:300])
     # a still asked for beside the video (a guide plate, a start frame) and a second attempt: neither is taken for the first attempt's prompt
@@ -535,6 +549,38 @@ def main(with_keeper=False):
     s, d, _ = req("GET", "/api/product-sample?run=20261001-000000-07&video=06&wrong=" + quote(six_take))
     check("a request that describes none of its inputs still gives its product sample through the video's uploads record (the product code in its key and file)",
           s == 200 and [x["asset_id"] for x in d["samples"]] == ["A14"], str(d)[:300])
+    print("\n[the product sample picked from every image the generation used; a report edited where it stands]")
+    for fn, col in (("image1-character-C04-head.jpg", (200, 150, 120)), ("image2-product-P1-front-padded.png", (0, 0, 255))):
+        fp = atp_run / "55-references" / "video-06" / "a1" / fn
+        fp.parent.mkdir(parents=True, exist_ok=True)
+        Image.new("RGB", (300, 400), col).save(fp)
+    s, d, _ = req("GET", "/api/generation-assets?run=20261001-000000-07&video=06&wrong=" + quote(six_take))
+    ga = d.get("assets") or []
+    names = {a["name"]: a for a in ga}
+    check("every image the generation used is offered: the client's original (the automatic pick, ticked) and each file the uploads record names, by its own words",
+          s == 200 and names.get("product-front.png", {}).get("suggested") is True and not names.get("image1-character-C04-head.jpg", {"suggested": True})["suggested"]
+          and "image2-product-P1-front-padded.png" in names and names["image1-character-C04-head.jpg"]["label"] == "Image 1 · C04 head", str(ga)[:500])
+    s, b, _ = req("GET", names["image1-character-C04-head.jpg"]["image_url"], raw=True) if "image1-character-C04-head.jpg" in names else (0, b"", None)
+    check("each is served as a PNG thumbnail", s == 200 and b[:4] == b"\x89PNG")
+    head = names.get("image1-character-C04-head.jpg", {}).get("path", "")
+    s, d, _ = req("POST", "/api/misses", {"run": "20261001-000000-07", "video": "06", "title": "The wrong product sample", "model": "wan3_0_prime",
+                                          "wrong_path": six_take, "wrong_label": "a1 · raw.mp4", "sample_files": [head]})
+    pm = d["miss"]["id"] if s == 200 else 0
+    s, d, _ = req("POST", f"/api/misses/{pm}/moments", {"frames": [{"src": "wrong", "role": "wrong", "t": 1.0}], "details": "The sample shows the wrong image."})
+    pmo = d["moment"]["moment_id"] if s == 200 else 0
+    pmeta = json.loads((core.DATA / "samples" / str(pmo) / "meta.json").read_text(encoding="utf-8")) if pmo else {}
+    check("the ticked image is the product sample of the saved image (the admin's choice, not the automatic pick)",
+          [x["file"] for x in pmeta.get("product_samples", [])] == ["image1-character-C04-head.jpg"] and pmeta.get("product_sample_chosen") is True, str(pmeta)[:300])
+    s, d, _ = req("PATCH", f"/api/misses/{pm}", {"sample_files": [str(TMP / "reference-folder" / "not-used-here.png")]})
+    check("a file that is not one of the images that generation used is refused", s == 400 and "not one of the images" in str(d), f"{s} {str(d)[:200]}")
+    s, d, _ = req("PATCH", f"/api/misses/{pm}", {"sample_files": [], "title": "The wrong product sample, edited where it stands"})
+    pmeta = json.loads((core.DATA / "samples" / str(pmo) / "meta.json").read_text(encoding="utf-8")) if pmo else {}
+    check("untouched again ([]) the automatic pick is back, and a title changed where it stands rebuilds the image with it",
+          s == 200 and d["miss"]["sample_files"] == [] and [x["file"] for x in pmeta.get("product_samples", [])] == ["product-front.png"]
+          and pmeta.get("title") == "The wrong product sample, edited where it stands", str(pmeta)[:300])
+    req("DELETE", f"/api/misses/{pm}")
+    late = media.frame_file(Path(six_take), 999)
+    check("a frame asked for past the end of a video is its last picture, never an error", late.is_file())
     s, d, _ = req("POST", "/api/misses", {"run": "20261001-000000-07", "video": "03", "title": "The pen became a can", "model": "wan3_0_prime",
                                           "wrong_path": wrong, "fixed_path": orig, "fixed_label": ov[0]["label"] if ov else ""})
     om = d["miss"]["id"]
@@ -566,7 +612,7 @@ def main(with_keeper=False):
 
     def fake_extract(s, model):
         calls.append(s["id"])
-        return {"reading": {"the_miss": f"the miss of {s['id']}", "mechanism": "m", "frames_seen": [{"frame": "WRONG 0:01.00", "seen": "a can"}]},
+        return {"reading": {"marked": f"the marks of {s['id']}", "product_and_scene": "p", "frames_seen": [{"frame": "WRONG 0:01.00", "seen": "a can"}]},
                 "cost": 0.01, "turns": 3, "images_read": True}
     _qc._extract_one = fake_extract
     try:
@@ -576,13 +622,13 @@ def main(with_keeper=False):
               and all((core.DATA / "keeper" / "understood" / f"{i}.json").exists() for i in ids), str(r1))
         r2 = _qc.sync_understanding("test")
         check("when the readings match the library one for one, nothing is read again", r2["state"] == "current" and len(calls) == len(ids), str(r2))
-        check("the keeper's digest carries each reading", "READ (from its picture" in _qc._digest() and f"the miss of {ids[0]}" in _qc._digest())
+        check("the keeper's digest carries each collection", "READ (collected from its picture, no verdict" in _qc._digest() and f"the marks of {ids[0]}" in _qc._digest())
         req("PATCH", f"/api/moments/{ids[0][1:]}", {"details": "Edited words, so the reading is stale."})
         r3 = _qc.sync_understanding("test")
         check("an edited sample is read again, and only it", r3["read"] == [ids[0]] and len(calls) == len(ids) + 1, str(r3))
         s, d, _ = req("GET", "/api/qc/keeper/understanding")
         check("the admin page gets every reading and the counts", s == 200 and d["status"]["current"] and d["status"]["understood"] == len(ids)
-              and any(x["reading"] and x["reading"]["the_miss"] for x in d["readings"]), str(d)[:200])
+              and any(x["reading"] and x["reading"]["marked"] for x in d["readings"]), str(d)[:200])
         s, d, _ = req("GET", "/api/qc/keeper/state", key=kq)
         check("the qc key sees the reading counts, not the readings", s == 200 and d.get("understanding", {}).get("understood") == len(ids) and "readings" not in d, str(d)[:200])
         req("PATCH", f"/api/moments/{ids[0][1:]}", {"status": "archived"})
@@ -608,8 +654,8 @@ def main(with_keeper=False):
         _qc.keeper_reset("test")
         s, d, _ = req("POST", "/api/qc/consult", {"run": "r", "video": "03", "model": "wan3_0_prime", "question": "Which samples apply?"}, key=kq)
         rel = (d.get("relevant") or [{}])[0]
-        check("a QC answer's relevant sample carries the keeper's short reading and the path of the whole one", s == 200 and rel.get("reading_path", "").endswith(f"{sid0}.json")
-              and rel.get("reading", {}).get("the_miss"), str(d)[:300])
+        check("a QC answer's relevant sample carries what the collector saw (short) and the path of the whole collection", s == 200 and rel.get("reading_path", "").endswith(f"{sid0}.json")
+              and rel.get("reading", {}).get("marked"), str(d)[:300])
         check("every answer says how much of the library the keeper holds from the pictures", d.get("library_read", {}).get("understood") == len(ids) and d["library_read"]["not_read"] == [])
         check("what only the QC agent can answer comes back unmet", d.get("needs_unmet") and d["needs_unmet"][0]["kind"] == "ask_agent")
         s, d, _ = req("POST", "/api/qc/consult", {"purpose": "plan", "run": "r", "video": "04", "model": "wan3_0_prime", "question": "Beat 1: he sets the can down."}, key=kq)
@@ -618,6 +664,75 @@ def main(with_keeper=False):
         qa = next((c for c in d["consults"] if c["purpose"] == "qc"), {})
         check("the consult log keeps what the keeper asked for, could not get and found not covered, whole, for the admin's page",
               qa.get("asks", {}).get("not_covered", "").startswith("no sample shows") and qa["asks"].get("needs_unmet") and qa["asks"]["needs_unmet"][0].get("question"), str(qa)[:300])
+        print("\n[the judge writes the prompt template from the saved prompts it chooses; a QC question carries the prompt used, the template and the brief]")
+        mid0 = next(x["miss_id"] for x in _qc.library() if x["id"] == sid0)
+        before_pp = _qc.misses.prompts_of(int(sid0[1:])) or {}
+        longw = "PROMPT-W the can is set down on the desk. " + "More of that beat. " * 300
+        req("PATCH", f"/api/misses/{mid0}", {"wrong_prompt": longw, "fixed_prompt": "PROMPT-F the can is set down, as tall as the mug.", "prompt_note": "the mug"})
+        seen = []
+
+        def judge(prompt, *a, **k):
+            seen.append(prompt)
+            if "TEMPLATE REQUEST" in prompt:
+                return {"result": json.dumps({"read": [sid0, "S999"]}), "total_cost_usd": 0}
+            if "Step 2 of the template request" in prompt:
+                return {"result": json.dumps({"template": "TEMPLATE-MARK Shot 1: the can stands on the desk, as tall as the mug. [SLOT: the product's upload tag]",
+                                              "basis": [{"id": sid0, "worked": "the height against the mug", "failed": "no size stated", "where": "shot 1"}, {"id": "S999"}],
+                                              "notes": "keep the mug line", "changes": [{"what": "beat 2's cut", "why": "w", "id": sid0}], "not_covered": ""}), "total_cost_usd": 0}
+            if "rests on samples whose two prompts" in prompt:
+                return {"result": json.dumps({"relevant": [{"id": sid0, "why": "judged after reading both prompts", "check": "c", "wrong_pattern": "p"}], "advice": "a",
+                                              "cause": "shot 1 gave no size", "template_fix": "the can as tall as the mug"}), "total_cost_usd": 0}
+            if "QC question" in prompt:
+                return {"result": json.dumps({"relevant": [{"id": sid0, "why": "first answer", "check": "c", "wrong_pattern": "p"}], "advice": "a",
+                                              "cause": "first cause", "template_fix": "first fix"}), "total_cost_usd": 0}
+            return {"result": "ready", "total_cost_usd": 0}
+        _qc._run_claude = judge
+        s, d, _ = req("POST", "/api/qc/consult", {"purpose": "template", "run": "r", "video": "05", "model": "wan3_0_prime",
+                                                  "question": "BRIEF-MARK video 05: he sets the can on the desk; the goal is the can's true size.",
+                                                  "structure": "STRUCTURE-MARK Shot 1: ... Shot 2: ...", "video_model": {"id": "wan3_0_prime", "name": "MODEL-MARK"}}, key=kq)
+        step2 = next((p for p in seen if "Step 2 of the template request" in p), "")
+        check("a template request: the judge is briefed with the agent's brief, the video model and its structure, then given both prompts it chose, whole",
+              s == 200 and any("TEMPLATE REQUEST" in p and "BRIEF-MARK" in p and "STRUCTURE-MARK" in p and "MODEL-MARK" in p for p in seen) and longw.strip() in step2
+              and "PROMPT-F" in step2 and "Not sent: S999" in step2, str(d)[:300])
+        check("the answer is the judge's template with its basis (only samples that exist), notes and changes, and the samples it read; none is sent twice",
+              d.get("purpose") == "template" and d.get("template", "").startswith("TEMPLATE-MARK") and [x["id"] for x in d.get("basis", [])] == [sid0]
+              and d.get("read") == [sid0] and d.get("changes") and d.get("notes") == "keep the mug line" and not any("rests on samples" in p for p in seen), str(d)[:300])
+        s, d, _ = req("GET", "/api/qc/keeper")
+        check("the consult log keeps the template request under its own purpose", s == 200 and any(c["purpose"] == "template" for c in d["consults"]))
+        seen.clear()
+        s, d, _ = req("POST", "/api/qc/consult", {"run": "r", "video": "05", "model": "wan3_0_prime", "question": "the can is smaller than the mug at 2 s",
+                                                  "request_prompt": "USED-PROMPT the can on the desk.", "template": "TEMPLATE-MARK", "brief": "BRIEF-MARK",
+                                                  "request_params": {"model": "wan3_0_prime", "duration": "5"}, "video_model": {"id": "wan3_0_prime", "name": "MODEL-MARK"}}, key=kq)
+        q1 = next((p for p in seen if "QC question" in p), "")
+        rp = next((p for p in seen if "rests on samples" in p), "")
+        check("a QC question carries the prompt used, its video model and parameters, the template given and the brief", "USED-PROMPT" in q1 and "TEMPLATE-MARK" in q1
+              and "BRIEF-MARK" in q1 and "MODEL-MARK" in q1 and '"duration": "5"' in q1, q1[:300])
+        check("before the QC answer is final the judge gets both prompts of the sample it cites, whole, and its second answer is kept",
+              longw.strip() in rp and d.get("prompts_judged") == [sid0] and d["relevant"][0]["why"] == "judged after reading both prompts", str(d)[:300])
+        check("the QC answer carries the judge's cause and the part rewritten", d.get("cause") == "shot 1 gave no size" and d.get("template_fix") == "the can as tall as the mug", str(d)[:300])
+        seen.clear()
+
+        def judge_origin(prompt, *a, **k):
+            seen.append(prompt)
+            if "QC question" in prompt:
+                return {"result": json.dumps({"relevant": [], "needs": [{"kind": "sample_origin", "id": sid0, "why": "how was it prompted"}]}), "total_cost_usd": 0}
+            if "Here is what you asked for" in prompt:
+                return {"result": json.dumps({"relevant": [{"id": sid0, "why": "w", "check": "c", "wrong_pattern": "p"}], "advice": "a"}), "total_cost_usd": 0}
+            return {"result": "not json", "total_cost_usd": 0}
+        _qc._run_claude = judge_origin
+        s, d, _ = req("POST", "/api/qc/consult", {"run": "r", "video": "05", "question": "same"}, key=kq)
+        check("a sample whose prompts the judge already fetched in that consult is not sent again", s == 200 and not any("rests on samples" in p for p in seen)
+              and not d.get("prompts_judged") and d.get("relevant"), str(d)[:200])
+
+        def judge_bad(prompt, *a, **k):
+            if "rests on samples" in prompt:
+                return {"result": "not json", "total_cost_usd": 0}
+            return judge(prompt)
+        _qc._run_claude = judge_bad
+        s, d, _ = req("POST", "/api/qc/consult", {"run": "r", "video": "05", "question": "again"}, key=kq)
+        check("a second answer that does not parse keeps the first one", s == 200 and d["relevant"][0]["why"] == "first answer" and d.get("prompts_judged") == [sid0], str(d)[:200])
+        req("PATCH", f"/api/misses/{mid0}", {k: before_pp.get(k) or "" for k in ("wrong_prompt", "fixed_prompt", "prompt_note")})
+        _qc._run_claude = fake_keeper
         req("PATCH", f"/api/moments/{sid0[1:]}", {"details": "Edited again, so its reading is stale."})
         n_before = len(calls)
         s, d, _ = req("POST", "/api/qc/keeper/sync", {}, key=kq)
@@ -673,11 +788,11 @@ def main(with_keeper=False):
               and c[-2:] == ["--resume", "sid"])
         req("POST", "/api/settings", {"keeper_effort": "high"})
         _qc._extract_one = real_extract
-        seq = iter([{"result": json.dumps({"the_miss": "x"}), "num_turns": 1, "total_cost_usd": 0.01}, {"result": json.dumps({"the_miss": "seen", "frames_seen": []}), "num_turns": 3, "total_cost_usd": 0.02}])
+        seq = iter([{"result": json.dumps({"marked": "x"}), "num_turns": 1, "total_cost_usd": 0.01}, {"result": json.dumps({"marked": "seen", "frames_seen": []}), "num_turns": 3, "total_cost_usd": 0.02}])
         prompts = []
         _qc._run_claude = lambda prompt, *a, **k: (prompts.append(prompt), next(seq))[1]
         one = _qc._extract_one(_qc.library()[0], "m")
-        check("a reading given without opening the picture is asked once more and kept only when the picture was opened", one["images_read"] and one["reading"]["the_miss"] == "seen"
+        check("a collection given without opening the picture is asked once more and kept only when the picture was opened", one["images_read"] and one["reading"]["marked"] == "seen"
               and len(prompts) == 2 and "Read the composite" in prompts[0] and "composite.png" in prompts[0], str(one))
     finally:
         _qc._extract_one, _qc._claude, _qc._run_claude = real_extract, real_claude, real_run
@@ -693,6 +808,35 @@ def main(with_keeper=False):
         s, d, _ = req("GET", "/api/qc/keeper")
         check("the keeper session is recorded and read-only", d["keeper"].get("session_id") and d["keeper"]["turns"] >= 3)
         check("the consult log says what each consult was for", {c["purpose"] for c in d["consults"]} >= {"qc", "plan"})
+    print("\n[one Loupe per port: a second server never shares a port, a test's data folder never starts one on the shared port]")
+    first = server.OnePortServer((core.HOST, 0), server.Handler)
+    try:
+        server.OnePortServer((core.HOST, first.server_port), server.Handler).server_close()
+        took = True
+    except OSError:
+        took = False
+    first.server_close()
+    check("a second server cannot take a port another one listens on", not took)
+    import loupe_client as _lcm
+    popens = []
+    import types as _types
+    real = (_lcm.DATA, _lcm.health, _lcm.subprocess, os.environ.pop("LOUPE_PORT", None))
+    _lcm.health = lambda timeout=1.2: None
+    _lcm.subprocess = _types.SimpleNamespace(Popen=lambda cmd, **k: popens.append(cmd), DEVNULL=real[2].DEVNULL)      # only the client's own reference: the server's threads keep the real one
+    try:
+        _lcm.DATA = TMP / "other-data"
+        (TMP / "other-data").mkdir(exist_ok=True)
+        r1 = _lcm.ensure(wait=0.1)
+        (TMP / "other-data" / "server.json").write_text(json.dumps({"port": 8787}))
+        r2 = _lcm.ensure(wait=0.1)
+        check("a data folder of its own never starts a server on the shared port 8787 (no port of its own, or 8787 in its server.json)", r1 is False and r2 is False and not popens, str(popens))
+        (TMP / "other-data" / "server.json").write_text(json.dumps({"port": 51999}))
+        _lcm.ensure(wait=0.1)
+        check("with a port of its own it starts one there", popens and popens[-1][-2:] == ["--port", "51999"], str(popens))
+    finally:
+        _lcm.DATA, _lcm.health, _lcm.subprocess = real[:3]
+        if real[3] is not None:
+            os.environ["LOUPE_PORT"] = real[3]
     print("\n[cleanup]")
     httpd.shutdown()
     shutil.rmtree(TMP, ignore_errors=True)

@@ -8,7 +8,7 @@
   python loupe.py import-flags PATH            move the entries of the old caught_flags.html page into Loupe
   python loupe.py status                       is it running, how many flags / samples / keys
   python loupe.py keeper understand [--ids S3] read the samples without a current reading of their picture (only new or changed ones)
-  python loupe.py keeper status                the keeper's reading of every sample and the counts
+  python loupe.py keeper status                what the collector saw in every sample's picture (no verdict) and the counts
 Scopes: flags:write, flags:read, qc:read, runs:read, admin.
 """
 import argparse

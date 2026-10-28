@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import threading
 import time
@@ -658,6 +659,96 @@ def product_samples(run: str, video: str, wrong: str = "", path: str = "") -> li
         if out:
             return out[:2]
     return []
+
+
+IMAGE_EXT = (".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tif", ".tiff")
+
+
+def _file_key(p) -> str:
+    try:
+        return os.path.normcase(str(Path(p).resolve()))
+    except OSError:
+        return os.path.normcase(str(p))
+
+
+def _input_words(text: str) -> str:
+    """What a request or an uploads key says of one input, without its 'a1 Image 2:' label and its role word ('a1 Image 2: P1 front padded image_references'
+    is 'P1 front padded')."""
+    t = re.sub(r"^\s*(?:[ac]\d+(?:-a\d+)?\s+)?(?:image|video|audio)\s*\d+\s*(?:\([^)]*\))?\s*[:,.-]?\s*", "", str(text or ""), flags=re.I)
+    return re.sub(r"\s+(?:image|video|audio)_references\s*$", "", t).strip()[:80]
+
+
+def generation_assets(run: str, video: str, wrong: str = "", path: str = "") -> list[dict]:
+    """Every image the generation of a video's take used, for the admin to pick the product sample from (the user, 2026-10-28: the sample picked by itself
+    was sometimes wrong).  For each image input of that attempt's video request(s): the client's original (the asset the request names, from the run's
+    inventory), the file sent to the model (the upload the run recorded) and the file the video's uploads record names, each once, with what the request
+    calls it; `suggested` marks the automatic pick (product_samples), which is always offered.  A take of another video or of another run reads its own run.
+    Read from the run's records, nothing judged; [] when nothing is found."""
+    loc = locate(path or wrong) if (path or wrong) else None
+    if loc and loc[1] and (loc[0], loc[1]) != (run, core.nn(video)):
+        run, video, wrong = loc[0], loc[1], path or wrong
+    rd = run_dir(run)
+    if not rd or not video:
+        return []
+    nn = core.nn(video)
+    st = _json(rd / "state.json") or {}
+    prods = _registry_products(st)
+    id_owner = {i: k for k, v in prods.items() for i in v["ids"]}
+    inv = {it["id"]: it for it in ((_json(rd / "30-assets" / "project" / "asset-inventory.json") or {}).get("items") or []) if isinstance(it, dict) and it.get("id")}
+    roots = [Path(x) for x in (st.get("assets_paths") or []) if isinstance(x, str)]
+    led = (_json(rd / "50-requests" / f"video-{nn}-uploads.json") or {}).get("uploads")
+    led = led if isinstance(led, dict) else {}
+    attempt = attempt_for(rd, video, wrong)
+    files = _request_files(rd, video, attempt)
+    reqs = [f for f in files if attempt and _attempt_in_name(f.name) == attempt] or files[:1]
+    auto = product_samples(run, video, wrong)
+    suggested = {_file_key(p["path"]) for p in auto}
+
+    def file_of(aid: str):
+        it = inv.get(aid) or {}
+        p = Path(it["path"]) if it.get("path") else None
+        if not (p and p.is_file()) and it.get("rel"):
+            p = next((r / it["rel"] for r in roots if (r / it["rel"]).is_file()), None)
+        return p if (p and p.is_file()) else None
+
+    out, seen = [], set()
+
+    def add(p, label: str, source: str, aid: str, req: str):
+        if not p:
+            return
+        p = Path(p)
+        if not p.is_absolute():
+            p = rd / p
+        if not (p.is_file() and p.suffix.lower() in IMAGE_EXT):
+            return
+        k = _file_key(p)
+        if k in seen:
+            return
+        seen.add(k)
+        out.append({"path": p, "name": p.name, "label": label[:120], "source": source, "asset_id": aid or "", "request": req, "suggested": k in suggested})
+
+    for rf in reqs:
+        req = _json(rf) or {}
+        meaning = _input_meanings(req)
+        tag = _request_tag(rf.name, nn)
+        for inp in request_inputs(rd, req):
+            lab = inp["label"]
+            hit = _ledger_entry(led, lab, tag)
+            text = str(meaning.get(lab) or (hit[0] if hit else "") or inp.get("name") or "")
+            found = A_ID.findall(text)
+            aid = next((a for a in found if a in id_owner), None) or (found[-1] if found else "")
+            if not aid:
+                code = next((c for c in P_CODE.findall(text + " " + Path(str(inp.get("path") or (hit[1] if hit else "") or "")).name) if c in prods), None)
+                aid = (prods[code]["canonical"] or "") if code else ""
+            what = (_said(text, aid) if aid and aid in found else "") or ((prods.get(id_owner.get(aid, "")) or {}).get("name") if aid else "") or _input_words(text)
+            name = f"{lab} · {what}" if what else lab
+            add(file_of(aid) if aid else None, name, "the client's original", aid, rf.name)
+            add(inp.get("path"), name, "as sent to the model", aid, rf.name)
+            if hit:
+                add(hit[1], name, "as the uploads record names it", aid, rf.name)
+    for p in auto:
+        add(p["path"], p["label"], "the client's original", p["asset_id"], p.get("request", ""))
+    return out
 
 
 def request_prompt_for(run: str, video: str, hint: str = "") -> dict:

@@ -614,12 +614,12 @@ ud = core.DATA / "keeper" / "understood"
 ud.mkdir(parents=True, exist_ok=True)
 long = "a detail of the frames that is long enough to matter. " * 30
 (ud / f"{s_any['id']}.json").write_text(json.dumps({"id": s_any["id"], "source_sig": qc._source_sig(s_any), "read_at": core.now(), "model": "m", "images_read": True,
-    "reading": {"the_miss": long, "mechanism": long, "when_it_recurs": long, "qc_check": long, "right_version": "RIGHT-MARK " + long, "prompts": "PROMPTS-MARK " + long,
-                "uncertain": "OPEN-MARK", "frames_seen": [{"frame": "WRONG 0:01.00", "seen": "FRAME-MARK " + long}]}}), encoding="utf-8")
+    "reading": {"marked": long, "right_version": long, "product_and_scene": long, "admin_words": "WORDS-MARK " + long, "prompts_saved": "both takes",
+                "unclear": "OPEN-MARK", "frames_seen": [{"frame": "WRONG 0:01.00", "seen": "FRAME-MARK " + long}]}}), encoding="utf-8")
 line = line_of(int(s_any["id"][1:]))
-check("the digest carries only the short reading (four fields, each cut) and the path of the full one; the frames, the right version, the prompts and what is open stay in the file",
-      "READ (from its picture" in line and "full reading:" in line and not any(m in line for m in ("RIGHT-MARK", "PROMPTS-MARK", "OPEN-MARK", "FRAME-MARK"))
-      and len(line.split("READ (from its picture", 1)[1]) < 1000, line[-400:])
+check("the digest carries only the short collection (three fields, each cut) and the path of the full one; the frames, the admin's words and what was unclear stay in the file",
+      "READ (collected from its picture, no verdict" in line and "full collection:" in line and not any(m in line for m in ("WORDS-MARK", "OPEN-MARK", "FRAME-MARK"))
+      and len(line.split("READ (collected from its picture", 1)[1]) < 1000, line[-400:])
 (ud / f"{s_any['id']}.json").unlink()
 
 print("\n[the same library everywhere]")

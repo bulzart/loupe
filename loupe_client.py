@@ -17,6 +17,7 @@ from pathlib import Path
 
 HOME = Path(__file__).resolve().parent
 DATA = Path(os.environ.get("LOUPE_DATA") or HOME / "data")
+DEFAULT_PORT = 8787
 
 
 def base_url() -> str:
@@ -37,10 +38,26 @@ def health(timeout: float = 1.2) -> dict | None:
         return None
 
 
+def _own_port() -> int | None:
+    """The port a data folder other than Loupe's own may start a server on: the one its server.json names, else LOUPE_PORT; never the shared default
+    port, where Loupe's own server runs (2026-10-28: a test's server for its temp data took 8787 beside it).  None: start nothing."""
+    try:
+        port = int(json.loads((DATA / "server.json").read_text(encoding="utf-8")).get("port") or 0)
+    except (OSError, ValueError, TypeError):
+        port = int(os.environ.get("LOUPE_PORT") or 0)
+    return port if port and port != DEFAULT_PORT else None
+
+
 def ensure(wait: float = 14.0) -> bool:
-    """True when Loupe answers; starts it detached (no console window) if it does not."""
+    """True when Loupe answers; starts it detached (no console window) if it does not.  For a data folder other than Loupe's own (a test) a server
+    is started only on that folder's own port, never on the shared default one."""
     if health():
         return True
+    port = None
+    if os.path.normcase(str(DATA.resolve())) != os.path.normcase(str((HOME / "data").resolve())):
+        port = _own_port()
+        if port is None:
+            return False
     exe = sys.executable
     pw = Path(exe).with_name("pythonw.exe")
     if pw.exists():
@@ -51,8 +68,8 @@ def ensure(wait: float = 14.0) -> bool:
     if os.name == "nt":
         flags = 0x00000008 | 0x00000200 | 0x08000000     # DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP | CREATE_NO_WINDOW
     try:
-        subprocess.Popen([exe, str(HOME / "loupe.py"), "serve"], cwd=str(HOME), stdout=log, stderr=log, stdin=subprocess.DEVNULL,
-                         creationflags=flags, close_fds=True)
+        subprocess.Popen([exe, str(HOME / "loupe.py"), "serve"] + (["--port", str(port)] if port else []), cwd=str(HOME), stdout=log, stderr=log,
+                         stdin=subprocess.DEVNULL, creationflags=flags, close_fds=True)
     except OSError:
         return False
     t0 = time.time()

@@ -51,14 +51,14 @@ export async function keeper() {
           h('dt', {}, 'library'), h('dd', { class: 'mono' }, k.library)),
         h('p', { class: 'muted small' }, 'Tools: Read only. It cannot write, edit or run anything; the library changes only here, by you. After 30 turns the session is replaced by a fresh one rebuilt from the library, so nothing is lost.'),
         h('label', { class: 'f' }, 'Model'), h('div', { class: 'row' }, model, h('button', { class: 'btn sm', onclick: async () => { await api('POST', '/api/settings', { keeper_model: model.value }); toast('Model saved'); } }, 'Save')),
-        h('label', { class: 'f' }, 'Effort (the keeper and the reader; never below high)'), h('div', { class: 'row' }, effort, h('button', { class: 'btn sm', onclick: async () => { await api('POST', '/api/settings', { keeper_effort: effort.value }); toast('Effort saved'); } }, 'Save')),
+        h('label', { class: 'f' }, 'Effort (the judge and the collector; never below high)'), h('div', { class: 'row' }, effort, h('button', { class: 'btn sm', onclick: async () => { await api('POST', '/api/settings', { keeper_effort: effort.value }); toast('Effort saved'); } }, 'Save')),
         h('div', { style: 'margin-top:12px' }, h('button', { class: 'btn danger', onclick: async () => { await api('POST', '/api/qc/keeper/reset', {}); toast('Keeper reset'); keeper().then((n) => document.querySelector('.main').replaceChildren(n)); } }, 'Reset the session'))),
       h('div', { class: 'card' }, h('h2', {}, 'Ask it'), ask, h('div', { style: 'margin-top:8px' }, h('button', { class: 'btn primary', onclick: run }, 'Ask')), out)),
     understandingCard(u),
     gapsCard(d.consults),
     h('div', { class: 'card', style: 'margin-top:14px' }, h('h2', {}, 'Consultations'),
       d.consults.length ? h('table', {}, h('thead', {}, h('tr', {}, ['When', 'Key', 'Run / video', 'Asked for', 'Question', 'Samples', 'Mode', 'The keeper asked, missed or held back', 'ms'].map((x) => h('th', {}, x)))),
-        h('tbody', {}, d.consults.map((c) => h('tr', {}, h('td', {}, fmtDate(c.ts)), h('td', {}, c.key_name), h('td', { class: 'mono' }, `${c.run || ''} ${c.video || ''}`), h('td', {}, c.purpose === 'plan' ? 'planning hints' : 'QC'), h('td', {}, c.question.slice(0, 140)),
+        h('tbody', {}, d.consults.map((c) => h('tr', {}, h('td', {}, fmtDate(c.ts)), h('td', {}, c.key_name), h('td', { class: 'mono' }, `${c.run || ''} ${c.video || ''}`), h('td', {}, c.purpose === 'plan' ? 'planning hints' : c.purpose === 'template' ? 'prompt template' : 'QC'), h('td', {}, c.question.slice(0, 140)),
           h('td', { class: 'mono' }, c.sample_ids), h('td', {}, c.mode), h('td', { class: 'small' }, asksLines(c.asks || {})), h('td', {}, c.ms))))) : h('div', { class: 'empty' }, 'No consultation yet.')));
 }
 
@@ -81,14 +81,15 @@ function gapsCard(cons) {
   const rows = cons.filter((c) => c.asks && ((c.asks.needs_unmet || []).length || c.asks.not_covered));
   return h('div', { class: 'card', style: 'margin-top:14px' }, h('h2', {}, 'What the keeper is missing'),
     h('p', { class: 'muted small' }, 'From the last 50 consultations: what the keeper asked for and could not get, and what it said the library does not cover. A new sample in Generation misses is how a gap gets closed.'),
-    rows.length ? rows.map((c) => h('div', { class: 'card', style: 'margin-top:6px' }, h('div', { class: 'muted small' }, `${fmtDate(c.ts)} · ${c.purpose === 'plan' ? 'planning' : 'QC'} · ${c.run || ''} ${c.video || ''}`),
+    rows.length ? rows.map((c) => h('div', { class: 'card', style: 'margin-top:6px' }, h('div', { class: 'muted small' }, `${fmtDate(c.ts)} · ${c.purpose === 'plan' ? 'planning' : c.purpose === 'template' ? 'prompt template' : 'QC'} · ${c.run || ''} ${c.video || ''}`),
       (c.asks.needs_unmet || []).map((n) => h('div', {}, `could not get ${n.kind}${n.question ? ': ' + n.question : ''}${n.reason ? ' (' + n.reason + ')' : ''}`)),
       c.asks.not_covered ? h('div', {}, 'not covered: ' + c.asks.not_covered) : null)) : h('div', { class: 'empty' }, 'Nothing missing in the recent consultations.'));
 }
 
-// What the keeper understood of each sample's picture: read once by a session that opened it, kept as one JSON file per sample, carried in the keeper's digest.
-const READING_LABELS = [['the_miss', 'The miss'], ['right_version', 'Right version'], ['product_and_scene', 'Product and scene'], ['mechanism', 'Mechanism'],
-  ['when_it_recurs', 'Recurs when'], ['qc_check', 'QC checks'], ['prompts', 'Prompts'], ['admin_feedback', 'Your feedback'], ['uncertain', 'Open']];
+// What a data collector saw in each sample's picture: collected once by a session that opened it (no verdict, never the prompts), kept as one JSON file per
+// sample, carried in the keeper's digest; the keeper (the judge) decides what it means.
+const READING_LABELS = [['marked', 'What the marks point at'], ['right_version', 'Right frame'], ['product_and_scene', 'Product and scene'],
+  ['admin_words', 'Your words'], ['unclear', 'Unclear in the picture'], ['prompts_saved', 'Prompts saved (the judge reads them whole)']];
 
 function understandingCard(u) {
   const st = u.status;
@@ -103,8 +104,8 @@ function understandingCard(u) {
     h('p', { class: 'muted small' }, `Read from its picture: ${st.understood} of ${st.library_size} sample(s)` + (pending.length ? ` · not read yet or changed since: ${pending.join(', ')}` : ' · every sample has a current reading')
       + (failed.length ? ` · given up after failed readings (it waits for a change or your button): ${failed.join(', ')}` : '')
       + '. Each sample is read once; only a new or changed sample is read again, and a sample that comes back unchanged gets its earlier reading back. The keeper holds these readings with your words; your words win where they differ.'),
-    h('label', { class: 'f' }, 'Reader model (reads each picture once)'), h('div', { class: 'row' }, reader,
-      h('button', { class: 'btn sm', onclick: async () => { await api('POST', '/api/settings', { keeper_extract_model: reader.value }); toast('Reader model saved'); } }, 'Save'),
+    h('label', { class: 'f' }, 'Collector model (opens each picture once and collects what it shows; no verdict, never the prompts)'), h('div', { class: 'row' }, reader,
+      h('button', { class: 'btn sm', onclick: async () => { await api('POST', '/api/settings', { keeper_extract_model: reader.value }); toast('Collector model saved'); } }, 'Save'),
       h('button', { class: 'btn sm', onclick: async () => { await api('POST', '/api/qc/keeper/understand', {}); toast('Reading the new or changed samples in the background'); setTimeout(reload, 1500); } }, 'Read new or changed samples now')),
     (u.readings || []).map((r) => h('details', { class: 'card', style: 'margin-top:8px' },
       h('summary', {}, h('b', {}, r.id), ' ', r.title.slice(0, 160), ' ', h('span', { class: 'muted small' }, state(r))),

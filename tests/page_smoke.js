@@ -36,13 +36,15 @@ const api = async (method, url, body) => {
   if (url.startsWith('/api/misses/1') && method === 'GET') return { miss: { id: 1, title: 'T', explanation: '', kinds: [], model: 'm', mode: 'x', product: '', wrong_path: 'A.mp4', fixed_path: noRight ? '' : 'B.mp4', moments: [], product_sample: true } };
   if (url.startsWith('/api/misses/1') && method === 'PATCH') return { miss: { id: 1, title: 'T', explanation: '', kinds: [], wrong_path: 'A.mp4', fixed_path: noRight ? '' : 'B.mp4', moments: [], product_sample: true } };
   if (url.endsWith('/moments')) return { moment: { id: 'S1', moment_id: 1, image_url: '/x?a=1', updated: 'u' } };
-  if (url.startsWith('/api/product-sample')) return { samples: withSample ? [{ asset_id: 'A14', label: 'the sealed test can', name: 'x.png', image_url: '/x.png' }] : [] };
+  if (url.startsWith('/api/generation-assets')) return { assets: withSample ? [
+    { path: 'P.png', name: 'x.png', label: 'Image 2 · the sealed test can', source: "the client's original", asset_id: 'A14', request: 'video-03-request.json', suggested: true, image_url: '/x.png' },
+    { path: 'H.png', name: 'h.png', label: 'Image 1 · C04 head', source: 'as the uploads record names it', asset_id: '', request: 'video-03-request.json', suggested: false, image_url: '/h.png' }] : [] };
   return {};
 };
 const code = read('v_misses.js').replace(/^import .*$/gm, '').replace(/^export (async )?function/gm, '$1function') + '\nreturn { work };';
 const toastStub = (m, err) => { if (err) console.log('  (toast) ' + m); };
 const uiNoToast = uiSrc.replace(/function toast[\s\S]*?\n}\n/, '');
-const { work } = new Function('api', 'upload', 'videoUrl', 'toastStub', uiNoToast + '\nconst toast = toastStub;\n' + code)(api, async () => ({}), (p) => '/video?p=' + p, toastStub);
+const { work } = new Function('api', 'upload', 'videoUrl', 'frameUrl', 'toastStub', uiNoToast + '\nconst toast = toastStub;\n' + code)(api, async () => ({}), (p) => '/video?p=' + p, (p, t) => '/frame?p=' + p + '&t=' + t, toastStub);
 
 let fails = 0;
 const ok = (name, cond, info = '') => { console.log((cond ? '  ok   ' : '  FAIL ') + name + (cond ? '' : '  ' + info)); if (!cond) fails++; };
@@ -188,8 +190,26 @@ const ok = (name, cond, info = '') => { console.log((cond ? '  ok   ' : '  FAIL 
   await new Promise((r) => setTimeout(r, 0));
   const prodIn = walk(root8, (e) => e.tag === 'input' && (e.attrs.placeholder || '').startsWith('the product and its details'))[0];
   ok('a new report takes the product its request used, in the request\'s own words', prodIn && prodIn.value === 'the sealed test can', prodIn && prodIn.value);
-  ok('and shows its picture beside the words', walk(root8, (e) => e.tag === 'img' && e.attrs.alt === 'the sealed test can').length === 1);
+  ok('and shows its picture beside the words', walk(root8, (e) => e.tag === 'img' && e.attrs.alt === 'Image 2 · the sealed test can').length === 1);
+  // the product sample is ticked from every image the generation used; the report's own fields are saved where they stand, with no new moment
+  const boxes8 = walk(root8, (e) => e.tag === 'input' && e.attrs['data-asset']);
+  ok('every image the generation used is offered, the automatic pick ticked', boxes8.length === 2 && boxes8[0].checked === true && !boxes8[1].checked, boxes8.map((b) => b.attrs['data-asset'] + ':' + b.checked).join(' '));
+  boxes8[0].checked = false; (boxes8[0].listeners.change || []).forEach((f) => f());
+  boxes8[1].checked = true; (boxes8[1].listeners.change || []).forEach((f) => f());
+  sent.length = 0;
+  await Promise.all(walk(root8, (e) => e.tag === 'button' && e.text === 'Save report changes').flatMap((b) => (b.listeners.click || []).map((f) => f())));
+  const rep8 = sent.find((x) => (x.method === 'POST' || x.method === 'PATCH') && /^\/api\/misses(\/1)?$/.test(x.url));
+  ok('“Save report changes” saves the report with the ticked image and marks no moment', rep8 && JSON.stringify(rep8.body.sample_files) === '["H.png"]' && !sent.some((x) => x.url.endsWith('/moments')), JSON.stringify(sent.map((x) => x.method + ' ' + x.url)));
   withSample = false;
+  // a sample opened from the list (&moment=) comes back as it stands, with nothing to click
+  withMoment = true; noRight = false; sent.length = 0;
+  const root9 = await work({ run: 'R', video: '03', miss: '1', moment: '5' });
+  await new Promise((r) => setTimeout(r, 0));
+  const frames9 = walk(root9, (e) => e.className === 'players')[0].children.filter((e) => e.className.split(/\s+/).includes('player') && e.style.display !== 'none' && walk(e, (x) => x.tag === 'canvas').length);
+  ok('a sample opened where it stands loads its frames, their times and its words, ready to update', frames9.length === 3
+    && walk(root9, (e) => e.tag === 'button' && e.text === 'Update moment').length === 1
+    && walk(root9, (e) => e.tag === 'textarea' && (e.attrs.placeholder || '').startsWith('Explain this miss'))[0].value === 'the pack is right early', String(frames9.length));
+  withMoment = false;
   console.log(fails ? `${fails} failed` : 'all passed');
   process.exit(fails ? 1 : 0);
 })().catch((e) => { console.log('FAIL the page threw: ' + (e && e.stack || e)); process.exit(1); });
