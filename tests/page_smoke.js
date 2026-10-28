@@ -15,6 +15,8 @@ let withMoment = false;
 let noRight = false;
 let withOthers = false;      // the run also has video 04, and video 03 has an original
 let withSample = false;      // the video's request names a product
+let withSegs = false;        // the picked take was joined from two generations (clips)
+let withSavedSegs = false;   // the report was saved with Video A's field written from a take of two generations
 const savedMoment = { moment_id: 5, id: 'S5', image_url: '/x?a=5', updated: 'u', details: 'the pack is right early', correct_note: 'c', has_right: true,
   frames: [{ src: 'wrong', role: 'right', t: 0.5, desc: 'as generated' }, { src: 'wrong', role: 'wrong', t: 3.0, desc: 'as generated' }, { src: 'fixed', role: 'right', t: 3.25, desc: 'correct version' }],
   shapes: [{ type: 'rect', frame: 1, x1: 0.1, y1: 0.1, x2: 0.4, y2: 0.4 }] };
@@ -33,9 +35,14 @@ const api = async (method, url, body) => {
     ...(withOthers ? [{ video: '04', versions: [{ path: 'D4.mp4', label: 'a1 · raw.mp4', kind: 'attempt', attempt: 1, role: 'generated' }, { path: 'D4c.mp4', label: 'clean.mp4', kind: 'output', role: 'processed' },
       { path: 'D4o.mp4', label: 'original · y.mp4 (V09, the source clip as given)', kind: 'original', role: 'original' }] }] : [])] };
   if (url === '/api/settings') return { kinds: [] };
-  if (url.startsWith('/api/misses/1') && method === 'GET') return { miss: { id: 1, title: 'T', explanation: '', kinds: [], model: 'm', mode: 'x', product: '', wrong_path: 'A.mp4', fixed_path: noRight ? '' : 'B.mp4', moments: [], product_sample: true } };
+  if (url.startsWith('/api/misses/1') && method === 'GET') return { miss: { id: 1, title: 'T', explanation: '', kinds: [], model: 'm', mode: 'x', product: '', wrong_path: 'A.mp4', fixed_path: noRight ? '' : 'B.mp4', moments: [], product_sample: true,
+    ...(withSavedSegs ? { wrong_prompt: 'the text as saved', wrong_segments: [{ src: 'wrong', clip: 'c1', attempt: 1, request: 'video-03-c1-request.json', t_from: 0, t_to: 6.1, prompt: 'SAVED-C1' },
+      { src: 'wrong', clip: 'c2', attempt: 1, request: 'video-03-c2-request.json', t_from: 6.1, t_to: 12.433, prompt: 'SAVED-C2' }] } : {}) } };
   if (url.startsWith('/api/misses/1') && method === 'PATCH') return { miss: { id: 1, title: 'T', explanation: '', kinds: [], wrong_path: 'A.mp4', fixed_path: noRight ? '' : 'B.mp4', moments: [], product_sample: true } };
   if (url.endsWith('/moments')) return { moment: { id: 'S1', moment_id: 1, image_url: '/x?a=1', updated: 'u' } };
+  if (url.startsWith('/api/request-prompt')) return withSegs ? { prompt: 'both prompts, each under its line', note: '2 generations joined in clip order', request: 'video-03-c1-request.json, video-03-c2-request.json', attempt: 0,
+    segments: [{ clip: 'c1', attempt: 1, request: 'video-03-c1-request.json', file: 'c1/a1/trimmed.mp4', t_from: 0, t_to: 6.1, prompt: 'P-C1 the first generation' },
+      { clip: 'c2', attempt: 1, request: 'video-03-c2-request.json', file: 'c2/a1/trimmed.mp4', t_from: 6.1, t_to: 12.433, prompt: 'P-C2 the second generation' }] } : { prompt: 'P-ONE', request: 'video-03-request.json', attempt: 1 };
   if (url.startsWith('/api/generation-assets')) return { assets: withSample ? [
     { path: 'P.png', name: 'x.png', label: 'Image 2 · the sealed test can', source: "the client's original", asset_id: 'A14', request: 'video-03-request.json', suggested: true, image_url: '/x.png' },
     { path: 'H.png', name: 'h.png', label: 'Image 1 · C04 head', source: 'as the uploads record names it', asset_id: '', request: 'video-03-request.json', suggested: false, image_url: '/h.png' }] : [] };
@@ -210,6 +217,57 @@ const ok = (name, cond, info = '') => { console.log((cond ? '  ok   ' : '  FAIL 
     && walk(root9, (e) => e.tag === 'button' && e.text === 'Update moment').length === 1
     && walk(root9, (e) => e.tag === 'textarea' && (e.attrs.placeholder || '').startsWith('Explain this miss'))[0].value === 'the pack is right early', String(frames9.length));
   withMoment = false;
+  // one prompt field per side: Video A's holds the prompt behind the frames called Wrong, Video B's the prompt behind the frames called Right. A take joined
+  // from two generations gives the prompt of each generation those frames come from, each under the line with its seconds; the field follows the frames
+  // until the admin types in it
+  withSegs = true; sent.length = 0;
+  const root10 = await work({ run: 'R', video: '03', miss: '1' });
+  await new Promise((r) => setTimeout(r, 0));
+  const field = (start) => walk(root10, (e) => e.tag === 'textarea' && (e.attrs.placeholder || '').startsWith(start))[0];
+  const fieldA = () => field('The prompt that produced Video A'), fieldB = () => field('The prompt of Video B');
+  ok('one prompt field per side, none per generation', walk(root10, (e) => e.tag === 'textarea' && /prompt/i.test(e.attrs.placeholder || '')).length === 2 && !walk(root10, (e) => !!(e.attrs && e.attrs['data-seg'])).length);
+  ok('Video A’s field fills itself with the prompt of the generation the Wrong frame comes from (frame 1 at 0 s: generation 1 only), under the line with its seconds',
+    fieldA().value.startsWith('This is the prompt responsible for the frames generated from second 0 to second 6.1 of Video A (generation 1 of 2 · clip c1 · video-03-c1-request.json); the frames of this sample from it: Frame 1 (WRONG at 0.00 s).\nP-C1')
+    && !fieldA().value.includes('P-C2'), fieldA().value);
+  ok('Video B’s field holds the prompt behind the Right frame, from Video B', fieldB().value.includes('of Video B (generation 1 of 2 · clip c1') && fieldB().value.includes('Frame 2 (RIGHT at 0.00 s)'), fieldB().value);
+  const fr10 = () => walk(root10, (e) => e.className === 'players')[0].children.filter((e) => e.className.split(/\s+/).includes('player') && walk(e, (x) => x.tag === 'canvas').length);
+  click(walk(root10, (e) => e.tag === 'button' && e.text === '+ Add a frame')[0]);
+  const f3 = fr10()[2];
+  click(walk(f3, (e) => e.tag === 'button' && e.text === 'Wrong')[0]);
+  const src3 = walk(f3, (e) => e.tag === 'select')[0]; src3.value = 'wrong'; (src3.listeners.change || []).forEach((f) => f());
+  const st3 = walk(f3, (e) => e.tag === 'input' && e.className.includes('stamp'))[0]; st3.value = '0:07.00'; (st3.listeners.change || []).forEach((f) => f());
+  const a2 = fieldA().value;
+  ok('Wrong frames from two generations: both prompts in the one field, each under the seconds it is responsible for and its frame',
+    a2.includes('from second 0 to second 6.1 of Video A (generation 1 of 2') && a2.includes('Frame 1 (WRONG at 0.00 s)') && a2.includes('from second 6.1 to second 12.433 of Video A (generation 2 of 2 · clip c2')
+    && a2.includes('Frame 3 (WRONG at 7.00 s)') && a2.indexOf('P-C1') < a2.indexOf('P-C2'), a2);
+  fieldA().value = 'My own words for the prompt.'; (fieldA().listeners.input || []).forEach((f) => f());
+  st3.value = '0:08.00'; (st3.listeners.change || []).forEach((f) => f());
+  ok('a field the admin typed in stays as typed when a frame moves', fieldA().value === 'My own words for the prompt.', fieldA().value);
+  sent.length = 0;
+  await Promise.all(walk(root10, (e) => e.tag === 'button' && e.text === 'Save report changes').flatMap((b) => (b.listeners.click || []).map((f) => f())));
+  const rep10 = sent.find((x) => x.method === 'PATCH' && x.url === '/api/misses/1');
+  ok('a typed field is saved as typed, with no generations; Video B’s, still Loupe’s, goes with its take’s two generations', rep10 && rep10.body.wrong_prompt === 'My own words for the prompt.' && rep10.body.wrong_segments.length === 0
+    && rep10.body.fixed_segments.length === 2 && rep10.body.fixed_segments.every((x) => x.src === 'fixed') && rep10.body.fixed_prompt.includes('of Video B'), JSON.stringify(rep10 && rep10.body).slice(0, 400));
+  await Promise.all(walk(root10, (e) => e.tag === 'button' && e.text === 'Fill from the run (Video A)').flatMap((b) => (b.listeners.click || []).map((f) => f())));
+  ok('Fill writes the field again from the frames', fieldA().value.includes('Frame 3 (WRONG at 8.00 s)') && fieldA().value.includes('P-C2'), fieldA().value);
+  st3.value = '0:03.00'; (st3.listeners.change || []).forEach((f) => f());
+  ok('and it follows them again: both Wrong frames in generation 1 leave only its prompt', fieldA().value.includes('Frame 1 (WRONG at 0.00 s), Frame 3 (WRONG at 3.00 s)') && !fieldA().value.includes('P-C2'), fieldA().value);
+  const src2 = walk(fr10()[1], (e) => e.tag === 'select')[0]; src2.value = 'wrong'; (src2.listeners.change || []).forEach((f) => f());
+  ok('a Right frame taken from Video A puts Video A’s generation in Video B’s field', fieldB().value.includes('of Video A (generation 1 of 2') && fieldB().value.includes('Frame 2 (RIGHT at 0.00 s)'), fieldB().value);
+  sent.length = 0;
+  await Promise.all(walk(root10, (e) => e.tag === 'button' && e.text === 'Save report changes').flatMap((b) => (b.listeners.click || []).map((f) => f())));
+  const rep10b = sent.find((x) => x.method === 'PATCH' && x.url === '/api/misses/1');
+  ok('each field goes with its take’s generations, each naming its video', rep10b && rep10b.body.wrong_segments.length === 2 && rep10b.body.wrong_segments[0].t_to === 6.1
+    && rep10b.body.wrong_segments.every((x) => x.src === 'wrong') && rep10b.body.fixed_segments.length === 2 && rep10b.body.fixed_segments.every((x) => x.src === 'wrong'), JSON.stringify(rep10b && rep10b.body).slice(0, 400));
+  withSegs = false;
+  // a field saved from a joined take comes back following the frames, written from the prompts it was saved with (that take is not read again)
+  withSavedSegs = true; sent.length = 0;
+  const root11 = await work({ run: 'R', video: '03', miss: '1' });
+  await new Promise((r) => setTimeout(r, 0));
+  const fA11 = walk(root11, (e) => e.tag === 'textarea' && (e.attrs.placeholder || '').startsWith('The prompt that produced Video A'))[0];
+  ok('a saved field of a joined take is written again for the frames on screen, from its saved prompts', fA11.value.includes('SAVED-C1') && !fA11.value.includes('SAVED-C2')
+    && fA11.value.includes('Frame 1 (WRONG at 0.00 s)') && !sent.some((x) => x.url.startsWith('/api/request-prompt') && x.url.includes('path=A.mp4')), fA11.value);
+  withSavedSegs = false;
   console.log(fails ? `${fails} failed` : 'all passed');
   process.exit(fails ? 1 : 0);
 })().catch((e) => { console.log('FAIL the page threw: ' + (e && e.stack || e)); process.exit(1); });

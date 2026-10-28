@@ -17,8 +17,8 @@ const fmtT = (t) => { t = Math.max(0, +t || 0); const m = Math.floor(t / 60); re
 const run = (durations) => {
   const frames = durations.map(mkFrame);
   const body = block + '\n return { range, parseT, clampT, refresh, pauseAll, seekAll, moveFrame, sameTime, step, playAll, tick };';
-  const fn = new Function('h', 'frames', 'FPS', 'fmtT', 'document', body);
-  return { frames, ...fn(mkEl, frames, 30, fmtT, { activeElement: null }) };
+  const fn = new Function('h', 'frames', 'FPS', 'fmtT', 'document', 'followFrames', body);      // followFrames: the prompt fields follow the frames (not tested here)
+  return { frames, ...fn(mkEl, frames, 30, fmtT, { activeElement: null }, () => {}) };
 };
 
 let fails = 0;

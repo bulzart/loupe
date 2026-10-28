@@ -701,6 +701,9 @@ def generation_assets(run: str, video: str, wrong: str = "", path: str = "") -> 
     attempt = attempt_for(rd, video, wrong)
     files = _request_files(rd, video, attempt)
     reqs = [f for f in files if attempt and _attempt_in_name(f.name) == attempt] or files[:1]
+    segs = prompt_segments(run, video, wrong).get("segments") or []
+    if segs:                                  # a video joined from clips: every clip's request (each generation's inputs), or the one clip picked
+        reqs = [rd / "50-requests" / s["request"] for s in segs if s.get("request")] or reqs
     auto = product_samples(run, video, wrong)
     suggested = {_file_key(p["path"]) for p in auto}
 
@@ -749,6 +752,95 @@ def generation_assets(run: str, video: str, wrong: str = "", path: str = "") -> 
     for p in auto:
         add(p["path"], p["label"], "the client's original", p["asset_id"], p.get("request", ""))
     return out
+
+
+CLIP_PART_FILES = ("trimmed.mp4", "conformed.mp4", "raw.mp4")     # the file whose length a clip has in the joined video: trimmed when it was trimmed
+
+
+def _clip_dirs(vd: Path) -> list[Path]:
+    return sorted((x for x in vd.iterdir() if x.is_dir() and re.fullmatch(r"c\d+", x.name)), key=lambda x: int(x.name[1:])) if vd.is_dir() else []
+
+
+def _clip_attempt_used(rd: Path, nn: str, cd: Path) -> int:
+    """The attempt of a clip that went into the video: the attempts result.json records for that clip, else the highest attempt folder holding a file."""
+    res = _json(rd / "60-outputs" / f"video-{nn}" / "result.json") or {}
+    for j in res.get("jobs") or []:
+        if isinstance(j, dict) and str(j.get("clip") or "").lower() == cd.name and str(j.get("attempts") or "").isdigit() and (cd / f"a{j['attempts']}").is_dir():
+            return int(j["attempts"])
+    for ad in reversed(_attempt_dirs(cd)):
+        if any((ad / n).is_file() for n in CLIP_PART_FILES):
+            return int(ad.name[1:])
+    return 0
+
+
+def _clip_request(rd: Path, nn: str, clip: str, attempt: int) -> Path | None:
+    """The video request of one clip and attempt: video-NN-cK-aJ-request.json, or video-NN-cK-request.json for the first attempt; a request whose own
+    record names the clip is taken when its name does not."""
+    files = video_request_files(rd, nn)
+    own = [f for f in files if re.fullmatch(rf"video-{re.escape(nn)}-{re.escape(clip)}(?:-a\d+)?-request", f.stem, re.I)]
+    if not own:
+        own = [f for f in files if str((_json(f) or {}).get("clip") or "").lower() == clip]
+    if not own:
+        return None
+    exact = [f for f in own if _attempt_in_name(f.name) == (attempt or 1)]
+    return exact[-1] if exact else sorted(own, key=lambda f: _attempt_in_name(f.name))[-1]
+
+
+def _request_prompt_text(f: Path | None) -> str:
+    req = (_json(f) or {}) if f else {}
+    pr = (req.get("params") or {}).get("prompt") if isinstance(req.get("params"), dict) else None
+    return str(pr or req.get("prompt") or "")
+
+
+def _inside(p: Path, d: Path) -> bool:
+    try:
+        return os.path.normcase(str(p.resolve())).startswith(os.path.normcase(str(d.resolve())) + os.sep)
+    except OSError:
+        return False
+
+
+def prompt_segments(run: str, video: str, hint: str = "") -> dict:
+    """The generations a version of a video was made of, each with its prompt and the seconds of that version it made (the user, 2026-10-28: a clip
+    made of several generations keeps each generation's prompt, and the judge is told which seconds, and which frames of a sample, each prompt made).
+    A version joined from clips (the clean video, the preview, a deliverable, joined.mp4 of a video with c1/, c2/ ... folders) gives one segment per
+    clip in their order, each as long as that clip's own file in the join (trimmed.mp4, else conformed.mp4, else raw.mp4), its prompt read from that
+    clip's request; a take of one clip gives that clip's own request.  Read from the run's files, nothing judged.  {kind: clips | clip | "",
+    segments: [{clip, attempt, request, file, t_from, t_to, prompt}], note}; kind "" means a video of one generation (request_prompt_for)."""
+    loc = locate(hint) if hint else None
+    if loc and loc[1] and (loc[0], loc[1]) != (run, core.nn(video)):
+        run, video = loc
+    rd = run_dir(run)
+    if not rd or not video:
+        return {"kind": "", "segments": []}
+    nn = core.nn(video)
+    vd = rd / "60-outputs" / f"video-{nn}"
+    clips = _clip_dirs(vd)
+    p = Path(hint) if hint else None
+    if not clips or not p or not p.is_file() or is_original(rd, nn, hint):
+        return {"kind": "", "segments": []}
+    own = next((cd for cd in clips if _inside(p, cd)), None)
+    if own:                                   # a take of one clip: its own request, the whole file
+        att = next((int(x[1:]) for x in reversed(p.parts[:-1]) if re.fullmatch(r"a\d+", x)), 0) or _clip_attempt_used(rd, nn, own)
+        rq = _clip_request(rd, nn, own.name, att)
+        dur = float(media.probe(p).get("duration") or 0)
+        return {"kind": "clip", "segments": [{"clip": own.name, "attempt": att, "request": rq.name if rq else "", "file": p.name, "t_from": 0.0,
+                                               "t_to": round(dur, 3), "prompt": _request_prompt_text(rq)}],
+                "note": f"a take of clip {own.name} alone: its own request" + ("" if rq else " (no request file of that clip was found)")}
+    segs, t = [], 0.0
+    for cd in clips:
+        att = _clip_attempt_used(rd, nn, cd)
+        part = next((cd / f"a{att}" / n for n in CLIP_PART_FILES if (cd / f"a{att}" / n).is_file()), None) if att else None
+        dur = float(media.probe(part).get("duration") or 0) if part else 0.0
+        rq = _clip_request(rd, nn, cd.name, att)
+        segs.append({"clip": cd.name, "attempt": att, "request": rq.name if rq else "", "file": f"{cd.name}/a{att}/{part.name}" if part else "",
+                     "t_from": round(t, 3), "t_to": round(t + dur, 3), "prompt": _request_prompt_text(rq)})
+        t += dur
+    total = float(media.probe(p).get("duration") or 0)
+    note = (f"{len(segs)} generations joined in clip order; each span is its clip's own length in the join ("
+            + ", ".join(f"{s['clip']} {s['t_to'] - s['t_from']:.3f} s from {s['file'] or 'no file'}" for s in segs) + f"): together {t:.3f} s, this file {total:.3f} s")
+    if total and abs(total - t) > 0.15:
+        note += ". They differ (inserts between the clips, or another cut): check each span against the video before saving"
+    return {"kind": "clips", "segments": segs, "note": note, "clips_s": round(t, 3), "file_s": round(total, 3)}
 
 
 def request_prompt_for(run: str, video: str, hint: str = "") -> dict:

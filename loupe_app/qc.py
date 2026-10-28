@@ -488,6 +488,11 @@ def _digest() -> str:
         parts = [s["id"], ",".join(s["kinds"]), s["model"] or "any", s["title"]] + notes + ([org] if org else []) + [frames_text(s)]
         if kind_note.get(s.get("sample_kind")):
             parts.append(kind_note[s["sample_kind"]])
+        gens = s.get("prompt_generations") or {}
+        many = " and ".join(f"{'the wrong' if k == 'wrong' else 'the corrected'} take was made of {n} generations, one prompt each with the seconds it made"
+                            for k, n in gens.items() if n >= 2)
+        if many:
+            parts.append(f"({many})")
         if s.get("prompts") == "pair":
             parts.append("PROMPTS OF BOTH TAKES SAVED (ask sample_origin to read them)")
         elif s.get("prompts") == "wrong":
@@ -937,11 +942,8 @@ def _fulfil(n: dict, ctx: dict, d: Path, plan: bool) -> dict:
                 return no(f"{sid or 'that id'} is not in the library")
             lines = [f"{sid}: {_origin(s) or 'no origin recorded'}; model {s['model'] or 'any'}"]
             pp = misses.prompts_of(s["moment_id"]) or {}        # the prompts of the two takes, whole, as the admin saved them: judged by the keeper, never compared here
-            for key, what in (("wrong_prompt", "the prompt of the wrong take (whole, as the admin saved it)"), ("fixed_prompt", "the prompt of the corrected take (whole, as the admin saved it)")):
-                if pp.get(key):
-                    lines.append(f"{what}:\n" + str(pp[key]).strip())
-            if pp.get("prompt_note"):
-                lines.append("the admin's note on the prompt: " + _clip(pp["prompt_note"], 600))
+            if pp.get("wrong_prompt") or pp.get("fixed_prompt") or pp.get("prompt_note"):
+                lines.append(pp.get("text") or misses.prompts_text(pp))       # a take of several generations: each prompt with its seconds and this sample's frames
             srd = runs.run_dir(s["run"]) if s.get("run") else None
             if srd:
                 plan_txt = _read_text(srd / "40-briefs" / f"video-{core.nn(s['video'])}-plan.md", 1500)
@@ -1042,12 +1044,7 @@ def _evidence(v) -> str:
 def _prompts_text(sid: str, s: dict) -> str:
     """Both prompts of one sample's takes, whole, from the record, with the admin's note."""
     pp = misses.prompts_of(s["moment_id"]) or {}
-    lines = [f"{sid} ({_clip(s.get('title', ''), 200)}):"]
-    for key, what in (("wrong_prompt", "the prompt of the wrong take (whole, as the admin saved it)"), ("fixed_prompt", "the prompt of the corrected take (whole, as the admin saved it)")):
-        lines.append(f"{what}:\n" + (str(pp[key]).strip() if pp.get(key) else "not saved"))
-    if pp.get("prompt_note"):
-        lines.append("the admin's note on the prompt: " + _clip(pp["prompt_note"], 600))
-    return "\n".join(lines)
+    return f"{sid} ({_clip(s.get('title', ''), 200)}):\n" + (pp.get("text") or misses.prompts_text(pp))
 
 
 def _prompts_round(parsed, st: dict, key: str, asked: list, done=()):

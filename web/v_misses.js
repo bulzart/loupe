@@ -175,25 +175,97 @@ export async function work(qs) {
   // ---- the prompts of the two takes: kept in the record and read whole by the keeper and the prompt writers on request; never burned into the image, never
   // compared by the app (the agents judge what changed). Each can be filled from the run's request file of the version picked above, or pasted.
   const mono = 'min-height:110px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px';
-  const wrongPrompt = h('textarea', { placeholder: 'The prompt that produced Video A (as generated). Optional.', style: mono }, miss ? miss.wrong_prompt || '' : '');
-  const fixedPrompt = h('textarea', { placeholder: 'The prompt of Video B (the corrected take). Optional.', style: mono }, miss ? miss.fixed_prompt || '' : '');
+  const wrongPrompt = h('textarea', { placeholder: 'The prompt that produced Video A (as generated). Optional.', style: mono, value: miss ? miss.wrong_prompt || '' : '' });
+  const fixedPrompt = h('textarea', { placeholder: 'The prompt of Video B (the corrected take). Optional.', style: mono, value: miss ? miss.fixed_prompt || '' : '' });
   const promptNote = h('input', { value: miss ? miss.prompt_note || '' : '', placeholder: 'What in the prompt made the difference, in your words (optional, one line)', style: 'width:100%' });
-  const fillPrompt = (key, ta) => h('button', { class: 'btn sm', type: 'button', title: 'reads the prompt from the request file of the attempt the version picked above belongs to (the attempt folder it sits in, or the attempt it is a copy of; a take of another video or run is read in its own run; the original video has none); you keep or change it', onclick: async () => {
-    const path = state[key];
-    if (!path) { toast(key === 'wrong' ? 'Pick Video A first' : 'Pick Video B first', true); return; }
-    try {
-      const d = await api('GET', `/api/request-prompt?run=${encodeURIComponent(qs.run || '')}&video=${encodeURIComponent(qs.video || '')}&path=${encodeURIComponent(path)}`);
-      if (d.prompt) { ta.value = d.prompt; toast('Filled from ' + d.request + (d.attempt ? ' (attempt a' + d.attempt + ')' : '')); }
-      else toast(d.note || (qs.run && qs.video ? 'No request file with a prompt was found for that version: paste it' : 'This report has no run and video: paste the prompt'), true);
-    } catch (e) { toast(e.message, true); }
+  // One field per side (the user, 2026-10-28): Video A's holds the prompt behind the frames called Wrong, Video B's the prompt behind the frames called
+  // Right (else the frames taken from that side's video). A take joined from several generations (clips) has one prompt per generation: only the
+  // generations those frames come from are written in, one after the other, each under a line that says which seconds of which video it is responsible
+  // for and which frames come from it. A field fills itself while it is empty or still holds what Loupe wrote, and follows the frames; once you type in
+  // it, it is yours until you press Fill. Saved with the field: the take's generations (wrong_segments / fixed_segments), so the judge is told, sample by
+  // sample, which prompt made which frames; a field typed by hand is saved as typed, with none.
+  const PROMPT_FIELD = { wrong: wrongPrompt, fixed: fixedPrompt };
+  const ROLE_OF = { wrong: 'wrong', fixed: 'right' };
+  const VNAME = { wrong: 'Video A', fixed: 'Video B' };
+  const ROLE_UP = { wrong: 'WRONG', right: 'RIGHT', example: 'EXAMPLE' };
+  const secs = (x) => String(+(+x).toFixed(3));
+  const inGen = (t, s, last) => t >= s.t_from - 1e-6 && (last ? t <= s.t_to + 1e-3 : t < s.t_to);
+  const takes = {};          // path -> what the run says of that take ({prompt, request, attempt, clip, segments, note}); false while it is being read
+  const gens = { wrong: [], fixed: [] };       // the generations of the take(s) behind each field, when joined from several: saved with it
+  const typed = { wrong: false, fixed: false };
+  const autoText = { wrong: null, fixed: null };      // what Loupe last wrote into each field
+  for (const key of ['wrong', 'fixed']) {      // a saved field written from a joined take keeps following the frames, from the prompts it was saved with
+    const list = (miss && miss[key + '_segments']) || [];
+    if (list.length < 2) continue;
+    autoText[key] = miss[key + '_prompt'] || '';
+    for (const src of ['wrong', 'fixed']) {
+      const own = list.filter((s) => (s.src || key) === src), path = miss[src + '_path'];
+      if (own.length > 1 && path && !takes[path]) takes[path] = { segments: own.map(({ frames: _f, gen: _g, of: _o, ...s }) => ({ ...s, src })) };
+    }
+  }
+  const sideFrames = (key) => {       // the frames a field speaks for, numbered as on screen
+    const all = frames.map((f, i) => ({ f, n: i + 1 })).filter(({ f }) => state[f.src]);
+    const byRole = all.filter(({ f }) => f.role === ROLE_OF[key]);
+    return byRole.length ? byRole : all.filter(({ f }) => f.src === key);
+  };
+  const composeFor = (key) => {      // {text, gens, wait}: the field's text from what the run says of the take(s) its frames come from
+    const fr = sideFrames(key);
+    const srcs = fr.length ? ['wrong', 'fixed'].filter((s) => fr.some(({ f }) => f.src === s)) : (state[key] ? [key] : []);
+    const parts = [], used = [], wait = [];
+    for (const src of srcs) {
+      const d = takes[state[src]];
+      if (!d) { wait.push(state[src]); continue; }
+      const segs = (d.segments || []).length > 1 ? d.segments : null;
+      if (!segs) { if (d.prompt) parts.push(srcs.length > 1 ? `This is the prompt responsible for every frame of ${VNAME[src]}.\n${d.prompt}` : d.prompt); continue; }
+      const mine = fr.filter(({ f }) => f.src === src), of = segs.length;
+      segs.forEach((s, k) => {
+        used.push({ ...s, src });
+        const its = mine.filter(({ f }) => inGen(f.t, s, k === of - 1));
+        if (mine.length && !its.length) return;       // none of this field's frames comes from this generation: its prompt stays out
+        parts.push(`This is the prompt responsible for the frames generated from second ${secs(s.t_from)} to second ${secs(s.t_to)} of ${VNAME[src]} (generation ${k + 1} of ${of} · clip ${s.clip || '-'} · ${s.request || 'request not named'})`
+          + (its.length ? `; the frames of this sample from it: ${its.map(({ f, n }) => `Frame ${n} (${ROLE_UP[f.role] || String(f.role).toUpperCase()} at ${(+f.t).toFixed(2)} s)`).join(', ')}.` : '.') + '\n' + (s.prompt || ''));
+      });
+      const past = mine.filter(({ f }) => !segs.some((s, k) => inGen(f.t, s, k === of - 1)));
+      if (past.length) parts.push(`${past.map(({ n, f }) => `Frame ${n} (${(+f.t).toFixed(2)} s)`).join(', ')}: after the end of the last generation (second ${secs(segs[of - 1].t_to)}), so no prompt above made ${past.length > 1 ? 'them' : 'it'}.`);
+    }
+    return { text: parts.join('\n\n'), gens: used.length > 1 ? used : [], wait };
+  };
+  const readTake = async (path, again) => {      // read once per take; Fill reads it again
+    if (!again && takes[path] !== undefined) return takes[path];
+    takes[path] = false;
+    try { takes[path] = await api('GET', `/api/request-prompt?run=${encodeURIComponent(qs.run || '')}&video=${encodeURIComponent(qs.video || '')}&path=${encodeURIComponent(path)}`, undefined, !again); }
+    catch (e) { takes[path] = { prompt: '', note: e.message }; }
+    return takes[path];
+  };
+  const follows = (key) => !typed[key] && (!PROMPT_FIELD[key].value.trim() || PROMPT_FIELD[key].value === autoText[key]);
+  const followFrames = () => {       // the fields that are empty or still hold what Loupe wrote follow the frames
+    for (const key of ['wrong', 'fixed']) {
+      if (!follows(key)) continue;
+      const c = composeFor(key);
+      if (c.wait.length) { c.wait.forEach((p) => { if (takes[p] === undefined) readTake(p).then(followFrames); }); continue; }
+      gens[key] = c.gens; autoText[key] = c.text;
+      if (PROMPT_FIELD[key].value !== c.text) PROMPT_FIELD[key].value = c.text;
+    }
+  };
+  for (const key of ['wrong', 'fixed']) PROMPT_FIELD[key].addEventListener('input', () => { typed[key] = true; });
+  const fillPrompt = (key) => h('button', { class: 'btn sm', type: 'button', title: `writes the prompt of the generation the frames called ${key === 'wrong' ? 'Wrong' : 'Right'} come from, read from its request file in the run (a take joined from several generations: the prompt of each generation they come from, each under the seconds it made; with no such frame, the frames of ${VNAME[key]}, else the whole take); the original video has none. The field then follows the frames again until you type in it.`, onclick: async () => {
+    const fr = sideFrames(key);
+    const paths = [...new Set((fr.length ? fr.map(({ f }) => state[f.src]) : [state[key]]).filter(Boolean))];
+    if (!paths.length) { toast(key === 'wrong' ? 'Pick Video A first' : 'Pick Video B first', true); return; }
+    await Promise.all(paths.map((p) => readTake(p, true)));
+    const c = composeFor(key), d = takes[paths[0]] || {};
+    if (!c.text) { toast(d.note || (qs.run && qs.video ? 'No request file with a prompt was found for that version: paste it' : 'This report has no run and video: paste the prompt'), true); return; }
+    typed[key] = false; gens[key] = c.gens; autoText[key] = c.text; PROMPT_FIELD[key].value = c.text;
+    if (c.gens.length) toast(`Filled the prompt of each generation the frames come from (of ${c.gens.length}: ` + c.gens.map((s) => `${s.clip} ${secs(s.t_from)}-${secs(s.t_to)} s`).join(', ') + ')' + (d.note && /differ/.test(d.note) ? '. ' + d.note : ''), !!(d.note && /differ/.test(d.note)));
+    else toast('Filled from ' + (d.request || 'the run') + (d.clip ? ' (clip ' + d.clip + ')' : '') + (d.attempt ? ' (attempt a' + d.attempt + ')' : ''));
   } }, key === 'wrong' ? 'Fill from the run (Video A)' : 'Fill from the run (Video B)');
   const promptsBox = h('details', { style: 'margin-top:10px', open: !!(miss && (miss.wrong_prompt || miss.fixed_prompt || miss.prompt_note)) },
     h('summary', { class: 'muted small', style: 'cursor:pointer' }, 'The prompts of the two takes (optional: kept in the record for the QC keeper and the prompt writers, never burned into the image)'),
     h('div', { class: 'grid g2', style: 'margin-top:6px' },
-      h('div', {}, h('label', { class: 'f', style: 'margin-top:0' }, 'Prompt of Video A (as generated)'), wrongPrompt, h('div', { class: 'row', style: 'margin-top:4px' }, fillPrompt('wrong', wrongPrompt))),
-      h('div', {}, h('label', { class: 'f', style: 'margin-top:0' }, 'Prompt of Video B (the corrected take)'), fixedPrompt, h('div', { class: 'row', style: 'margin-top:4px' }, fillPrompt('fixed', fixedPrompt)))),
+      h('div', {}, h('label', { class: 'f', style: 'margin-top:0' }, 'Prompt of Video A (as generated)'), wrongPrompt, h('div', { class: 'row', style: 'margin-top:4px' }, fillPrompt('wrong'))),
+      h('div', {}, h('label', { class: 'f', style: 'margin-top:0' }, 'Prompt of Video B (the corrected take)'), fixedPrompt, h('div', { class: 'row', style: 'margin-top:4px' }, fillPrompt('fixed')))),
     h('label', { class: 'f' }, 'What in the prompt made the difference (optional, your words)'), promptNote,
-    h('div', { class: 'muted small', style: 'margin-top:4px' }, 'Nothing is compared or diffed by the app: the keeper reads both prompts whole when it asks for them, the prompt writers read them for a sample they judged relevant, and each decides what changed. The lists only say that the prompts are kept, with your note.'));
+    h('div', { class: 'muted small', style: 'margin-top:4px' }, 'Video A’s field holds the prompt behind the frames called Wrong, Video B’s the prompt behind the frames called Right. A take joined from several generations gives the prompt of each generation those frames come from, one after the other, each under the line that says which seconds it made and which frames come from it. The fields fill themselves and follow the frames until you type in them; Fill writes them again. Nothing is compared or diffed by the app: the keeper reads both prompts whole when it asks for them, the prompt writers read them for a sample they judged relevant, and each decides what changed.'));
 
   // ---- the report fields (the title and the explanation are burned into the saved image)
   const title = h('input', { value: miss ? miss.title : '', placeholder: 'One line or a paragraph: what went wrong, or what this scenario is about (e.g. “the third capsule disappears after the hand leaves”)', style: 'width:100%' });
@@ -257,9 +329,11 @@ export async function work(qs) {
   };
 
   async function saveReport() {
+    followFrames();
     const body = { run: qs.run || '', video: qs.video || '', title: title.value, explanation: miss ? miss.explanation : details.value, kinds: kinds.get(), model: model.value, mode: mode.value, product: product.value, product_sample: useSample.checked,
       wrong_path: state.wrong, fixed_path: state.fixed, wrong_label: (versions.find((v) => v.path === state.wrong) || {}).label || '', fixed_label: (versions.find((v) => v.path === state.fixed) || {}).label || '',
-      wrong_prompt: wrongPrompt.value, fixed_prompt: fixedPrompt.value, prompt_note: promptNote.value, ...(assetsTouched ? { sample_files: pickedAssets() } : {}) };
+      wrong_prompt: wrongPrompt.value, fixed_prompt: fixedPrompt.value, prompt_note: promptNote.value,
+      wrong_segments: follows('wrong') ? gens.wrong : [], fixed_segments: follows('fixed') ? gens.fixed : [], ...(assetsTouched ? { sample_files: pickedAssets() } : {}) };
     const wasNoRight = !!miss && !miss.fixed_path, nSaved = miss ? miss.moments.length : 0;
     miss = miss ? (await api('PATCH', '/api/misses/' + miss.id, body)).miss : (await api('POST', '/api/misses', body)).miss;
     assetsTouched = false;
@@ -312,6 +386,7 @@ export async function work(qs) {
   const refresh = () => {
     if (frames[0]) range.value = frames[0].t;
     for (const f of frames) { f.slider.value = f.t; if (document.activeElement !== f.stamp) f.stamp.value = fmtT(f.t); if (f.failed) showStill(f); }
+    followFrames();
   };
   const pauseAll = () => { frames.forEach((f) => f.video.pause()); playAll.textContent = 'Play all'; };
   const seekAll = (t) => {                 // every frame, keeping its gap to the first one
@@ -436,7 +511,7 @@ export async function work(qs) {
     playersBox.style.setProperty('--cols', String(Math.min(Math.max(frames.length + (side ? 1 : 0), 1), 3)));
     frames.forEach((f, i) => { f.num.textContent = 'Frame ' + (i + 1); });
     addBtn.disabled = frames.length >= MAX_FRAMES || (!state.wrong && !state.fixed); sameBtn.style.display = frames.length > 1 ? '' : 'none';
-    syncCorrect(); syncRight();
+    syncCorrect(); syncRight(); followFrames();
   };
   const addFrame = (src, role, t) => {
     const f = mkFrame(src, role, t);
@@ -453,10 +528,10 @@ export async function work(qs) {
     if (frames[0]) range.max = frames[0].video.duration || 10;
     drawPlayers(); refresh();
   };
-  const setRole = (f, role) => { f.role = role; styleFrame(f); redraw(f); syncCorrect(); };
+  const setRole = (f, role) => { f.role = role; styleFrame(f); redraw(f); syncCorrect(); followFrames(); };
   const setFrameSrc = (f, src) => {
     if (src === 'fixed' && !state.fixed) { toast('This report has no right version video yet: choose one above first', true); f.srcSel.value = f.src; return; }
-    f.src = src; loadFrame(f);
+    f.src = src; loadFrame(f); followFrames();
   };
   let syncRight = () => {};
   let hadFixed = false;      // a right version was chosen before: its frame is offered once, not again after the admin removed it

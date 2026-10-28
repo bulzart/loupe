@@ -413,8 +413,20 @@ def product_sample(h):
 
 @route("GET", "/api/request-prompt", scope="runs:read")
 def request_prompt(h):
-    """The prompt of the request file a version of a video came from (the attempt in its path picks the request): read for the report form, never judged."""
-    h.send_json({"ok": True, "prompt": "", **runs.request_prompt_for(h.q.get("run", ""), h.q.get("video", ""), h.q.get("path", ""))})
+    """The prompt of the request file a version of a video came from (the attempt in its path picks the request): read for the report form, never judged.
+    A version joined from several generations (clips) answers the prompt of each generation with the seconds it made (`segments`): the form writes the
+    ones its frames come from into the side's one prompt field, each under its line; `prompt` holds all of them that way."""
+    run, video, path = h.q.get("run", ""), h.q.get("video", ""), h.q.get("path", "")
+    seg = runs.prompt_segments(run, video, path)
+    segs = seg.get("segments") or []
+    if seg.get("kind") == "clips" and len(segs) >= 2:
+        h.send_json({"ok": True, "prompt": misses.compose_text(segs), "segments": segs, "request": ", ".join(s["request"] for s in segs if s["request"]),
+                     "attempt": 0, "note": seg.get("note", "")})
+    elif seg.get("kind") in ("clip", "clips") and segs:
+        s = segs[0]
+        h.send_json({"ok": True, "prompt": s["prompt"], "request": s["request"], "attempt": s["attempt"], "clip": s["clip"], "note": seg.get("note", "")})
+    else:
+        h.send_json({"ok": True, "prompt": "", **runs.request_prompt_for(run, video, path)})
 
 
 @route("GET", "/api/product-sample/image", scope="runs:read")
@@ -664,7 +676,9 @@ def qc_sample(h, mid):
         raise LookupError("S" + mid)
     out = _qc_sample(s)
     if h.q.get("prompts") in ("1", "true", "yes"):        # the prompts of the two takes, whole: one sample, on request only (never in a list, a brief or the keeper's digest)
-        out.update({k: v for k, v in (misses.prompts_of(int(mid)) or {}).items() if k in ("wrong_prompt", "fixed_prompt", "prompt_note")})
+        pp = misses.prompts_of(int(mid)) or {}
+        out.update({k: v for k, v in pp.items() if k in ("wrong_prompt", "fixed_prompt", "prompt_note", "wrong_segments", "fixed_segments")})
+        out["prompts_text"] = pp.get("text", "")        # as the judge reads them: a take of several generations, each prompt with its seconds and this sample's frames
     h.send_json({"ok": True, "sample": out})
 
 
