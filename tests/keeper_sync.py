@@ -92,7 +92,9 @@ def same_library(where: str):
     for s in lib:
         ln, roles = dig.get(s["id"], ""), set(roles_in(dig.get(s["id"], "")))
         want = "pair" if "WRONG" in roles and "RIGHT" in roles else ("miss-only" if "WRONG" in roles else "scenario")
-        ok = s["sample_kind"] == want and (("NO RIGHT VERSION" in ln) == (want == "miss-only")) and (("SCENARIO" in ln) == (want == "scenario"))
+        right_only = roles == {"RIGHT"}          # a scenario of frames called RIGHT only reads THE CORRECT VERSION ONLY (the admin, 2026-10-29)
+        ok = (s["sample_kind"] == want and (("NO RIGHT VERSION" in ln) == (want == "miss-only"))
+              and (("SCENARIO" in ln) == (want == "scenario" and not right_only)) and (("THE CORRECT VERSION ONLY" in ln) == right_only))
         if not ok:
             kind_bad.append(f"{s['id']} {s['sample_kind']}/{want}")
     check(f"{where}: pair, miss example and scenario are told apart the same way in the library and in the digest", not kind_bad, ", ".join(kind_bad))
