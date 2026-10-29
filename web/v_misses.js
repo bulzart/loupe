@@ -186,144 +186,116 @@ export async function work(qs) {
   const wrongPrompt = h('textarea', { placeholder: 'The prompt that produced Video A (as generated: the flawed version). Optional.', style: mono, value: miss ? miss.wrong_prompt || '' : '' });
   const fixedPrompt = h('textarea', { placeholder: 'The prompt of Video B (the correct take). Optional.', style: mono, value: miss ? miss.fixed_prompt || '' : '' });
   const promptNote = h('input', { value: miss ? miss.prompt_note || '' : '', placeholder: 'What in the prompt made the difference, in your words (optional, one line)', style: 'width:100%' });
-  // One field per side (the user, 2026-10-28): Video A's holds the prompt behind the frames called Wrong, Video B's the prompt behind the frames called
-  // Right (else the frames taken from that side's video). A take joined from several generations (clips) has one prompt per generation: only the
-  // generations those frames come from are written in, one after the other, each under a line that says which seconds of which video it is responsible
-  // for and which frames come from it. A field fills itself while it is empty or still holds what Loupe wrote, and follows the frames; once you type in
-  // it, it is yours until you press Fill. Saved with the field: the take's generations (wrong_segments / fixed_segments), so the judge is told, sample by
-  // sample, which prompt made which frames; a field typed by hand is saved as typed, with none.
+  // The prompt boxes (the user, 2026-10-29): the flawed version's box holds the prompt of each generation the frames called Wrong come from, the correct
+  // version's box the prompt of each generation the frames called Right come from (from whichever video), and an Examples sample's one box the prompt of
+  // each generation its Example frames come from; every sample of the report counts, a box holds no other generation, and a box no frame feeds stays
+  // empty ("if there's only 3 right frames or 3 wrong frames, or 3 examples then only fill in one prompt"). Loupe writes them (POST
+  // /api/misses/prompt-boxes, the same code that keeps the saved boxes in step and that the judge's records are made from): each prompt under the line
+  // that says what it is, which seconds of which video it generated (read from how the take was joined) and which frames it made. A field fills itself
+  // while it is empty or still holds what Loupe wrote, and follows the frames; once you type in it, it is yours until you press Fill. Saved with the
+  // field: its generations (wrong_segments / fixed_segments), so the judge is told, sample by sample, which prompt made which frames.
   const PROMPT_FIELD = { wrong: wrongPrompt, fixed: fixedPrompt };
-  const ROLE_OF = { wrong: 'wrong', fixed: 'right' };
   const VNAME = { wrong: 'Video A', fixed: 'Video B' };
-  const ROLE_UP = { wrong: 'WRONG', right: 'RIGHT', example: 'EXAMPLE' };
   const secs = (x) => String(+(+x).toFixed(3));
-  const inGen = (t, s, last) => t >= s.t_from - 1e-6 && (last ? t <= s.t_to + 1e-3 : t < s.t_to);
-  const frameWords = (list) => {      // "Frame 1 (WRONG, 0:03.00) and Frame 3 (WRONG, 0:05.20)": the frames as the saved image tags them (FRAME n, role, time)
-    const it = list.map(({ f, n }) => `Frame ${n} (${ROLE_UP[f.role] || String(f.role).toUpperCase()}, ${fmtT(f.t)})`);
-    return it.length === 1 ? it[0] : it.slice(0, -1).join(', ') + ' and ' + it[it.length - 1];
-  };
-  const takes = {};          // path -> what the run says of that take ({prompt, request, attempt, clip, segments, note}); false while it is being read
-  const gens = { wrong: [], fixed: [] };       // the generations of the take(s) behind each field, when joined from several: saved with it
+  const gens = { wrong: [], fixed: [] };       // the generations behind each box Loupe wrote: saved with it
   const typed = { wrong: false, fixed: false };
   const autoText = { wrong: null, fixed: null };      // what Loupe last wrote into each field
-  for (const key of ['wrong', 'fixed']) {      // a saved field written from a joined take keeps following the frames, from the prompts it was saved with
+  for (const key of ['wrong', 'fixed']) {      // a saved box Loupe wrote from a joined take keeps following the frames
     const list = (miss && miss[key + '_segments']) || [];
-    if (list.length < 2) continue;
-    autoText[key] = miss[key + '_prompt'] || '';
-    for (const src of ['wrong', 'fixed']) {
-      const own = list.filter((s) => (s.src || key) === src), path = miss[src + '_path'];
-      if (own.length > 1 && path && !takes[path]) takes[path] = { segments: own.map(({ frames: _f, gen: _g, of: _o, ...s }) => ({ ...s, src })) };
-    }
+    if (list.length) { autoText[key] = miss[key + '_prompt'] || ''; gens[key] = list; }
   }
-  const sideFrames = (key) => {       // the frames a field speaks for, numbered as on screen: those called Wrong (Right), else the Examples of its own video
-    const all = frames.map((f, i) => ({ f, n: i + 1 })).filter(({ f }) => state[f.src]);
-    const byRole = all.filter(({ f }) => f.role === ROLE_OF[key]);
-    return byRole.length ? byRole : all.filter(({ f }) => f.src === key && f.role === 'example');
-  };
-  // An Examples sample takes all its frames from one video and has one prompt box, that video's (the user, 2026-10-29): the prompt of every generation
-  // of that video, each under the line with the seconds it made; the other box is neither filled nor shown. A miss with its correct take (frames called
-  // Wrong and Right) has two boxes. The same rule tells the judge which prompts a sample keeps (misses.prompt_sides).
   const onScreen = () => frames.filter((f) => state[f.src]);
   const examplesOnly = () => { const fr = onScreen(); return fr.length > 0 && fr.every((f) => f.role === 'example'); };
   const oneBox = () => { if (!examplesOnly()) return ''; const v = ['wrong', 'fixed'].filter((s) => onScreen().some((f) => f.src === s)); return v.length === 1 ? v[0] : ''; };
   const twoVideoExamples = () => frames.length > 0 && frames.every((f) => f.role === 'example') && new Set(frames.map((f) => f.src)).size > 1;
-  // what a field's prompt stands for (the user, 2026-10-28): the frames called Wrong (Right); an Example prompt when the field speaks only for Example
-  // frames, or when every frame on screen is an Example; the side's own meaning when no frame is its; 'unused' for the other box of an Examples sample.
-  // The same rule names it for the judge (prompt_roles).
+  const otherFrames = () => (miss ? (miss.moments || []) : []).filter((m) => !ws.editing || m.moment_id !== ws.editing.moment_id).flatMap((m) => m.frames || []);
+  const columnOf = (f) => (f.role === 'wrong' ? 'wrong' : f.role === 'right' ? 'fixed' : f.src);      // the box a frame feeds
+  // what a box holds, from the frames that feed it (the same rule names it for the judge): 'flawed', 'correct', 'example' (or several), '' with no
+  // frame at all (a report in words only: each box its own video's whole take), 'unused' when other frames exist but none feeds it
   const fieldRole = (key) => {
-    const one = oneBox();
-    if (one) return one === key ? 'example' : 'unused';
-    const fr = onScreen();
-    if (fr.some((f) => f.role === ROLE_OF[key])) return ROLE_OF[key];
-    return (fr.length && fr.every((f) => f.role === 'example')) || fr.some((f) => f.role === 'example' && f.src === key) ? 'example' : '';
+    const all = [...otherFrames(), ...onScreen()];
+    if (!all.length) return '';
+    const roles = [...new Set(all.filter((f) => columnOf(f) === key).map((f) => ({ wrong: 'flawed', right: 'correct', example: 'example' })[f.role]))];
+    return roles.length ? roles.join('+') : 'unused';
   };
-  const LABEL = { wrong: 'Prompt of Video A (as generated: the prompt that generated the flawed version)', fixed: 'Prompt of Video B (the correct take)' };
-  const EX_LABEL = { wrong: 'Prompt of Video A (an example: a suggestion of what could have changed or been done another way, neither a bad generation nor a correct one)', fixed: 'Prompt of Video B (an example: a suggestion of what could have changed or been done another way, neither a bad generation nor a correct one)' };
-  const ONE_LABEL = { wrong: 'Prompt of Video A (an example: a suggestion of what could have changed or been done another way, neither a bad generation nor a correct one; the one prompt box of an Examples sample: the prompt of every generation of Video A, each under the seconds it made)', fixed: 'Prompt of Video B (an example: a suggestion of what could have changed or been done another way, neither a bad generation nor a correct one; the one prompt box of an Examples sample: the prompt of every generation of Video B, each under the seconds it made)' };
-  const UNUSED_LABEL = { wrong: 'Prompt of Video A (not used by this sample: its Example frames all come from Video B, and an Examples sample has one prompt box, Video B’s; the text here was saved with the report or typed, and is kept as it is: empty it if no sample of the report needs it)', fixed: 'Prompt of Video B (not used by this sample: its Example frames all come from Video A, and an Examples sample has one prompt box, Video A’s; the text here was saved with the report or typed, and is kept as it is: empty it if no sample of the report needs it)' };
-  const promptLabel = { wrong: h('label', { class: 'f', style: 'margin-top:0' }, LABEL.wrong), fixed: h('label', { class: 'f', style: 'margin-top:0' }, LABEL.fixed) };
-  const promptCell = { wrong: null, fixed: null };      // the two boxes (built below): a miss with its correct take shows both, an Examples sample its one
+  const LABEL = { wrong: 'Prompt of Video A (no frame yet: the prompt that generated the flawed version)', fixed: 'Prompt of Video B (no frame yet: the prompt of the correct version)' };
+  const ROLE_LABEL = {
+    flawed: 'The flawed version’s prompt (the prompt of each generation the frames called Wrong come from: they generated the flawed version)',
+    correct: 'The correct version’s prompt (the prompt of each generation the frames called Right come from, from either video: they generated the correct version)',
+    example: (key) => `The example prompt of ${VNAME[key]} (the prompt of each generation of ${VNAME[key]} the Example frames come from: a suggestion of what could have changed or been done another way, neither a bad generation nor a correct one; an Examples sample has this one box)`,
+  };
+  const UNUSED_LABEL = { wrong: 'The flawed version’s prompt: not used (no frame of this report’s samples is called Wrong, so no generation feeds this box; text saved or typed here is kept as it is: empty it if no sample needs it)', fixed: 'The correct version’s prompt: not used (no frame of this report’s samples is called Right, so no generation feeds this box; text saved or typed here is kept as it is: empty it if no sample needs it)' };
+  const labelFor = (key) => {
+    const role = fieldRole(key);
+    if (role === 'unused') return UNUSED_LABEL[key];
+    if (!role) return LABEL[key];
+    return role.split('+').map((r) => (r === 'example' ? ROLE_LABEL.example(key) : ROLE_LABEL[r])).join(' + ');
+  };
+  const promptLabel = { wrong: h('label', { class: 'f', style: 'margin-top:0' }, LABEL.wrong), fixed: h('label', { class: 'f', style: 'margin-top:0' }, LABEL.fixed) };      // named by what they hold once the frames are drawn
+  const promptCell = { wrong: null, fixed: null };      // the two boxes (built below): a box no frame feeds is hidden while it holds no text
   let promptGrid = null;
   const syncPromptLabels = () => {
     for (const key of ['wrong', 'fixed']) {
-      const role = fieldRole(key);
-      const t = role === 'unused' ? UNUSED_LABEL[key] : role === 'example' ? (oneBox() === key ? ONE_LABEL[key] : EX_LABEL[key]) : LABEL[key];
+      const t = labelFor(key);
       if (promptLabel[key].textContent !== t) promptLabel[key].textContent = t;
-      if (promptCell[key]) promptCell[key].style.display = role === 'unused' && !PROMPT_FIELD[key].value.trim() ? 'none' : '';
+      if (promptCell[key]) promptCell[key].style.display = fieldRole(key) === 'unused' && !PROMPT_FIELD[key].value.trim() ? 'none' : '';
     }
     if (promptGrid) promptGrid.style.gridTemplateColumns = promptCell.wrong.style.display === 'none' || promptCell.fixed.style.display === 'none' ? '1fr' : '';
   };
-  const composeFor = (key) => {      // {text, gens, wait}: the field's text from what the run says of the take(s) its frames come from
-    if (fieldRole(key) === 'unused') return { text: '', gens: [], wait: [] };      // the other box of an Examples sample: never filled
-    const every = oneBox() === key;      // an Examples sample's one box: the prompt of every generation of its video, each under the seconds it made
-    const fr = sideFrames(key);
-    const srcs = fr.length ? ['wrong', 'fixed'].filter((s) => fr.some(({ f }) => f.src === s)) : (state[key] ? [key] : []);
-    const parts = [], used = [], wait = [];
-    for (const src of srcs) {
-      const d = takes[state[src]];
-      if (!d) { wait.push(state[src]); continue; }
-      const segs = (d.segments || []).length > 1 ? d.segments : null;
-      if (!segs) { if (d.prompt) parts.push(srcs.length > 1 ? `This is the prompt responsible for every frame of ${VNAME[src]}.\n${d.prompt}` : d.prompt); continue; }
-      const mine = fr.filter(({ f }) => f.src === src), of = segs.length;
-      segs.forEach((s, k) => {
-        used.push({ ...s, src });
-        const its = mine.filter(({ f }) => inGen(f.t, s, k === of - 1));
-        if (mine.length && !its.length && !every) return;       // none of this field's frames comes from this generation: its prompt stays out (in an Examples sample's one box it stays in)
-        const where = `second ${secs(s.t_from)} to second ${secs(s.t_to)} of ${VNAME[src]} (generation ${k + 1} of ${of} · clip ${s.clip || '-'} · ${s.request || 'request not named'})`;
-        parts.push((its.length ? `This is the prompt responsible for ${frameWords(its)} of this sample: it generated ${where}.` : `This is the prompt that generated ${where}; no frame of this sample comes from it.`)
-          + '\n' + (s.prompt || ''));
-      });
-      const past = mine.filter(({ f }) => !segs.some((s, k) => inGen(f.t, s, k === of - 1)));
-      if (past.length) parts.push(`${frameWords(past)}: after the end of the last generation (second ${secs(segs[of - 1].t_to)}), so no prompt above made ${past.length > 1 ? 'them' : 'it'}.`);
-    }
-    return { text: parts.join('\n\n'), gens: used.length > 1 ? used : [], wait };
-  };
-  const readTake = async (path, again) => {      // read once per take; Fill reads it again
-    if (!again && takes[path] !== undefined) return takes[path];
-    takes[path] = false;
-    try { takes[path] = await api('GET', `/api/request-prompt?run=${encodeURIComponent(qs.run || '')}&video=${encodeURIComponent(qs.video || '')}&path=${encodeURIComponent(path)}`, undefined, !again); }
-    catch (e) { takes[path] = { prompt: '', note: e.message }; }
-    return takes[path];
+  let boxes = null, boxesSeq = 0, followTimer = null;
+  const readBoxes = async (loud) => {      // what Loupe writes in each box for the frames of every sample of the report (nothing is saved)
+    const seq = ++boxesSeq;
+    const body = { miss_id: miss ? miss.id : null, run: qs.run || '', video: qs.video || '', wrong_path: state.wrong || '', fixed_path: state.fixed || '',
+      frames: onScreen().map((f) => ({ src: f.src, role: f.role, t: f.t })), editing: ws.editing ? ws.editing.moment_id : null };
+    let d;
+    try { d = await api('POST', '/api/misses/prompt-boxes', body, !loud); } catch (e) { d = { error: e.message }; }
+    if (seq === boxesSeq) boxes = d;
+    return d;
   };
   const follows = (key) => !typed[key] && (!PROMPT_FIELD[key].value.trim() || PROMPT_FIELD[key].value === autoText[key]);
-  const savedPrompt = (key) => (miss && miss[key + '_prompt']) || '';
-  const otherSampleSpeaksThrough = (key) => !!miss && (miss.moments || []).some((m) => (!ws.editing || m.moment_id !== ws.editing.moment_id)
-    && (m.frames || []).some((f) => f.src === key || f.role === ROLE_OF[key]));      // another saved sample of the report has frames behind that box
-  const followFrames = () => {       // the fields that are empty or still hold what Loupe wrote follow the frames; the labels say what each prompt stands for
-    for (const key of ['wrong', 'fixed']) {
-      if (!follows(key)) continue;
-      if (fieldRole(key) === 'unused') {      // the other box of an Examples sample: what Loupe wrote there goes; a prompt saved for another sample of the report stays
-        if (PROMPT_FIELD[key].value && PROMPT_FIELD[key].value === savedPrompt(key) && otherSampleSpeaksThrough(key)) { gens[key] = (miss && miss[key + '_segments']) || []; continue; }
-        PROMPT_FIELD[key].value = ''; autoText[key] = ''; gens[key] = [];
-        continue;
+  const applyBoxes = (d) => {       // the fields that are empty or still hold what Loupe wrote follow the frames; the labels say what each holds
+    if (d && !d.error) {
+      for (const key of ['wrong', 'fixed']) {
+        const b = d[key] || {};
+        if (autoText[key] === null && PROMPT_FIELD[key].value.trim() && PROMPT_FIELD[key].value.trim() === (b.text || '').trim()) autoText[key] = PROMPT_FIELD[key].value;
+        if (!follows(key)) continue;
+        if (!b.used) {        // no frame feeds this box: what Loupe wrote there goes
+          if (PROMPT_FIELD[key].value) PROMPT_FIELD[key].value = '';
+          autoText[key] = ''; gens[key] = [];
+          continue;
+        }
+        if (!b.text) continue;        // a frame whose generation cannot be told: the field is left as it is (Fill says why)
+        gens[key] = b.segments || []; autoText[key] = b.text;
+        if (PROMPT_FIELD[key].value !== b.text) PROMPT_FIELD[key].value = b.text;
       }
-      const c = composeFor(key);
-      if (c.wait.length) { c.wait.forEach((p) => { if (takes[p] === undefined) readTake(p).then(followFrames); }); continue; }
-      gens[key] = c.gens; autoText[key] = c.text;
-      if (PROMPT_FIELD[key].value !== c.text) PROMPT_FIELD[key].value = c.text;
     }
     syncPromptLabels();
   };
+  const followFrames = () => { syncPromptLabels(); clearTimeout(followTimer); followTimer = setTimeout(() => { readBoxes(false).then(applyBoxes); }, 150); };
+  const followNow = async () => { clearTimeout(followTimer); applyBoxes(await readBoxes(false)); };
   for (const key of ['wrong', 'fixed']) PROMPT_FIELD[key].addEventListener('input', () => { typed[key] = true; });
-  const fillPrompt = (key) => h('button', { class: 'btn sm', type: 'button', title: `writes the prompt of the generation the frames called ${key === 'wrong' ? 'Wrong' : 'Right'} come from, read from its request file in the run (a take joined from several generations: the prompt of each generation they come from, each under the seconds it made; with no such frame, the frames of ${VNAME[key]} called Example, kept as an Example prompt: an Examples sample takes all its frames from one video and has this one box, the prompt of every generation of that video, each under the seconds it made; else the whole take); the original video has none. The field then follows the frames again until you type in it.`, onclick: async () => {
-    if (fieldRole(key) === 'unused') { toast(`This sample’s Example frames all come from ${VNAME[oneBox()]}: an Examples sample has one prompt box, ${VNAME[oneBox()]}’s`, true); return; }
-    const fr = sideFrames(key);
-    const paths = [...new Set((fr.length ? fr.map(({ f }) => state[f.src]) : [state[key]]).filter(Boolean))];
-    if (!paths.length) { toast(key === 'wrong' ? 'Pick Video A first' : 'Pick Video B first', true); return; }
-    await Promise.all(paths.map((p) => readTake(p, true)));
-    const c = composeFor(key), d = takes[paths[0]] || {};
-    if (!c.text) { toast(d.note || (qs.run && qs.video ? 'No request file with a prompt was found for that version: paste it' : 'This report has no run and video: paste the prompt'), true); return; }
-    typed[key] = false; gens[key] = c.gens; autoText[key] = c.text; PROMPT_FIELD[key].value = c.text;
-    if (c.gens.length) toast((oneBox() === key ? `Filled the prompt of every generation of ${VNAME[key]} (${c.gens.length}: ` : `Filled the prompt of each generation the frames come from (of ${c.gens.length}: `) + c.gens.map((s) => `${s.clip} ${secs(s.t_from)}-${secs(s.t_to)} s`).join(', ') + ')' + (d.note && /differ/.test(d.note) ? '. ' + d.note : ''), !!(d.note && /differ/.test(d.note)));
-    else toast('Filled from ' + (d.request || 'the run') + (d.clip ? ' (clip ' + d.clip + ')' : '') + (d.attempt ? ' (attempt a' + d.attempt + ')' : ''));
-  } }, key === 'wrong' ? 'Fill from the run (Video A)' : 'Fill from the run (Video B)');
+  const genWords = (s) => `${s.clip || VNAME[s.src]}${s.attempt ? ' a' + s.attempt : ''} (generation ${s.gen || 1} of ${s.of || 1}, ${(s.spans && s.spans.length ? s.spans : [[s.t_from, s.t_to]]).map(([a, b]) => `${secs(a)}–${secs(b)} s`).join(' and ')} of ${VNAME[s.src] || 'its video'})`;
+  const fillPrompt = (key) => h('button', { class: 'btn sm', type: 'button', title: `writes the prompt of each generation the frames feeding this box come from (the flawed version’s box: the frames called Wrong; the correct version’s box: the frames called Right, from either video; an Examples sample’s one box: its Example frames), read from the request files in the run and from how the take was joined, every sample of the report counted, and no other generation; a box no frame feeds stays empty; the original video has no prompt. The field then follows the frames again until you type in it.`, onclick: async () => {
+    if (!state.wrong && !state.fixed) { toast('Pick Video A first', true); return; }
+    const d = await readBoxes(true);
+    if (!d || d.error) { toast((d && d.error) || 'The run could not be read: paste the prompt', true); return; }
+    const b = d[key] || {};
+    if (!b.used) { toast(key === 'wrong' ? 'No frame is called Wrong, so no generation feeds the flawed version’s box: it stays empty (only the boxes the frames feed are filled)' : 'No frame is called Right, so no generation feeds the correct version’s box: it stays empty (only the boxes the frames feed are filled)', true); return; }
+    if (!b.text) { toast((b.problems || []).join(' · ') || (qs.run && qs.video ? 'No request file with a prompt was found for that version: paste it' : 'This report has no run and video: paste the prompt'), true); return; }
+    typed[key] = false; gens[key] = b.segments || []; autoText[key] = b.text; PROMPT_FIELD[key].value = b.text; syncPromptLabels();
+    const what = { flawed: 'the frames called Wrong', correct: 'the frames called Right', example: 'the Example frames' };
+    const who = (b.role || '').split('+').map((r) => what[r]).filter(Boolean).join(' and ') || 'the frames';
+    const segs = b.segments || [];
+    toast((segs.length ? `Filled the prompt of each generation ${who} come from: ${segs.map(genWords).join('; ')}` : 'Filled the prompt of the generation ' + who + ' come from')
+      + ((d.notes || []).length ? '. ' + d.notes.join(' · ') : '') + ((b.problems || []).length ? '. Not tied to a prompt: ' + b.problems.join(' · ') : ''), !!(b.problems || []).length);
+  } }, key === 'wrong' ? 'Fill from the run (the flawed version, or Video A’s examples)' : 'Fill from the run (the correct version, or Video B’s examples)');
   const promptsBox = h('details', { style: 'margin-top:10px', open: !!(miss && (miss.wrong_prompt || miss.fixed_prompt || miss.prompt_note)) },
-    h('summary', { class: 'muted small', style: 'cursor:pointer' }, 'The prompts (optional: two boxes for a miss with its correct take, one for an Examples sample; kept in the record for the QC keeper and the prompt writers, never burned into the image)'),
+    h('summary', { class: 'muted small', style: 'cursor:pointer' }, 'The prompts (optional: the flawed version’s, the correct version’s, or an Examples sample’s one box; kept in the record for the QC keeper and the prompt writers, never burned into the image)'),
     (promptGrid = h('div', { class: 'grid g2', style: 'margin-top:6px' },
       (promptCell.wrong = h('div', {}, promptLabel.wrong, wrongPrompt, h('div', { class: 'row', style: 'margin-top:4px' }, fillPrompt('wrong')))),
       (promptCell.fixed = h('div', {}, promptLabel.fixed, fixedPrompt, h('div', { class: 'row', style: 'margin-top:4px' }, fillPrompt('fixed')))))),
     h('label', { class: 'f' }, 'What in the prompt made the difference (optional, your words)'), promptNote,
-    h('div', { class: 'muted small', style: 'margin-top:4px' }, 'A miss with its correct take has two prompt boxes: Video A’s holds the prompt behind the frames called Wrong, Video B’s the prompt behind the frames called Right. An Examples sample takes all its frames from one video and has one box, that video’s: the prompt of every generation of it, each under the line that says which seconds it made and which frames come from it (the other box is not filled, and shows only while it still holds text saved or typed before). When a field speaks only for frames called Example, its prompt is an Example’s: a suggestion of what could have changed or been done another way, neither a bad generation nor a correct one. The label says so, the database keeps it so, and the judge and the agents read it as one, never as the flawed or the correct prompt. Otherwise Video A’s prompt is kept as the one that generated the flawed version and Video B’s as the correct take’s. A take joined from several generations gives the prompt of each generation those frames come from, one after the other, each under the line that says which seconds it made and which frames come from it. The fields fill themselves and follow the frames until you type in them; Fill writes them again. Nothing is compared or diffed by the app: the keeper reads both prompts whole when it asks for them, the prompt writers read them for a sample they judged relevant, and each decides what changed.'));
+    h('div', { class: 'muted small', style: 'margin-top:4px' }, 'The flawed version’s box holds the prompt of each generation the frames called Wrong come from, the correct version’s box the prompt of each generation the frames called Right come from (from either video: a right frame can come from another generation of the same video), and an Examples sample’s one box the prompt of each generation its Example frames come from, an example: a suggestion of what could have changed or been done another way, neither a bad generation nor a correct one. Every sample of the report counts, a box holds no other generation, and a box no frame feeds stays empty: frames called Right only fill the correct version’s box alone, frames called Wrong only the flawed version’s alone. Which seconds each generation made is read from how the take was joined (a clip cut around another one, a trim, an insert); each prompt sits under the line that says what it is, which seconds of which video it generated and which frames it made. The fields fill themselves and follow the frames until you type in them; Fill writes them again. The database keeps what each prompt is, and the judge and the agents read it so, sample by sample. Nothing is compared or diffed by the app: the keeper reads the prompts whole when it asks for them, the prompt writers read them for a sample they judged relevant, and each decides what changed.'));
 
   // ---- the report fields (the title and the explanation are burned into the saved image)
   const title = h('input', { value: miss ? miss.title : '', placeholder: 'One line or a paragraph: what went wrong, or what this scenario is about (e.g. “the third capsule disappears after the hand leaves”)', style: 'width:100%' });
@@ -387,7 +359,7 @@ export async function work(qs) {
   };
 
   async function saveReport() {
-    followFrames();
+    await followNow();          // the boxes Loupe writes for the frames on screen and every other sample of the report, before they are saved
     const body = { run: qs.run || '', video: qs.video || '', title: title.value, explanation: miss ? miss.explanation : details.value, kinds: kinds.get(), model: model.value, mode: mode.value, product: product.value, product_sample: useSample.checked,
       wrong_path: state.wrong, fixed_path: state.fixed, wrong_label: (versions.find((v) => v.path === state.wrong) || {}).label || '', fixed_label: (versions.find((v) => v.path === state.fixed) || {}).label || '',
       wrong_prompt: wrongPrompt.value, fixed_prompt: fixedPrompt.value, prompt_note: promptNote.value,

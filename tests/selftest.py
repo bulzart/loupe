@@ -333,7 +333,9 @@ def main(with_keeper=False):
           and _qcr.EXTRACT_MODEL_DEFAULT == "claude-haiku-5-5")
     req("PATCH", "/api/misses/1", {"wrong_prompt": "PROMPT-A the can on the desk."})
     s, d, _ = req("POST", "/api/qc/brief", {"model": "wan3_0_prime"}, key=kq)
-    check("the brief says the prompts are kept and where to read them, without their text", "prompts of both takes are kept" in d["text"] and "?prompts=1" in d["text"] and "PROMPT-A" not in d["text"], d["text"][:300])
+    check("the brief says which prompts are kept, named by what they are, and where to read them, without their text",
+          "kept in the record: the flawed version's prompt (the generations the frames called WRONG come from) and the correct version's prompt" in d["text"]
+          and "?prompts=1" in d["text"] and "PROMPT-A" not in d["text"], d["text"][:300])
     # a still asked for beside the video (a guide plate, a start frame) and a second attempt: neither is taken for the first attempt's prompt
     atp_run = TMP / "atp" / "runs" / "20261001-000000-07"
     (atp_run / "50-requests" / "video-03-g1-request.json").write_text(json.dumps({"tool": "generate_image", "params": {"model": "an_image_model", "prompt": "PLATE: the empty scene with a real can.", "medias": [{"role": "image_references", "value": "m1"}]}}))
@@ -630,10 +632,10 @@ def main(with_keeper=False):
     pt = smp.get("prompts_text", "")
     check("the sample served with its prompts says which frames each prompt made", s == 200 and len(ws) == 2 and [f["n"] for f in ws[0]["frames"]] == [1] and [f["n"] for f in ws[1]["frames"]] == [2]
           and [(x["gen"], x["of"]) for x in ws] == [(1, 2), (2, 2)], str(ws)[:300])
-    check("the judge's text: the prompt responsible for Frame 1 (second 0 to 2), then the one responsible for Frame 2 (second 2 to 5), the frames named as the image tags them",
-          "This is the prompt responsible for Frame 1 (WRONG, 0:01.00) of this sample: it generated second 0 to second 2 of Video A (generation 1 of 2" in pt
-          and "This is the prompt responsible for Frame 2 (WRONG, 0:04.00) of this sample: it generated second 2 to second 5 of Video A (generation 2 of 2" in pt
-          and pt.index("PROMPT-C1") < pt.index("PROMPT-C2"), pt[:600])
+    check("the judge's text: each prompt named as the flawed version's, with the seconds of Video A it generated and the frame it made, generation 1 then 2",
+          "This is a prompt of the flawed version (the generation the frames called WRONG come from): it generated second 0 to second 2 of Video A (generation 1 of 2 · clip c1 · video-07-c1-request.json), and made Frame 1 (WRONG, 0:01.00) of this sample." in pt
+          and "it generated second 2 to second 5 of Video A (generation 2 of 2 · clip c2 · video-07-c2-request.json), and made Frame 2 (WRONG, 0:04.00) of this sample." in pt
+          and pt.index("PROMPT-C1") < pt.index("PROMPT-C2") and "this sample keeps no correct version's prompt: none of its frames is called RIGHT" in pt, pt[:600])
     meta7 = json.loads((core.DATA / "samples" / str(smo) / "meta.json").read_text(encoding="utf-8"))
     check("each frame of the image is numbered, names its video and the generation that made it (meta), as the prompts name it",
           [(f["n"], f["video"], (f.get("generation") or {}).get("gen"), (f.get("generation") or {}).get("clip")) for f in meta7["frames"]] == [(1, "A", 1, "c1"), (2, "A", 2, "c2")]
@@ -656,9 +658,13 @@ def main(with_keeper=False):
           and "PROMPT-C2" in pp2.get("text", "") and "PROMPT-C1" not in pp2.get("text", "") and "the prompt of each generation this sample's frames come from" in pp2.get("text", ""), pp2.get("text", "")[:500])
     s, d, _ = req("PATCH", f"/api/misses/{sm}", {"fixed_prompt": "", "fixed_segments": [dict(x, src="wrong") for x in segs7]})
     pp3 = _qcs.misses.prompts_of(smo2) or {}
-    check("a RIGHT frame taken from Video A: the corrected take's side gives Video A's generation that made it", [x["gen"] for x in pp3.get("fixed_segments") or []] == [1]
-          and "of Video A (generation 1 of 2" in pp3.get("text", "").split("the corrected take")[-1] and "Frame 3 (RIGHT, 0:00.50)" in pp3.get("text", ""), pp3.get("text", "")[-500:])
-    check("the keeper's digest says the flawed take was made of two generations", "the flawed take was made of 2 generations" in _qcs._digest())
+    check("a RIGHT frame taken from Video A: the correct version's box gives Video A's generation that made it, named as the correct version's prompt",
+          [x["gen"] for x in pp3.get("fixed_segments") or []] == [1]
+          and "This is a prompt of the correct version (the generation the frames called RIGHT come from): it generated second 0 to second 2 of Video A (generation 1 of 2"
+          in pp3.get("text", "").split("the correct version's prompt box")[-1] and "Frame 3 (RIGHT, 0:00.50)" in pp3.get("text", ""), pp3.get("text", "")[-500:])
+    dg_lines = _qcs.records_of(_qcs._digest()).get(f"S{smo2}", "")
+    check("the keeper's digest names each prompt in a word with its generation of the take and the seconds it made, nothing explained twice",
+          f"S{smo2}-P1 · FLAWED · generation 2 of 2 of Video A (2–5 s) · made Frames 1 and 2 of S{smo2}" in dg_lines and "holds generations of a take made of" not in dg_lines, dg_lines[-700:])
     s, d, _ = req("GET", "/api/generation-assets?run=20261001-000000-07&video=07&wrong=" + quote(clean7))
     check("the product sample's images come from both generations' requests", s == 200 and {a["request"] for a in d.get("assets", [])} >= {"video-07-c1-request.json"}
           or {a["request"] for a in d.get("assets", [])} >= {"video-07-c2-request.json"}, str(d)[:300])
@@ -699,7 +705,8 @@ def main(with_keeper=False):
     check("the judge reads the Examples sample's one box as an example take, never as the wrong or the corrected take, and never Video B's prompt",
           s == 200 and (d.get("sample") or {}).get("prompt_roles") == {"wrong": "example", "fixed": "example"} and "this sample's frames are all Examples" in et
           and (d.get("sample") or {}).get("prompt_sides") == ["wrong"] and "takes all its frames from one video, here Video A" in et
-          and "the prompt of the example take of Video A" in et and "example take of Video B" not in et and "EX-PROMPT-A" in et and "EX-PROMPT-B" not in et
+          and "the example prompt box of Video A" in et and "example prompt box of Video B" not in et and "EX-PROMPT-A" in et and "EX-PROMPT-B" not in et
+          and "no flawed and no correct prompt" in et and "the flawed version's prompt box" not in et
           and not (d.get("sample") or {}).get("fixed_prompt")
           and "a suggestion of what could have changed or how it could have been done another way, neither a bad generation nor a correct one" in et
           and "the prompt of the wrong take" not in et and "the prompt of the corrected take" not in et, et[:500])
@@ -713,21 +720,23 @@ def main(with_keeper=False):
           ex3.get("prompt_roles") == {"wrong": "flawed", "fixed": "correct"}, str(ex3.get("prompt_roles")))
     dlines = _qcs_records()
     check("the keeper's digest names the Examples sample's one box as an example take, and a pair as before",
-          "PROMPT OF THE EXAMPLE TAKE OF VIDEO A SAVED (the one prompt box of this Examples sample" in dlines.get(ex1.get("id"), "")
-          and "PROMPTS OF BOTH EXAMPLE TAKES SAVED" not in dlines.get(ex1.get("id"), "") and "neither a bad generation nor a correct one" in dlines.get(ex1.get("id"), "")
-          and "PROMPTS OF BOTH TAKES SAVED: VIDEO A'S GENERATED THE FLAWED VERSION, VIDEO B'S IS THE CORRECT TAKE" in dlines.get(ex3.get("id"), ""), dlines.get(ex1.get("id"), "")[-300:])
+          "PROMPTS SAVED: EXAMPLE (Video A), this Examples sample's one box; sample_origin reads it" in dlines.get(ex1.get("id"), "")
+          and "FLAWED" not in dlines.get(ex1.get("id"), "") and "neither a bad generation nor a correct one" in _qcs.LIB_HEADER
+          and "EXAMPLE (Video A or B: an Examples sample's one box)" in _qcs.LIB_HEADER
+          and "PROMPTS SAVED: FLAWED + CORRECT; sample_origin reads them" in dlines.get(ex3.get("id"), ""), dlines.get(ex1.get("id"), "")[-300:])
     m_ex = json.loads((core.DATA / "samples" / str(ex1["moment_id"]) / "meta.json").read_text(encoding="utf-8"))
     check("an Example sample's frames are tagged EXAMPLE in its record", [f["role"] for f in m_ex["frames"]] == ["example", "example"], str(m_ex["frames"])[:200])
     check("with a sample whose frames are Wrong and Right, the database keeps Video A's prompt as the one that generated the flawed version and Video B's as the correct take's",
           db_roles() == ("flawed", "correct"), str(db_roles()))
     s3, d3, _ = req("GET", f"/api/qc/samples/{ex3.get('id')}?prompts=1", key=kq)
     t3 = (d3.get("sample") or {}).get("prompts_text", "")
-    check("the judge reads Video A's prompt as the one that generated the flawed version and Video B's as the correct take's",
-          "the prompt of the flawed take (Video A: its prompt generated the flawed version)" in t3 and "the prompt of the correct take (Video B)" in t3, t3[:400])
+    check("the judge reads the flawed version's prompt as the one that generated the flawed version and the correct version's as the correct one's",
+          "the flawed version's prompt box (the generations the frames called WRONG come from: they generated the flawed version) (whole, as the admin saved it):\nEX-PROMPT-A" in t3
+          and "the correct version's prompt box (the generations the frames called RIGHT come from: they generated the correct version) (whole, as the admin saved it):\nEX-PROMPT-B" in t3, t3[:600])
     from loupe_app import qc as _qce
     lib_ex = {x["id"]: x for x in _qce.library()}
     bl = _qce.sample_lines(lib_ex[ex1["id"]]) if ex1.get("id") in lib_ex else ""
-    check("the brief says the one prompt kept is an example take's, Video A's", "Video A's prompt, an example take" in bl and "Video B's prompt" not in bl, bl[:600])
+    check("the brief says the one prompt kept is an example prompt, Video A's", "the prompt box of Video A, an example prompt" in bl and "the prompt box of Video B" not in bl, bl[:600])
     # one record per sample wherever an agent is handed samples (the user, 2026-10-29): which frame of which sample, its video, the prompt that made it
     recs = _qcs_records()
     r3 = recs.get(ex3.get("id"), "")
@@ -737,13 +746,15 @@ def main(with_keeper=False):
           and r3.endswith(f"=== END OF SAMPLE {ex3['id']} ===") and f"THE GENERATION MISS R{em} OF {ex3['id']}: " in r3
           and f"WHAT {ex3['id']} IS: " in r3 and f"WHERE {ex3['id']} CAME FROM: " in r3, r3[:400])
     check("the frames in a record name their video and the label of the prompt that made them",
-          f"  {ex3['id']} · Frame 1 WRONG 0:01.00, Video A" in r3 and f"made by {ex3['id']}-P1" in r3 and f"  {ex3['id']} · Frame 2 RIGHT 0:00.50, Video B" in r3
-          and f"made by {ex3['id']}-P2" in r3 and f"  {ex3['id']}-P1 · Video A's prompt box · one text · made Frame 1 of {ex3['id']}" in r3, r3[:1400])
+          f"  {ex3['id']} · Frame 1 WRONG 0:01.00, Video A" in r3 and f"made by {ex3['id']}-P1 (FLAWED)" in r3 and f"  {ex3['id']} · Frame 2 RIGHT 0:00.50, Video B" in r3
+          and f"made by {ex3['id']}-P2 (CORRECT)" in r3 and f"  {ex3['id']}-P1 · FLAWED · one text · made Frame 1 of {ex3['id']}" in r3, r3[:1400])
     p1 = full3.split(f"--- {ex3['id']}-P1 (sample {ex3['id']}, generation miss R{em}) · ")[-1].split(f"--- end of {ex3['id']}-P1 (sample {ex3['id']}) ---")[0]
     p2 = full3.split(f"--- {ex3['id']}-P2 (sample {ex3['id']}, generation miss R{em}) · ")[-1].split(f"--- end of {ex3['id']}-P2 (sample {ex3['id']}) ---")[0]
     check("its whole record gives each prompt under that label, in its box, with the frames it made, and nothing of the other",
-          p1.startswith("Video A's prompt box: the prompt that generated the flawed version ---") and "Frame 1 (WRONG, 0:01.00)" in p1 and "EX-PROMPT-A" in p1 and "EX-PROMPT-B" not in p1
-          and p2.startswith("Video B's prompt box: the prompt of the correct take ---") and "Frame 2 (RIGHT, 0:00.50)" in p2 and "EX-PROMPT-B" in p2 and "EX-PROMPT-A" not in p2, full3[:1800])
+          p1.startswith("the flawed version's prompt box: the prompts of the generations the frames called WRONG come from, which generated the flawed version ---")
+          and "This is a prompt of the flawed version" in p1 and "Frame 1 (WRONG, 0:01.00)" in p1 and "EX-PROMPT-A" in p1 and "EX-PROMPT-B" not in p1
+          and p2.startswith("the correct version's prompt box: the prompts of the generations the frames called RIGHT come from, which generated the correct version ---")
+          and "This is a prompt of the correct version" in p2 and "Frame 2 (RIGHT, 0:00.50)" in p2 and "EX-PROMPT-B" in p2 and "EX-PROMPT-A" not in p2, full3[:1800])
     check("the admin's words are tied to the frames they speak of",
           "wrong here (what is wrong at the marked place of Frame 1 (WRONG, 0:01.00), called WRONG): kept to remember" in full3, full3[:900])
     both = _qce.records_of("\n\n".join(_qce._prompts_text(k, lib_ex[k]) for k in (ex1["id"], ex3["id"]) if k in lib_ex))
@@ -755,15 +766,17 @@ def main(with_keeper=False):
           bt.get("text", "")[:300])
     req("DELETE", f"/api/moments/{ex3['moment_id']}")
     check("deleting the other samples makes the report's prompts examples again in the database", db_roles() == ("example", "example"), str(db_roles()))
-    # the one box of an Examples sample holds the prompt of every generation of its video, the one with no frame of it too (the user, 2026-10-29)
+    # the one box of an Examples sample gives the prompt of each generation its Example frames come from, and no other (the user, 2026-10-29: "if two or
+    # more samples are from one video generation only make sure to only include that generation prompts in the prompt filler not more")
     req("PATCH", f"/api/misses/{em}", {"wrong_segments": [{"clip": "c1", "attempt": 1, "request": "video-07-c1-request.json", "t_from": 0, "t_to": 1.5, "prompt": "EXSEG-ONE the can on the desk."},
                                                         {"clip": "c2", "attempt": 1, "request": "video-07-c2-request.json", "t_from": 1.5, "t_to": 3.0, "prompt": "EXSEG-TWO the can in the hand."}]})
     s, d, _ = req("GET", f"/api/qc/samples/{ex1.get('id')}?prompts=1", key=kq)
     et2 = (d.get("sample") or {}).get("prompts_text", "")
-    check("an Examples sample's one box gives the prompt of every generation of its video, each under the seconds it made, the one with no frame of it too",
-          "EXSEG-ONE" in et2 and "EXSEG-TWO" in et2 and len((d.get("sample") or {}).get("wrong_segments") or []) == 2
-          and "responsible for Frame 1 (EXAMPLE, 0:00.50) and Frame 2 (EXAMPLE, 0:01.00) of this sample: it generated second 0 to second 1.5 of Video A (generation 1 of 2" in et2
-          and "This is the prompt that generated second 1.5 to second 3 of Video A (generation 2 of 2" in et2 and "no frame of this sample comes from it" in et2, et2[:900])
+    check("an Examples sample's one box gives the prompt of the generation its Example frames come from, named as an example, and not the one no frame comes from",
+          "EXSEG-ONE" in et2 and "EXSEG-TWO" not in et2 and len((d.get("sample") or {}).get("wrong_segments") or []) == 1
+          and "This is an example prompt (the generation the frames called EXAMPLE come from: a suggestion" in et2
+          and "it generated second 0 to second 1.5 of Video A (generation 1 of 2 · clip c1 · video-07-c1-request.json), and made Frame 1 (EXAMPLE, 0:00.50) and Frame 2 (EXAMPLE, 0:01.00) of this sample." in et2,
+          et2[:900])
     from loupe_app import runs as _runs
     # no video generation prompt is ever cut (the user, 2026-10-29): a long generation's prompt, a long box, the judge's template, a run's request prompt
     long_seg = "SEG-LONG " + "the can stands on the desk, as tall as the mug. " * 700 + "SEG-LONG-END"
@@ -786,6 +799,114 @@ def main(with_keeper=False):
     pr98 = _qce._request_prompt(_runs.run_dir("20261001-000000-07"), "98")
     check("a run's request prompt reaches the judge whole (sample_origin, a request_prompt need)", pr98.endswith("REQ-LONG-END") and len(pr98) > 40000, str(len(pr98)))
     req("DELETE", f"/api/misses/{em}")
+
+    print("\n[which seconds each generation made, read from how the take was joined; each box holds the generations its frames come from, and no other]")
+    from loupe_app import misses as _ms
+    v8 = atp_run / "60-outputs" / "video-08"
+    for att in ("a1", "a2"):            # c1 cut in two around c2 (c1a, c2, c1b), as a with-inserts video is joined; a1 is an older attempt of c1
+        mkclip(v8 / "c1" / att / "raw.mp4", 4)
+        mkclip(v8 / "c1" / att / "c1a.mp4", 1)
+        mkclip(v8 / "c1" / att / "c1b.mp4", 2)
+    mkclip(v8 / "c2" / "a1" / "raw.mp4", 2)
+    mkclip(v8 / "c2" / "a1" / "c2.mp4", 1.5)
+    (v8 / "concat-list.txt").write_text("file 'c1/a1/c1a.mp4'\nfile 'c2/a1/c2.mp4'\nfile 'c1/a1/c1b.mp4'\n", encoding="utf-8")      # the older a1 join's list, left beside the copy
+    (v8 / "a2").mkdir(parents=True, exist_ok=True)
+    (v8 / "a2" / "concat-list.txt").write_text("file '../c1/a2/c1a.mp4'\nfile '../c2/a1/c2.mp4'\nfile '../c1/a2/c1b.mp4'\n", encoding="utf-8")
+    def mkcol(path, secs, color):         # a clip of its own colour: never byte for byte another file
+        path.parent.mkdir(parents=True, exist_ok=True)
+        cp = subprocess.run([media.find_tool("ffmpeg"), "-y", "-loglevel", "error", "-f", "lavfi", "-i", f"color=c={color}:s=360x640:r=30:d={secs}",
+                             "-pix_fmt", "yuv420p", str(path)], capture_output=True)
+        assert cp.returncode == 0, cp.stderr[-300:]
+    mkcol(v8 / "joined-a1.mp4", 4.5, "0x604020")             # the a1 join, older than the clean video
+    os.utime(v8 / "joined-a1.mp4", (1_700_000_000, 1_700_000_000))
+    mkclip(v8 / "a2" / "clean.mp4", 4.5)
+    shutil.copyfile(v8 / "a2" / "clean.mp4", v8 / "clean.mp4")         # the clean video copied up from the attempt folder it was joined in
+    mkcol(v8 / "preview.mp4", 4.5, "0x206040")                # a render of the clean video (as long, made after it)
+    for name, text in (("video-08-c1-request.json", "J-C1-A1 the first attempt of c1."), ("video-08-c1-a2-request.json", "J-C1-A2 the can stands on the desk."),
+                       ("video-08-c2-request.json", "J-C2 the hand lifts the can.")):
+        (atp_run / "50-requests" / name).write_text(json.dumps({"video": "08", "clip": name.split("-")[2], "params": {"model": "wan3_0_prime", "prompt": text,
+                                                                                                                     "medias": [{"role": "image_references", "value": "m1"}]}}), encoding="utf-8")
+    (v8 / "result.json").write_text(json.dumps({"video": "08", "jobs": [{"clip": "c1", "attempts": 2}, {"clip": "c2", "attempts": 1}]}), encoding="utf-8")
+    run7 = "20261001-000000-07"
+    sg = runs.prompt_segments(run7, "08", str(v8 / "clean.mp4"))
+    by = {s["clip"]: s for s in sg.get("segments") or []}
+    check("a clip cut around another one is one generation with two spans, read from the join list of the attempt folder the clean video was copied from",
+          sg.get("spans_known") and "a2/concat-list.txt" in sg.get("source", "") and by.get("c1", {}).get("spans") == [[0.0, 1.0], [2.5, 4.5]]
+          and by["c1"]["attempt"] == 2 and by["c1"]["request"] == "video-08-c1-a2-request.json" and by.get("c2", {}).get("spans") == [[1.0, 2.5]]
+          and [(s["clip"], s["gen"], s["of"]) for s in sg["segments"]] == [("c1", 1, 2), ("c2", 2, 2)], str(sg)[:500])
+    sp = runs.prompt_segments(run7, "08", str(v8 / "preview.mp4"))
+    check("a render of the clean video (as long, made after it) is read through the clean video's join", sp.get("spans_known") and "through the clean video" in sp.get("source", "")
+          and [s["attempt"] for s in sp["segments"]] == [2, 1], str(sp)[:300])
+    so = runs.prompt_segments(run7, "08", str(v8 / "joined-a1.mp4"))
+    check("an older join beside its own list is read from that list, with the attempt its pieces sit in", so.get("spans_known") and so["source"] == "the concat list concat-list.txt"
+          and so["segments"][0]["attempt"] == 1 and so["segments"][0]["request"] == "video-08-c1-request.json", str(so)[:300])
+    v9 = atp_run / "60-outputs" / "video-09"         # a join record as awl.py concat writes it: the output's sha1 and every piece with its clip and attempt
+    mkclip(v9 / "c1" / "a1" / "raw.mp4", 2)
+    mkclip(v9 / "c2" / "a3" / "raw.mp4", 3)
+    mkclip(v9 / "joined.mp4", 5)
+    (v9 / "joined.mp4.join.json").write_text(json.dumps({"file": "joined.mp4", "sha1": media.sha1_file(v9 / "joined.mp4"), "pieces": [
+        {"file": str(v9 / "c1" / "a1" / "raw.mp4"), "clip": "c1", "attempt": 1, "t_from": 0.0, "t_to": 2.0},
+        {"file": str(v9 / "c2" / "a3" / "raw.mp4"), "clip": "c2", "attempt": 3, "t_from": 2.0, "t_to": 5.0}]}), encoding="utf-8")
+    sr = runs.prompt_segments(run7, "09", str(v9 / "joined.mp4"))
+    check("a join record found by the file's own bytes gives each piece's clip, attempt and seconds", sr.get("spans_known") and "join record" in sr.get("source", "")
+          and [(s["clip"], s["attempt"], s["spans"]) for s in sr["segments"]] == [("c1", 1, [[0.0, 2.0]]), ("c2", 3, [[2.0, 5.0]])], str(sr)[:300])
+    v10 = atp_run / "60-outputs" / "video-10"         # nothing records the join and the clips' lengths do not add up to the file: never guessed
+    mkclip(v10 / "c1" / "a1" / "raw.mp4", 3)
+    mkclip(v10 / "c2" / "a1" / "raw.mp4", 3)
+    mkclip(v10 / "clean.mp4", 5)
+    su = runs.prompt_segments(run7, "10", str(v10 / "clean.mp4"))
+    bu = _ms.prompt_boxes(None, run7, "10", {"wrong": str(v10 / "clean.mp4")}, [{"src": "wrong", "role": "wrong", "t": 1.0}])
+    check("a join that cannot be read gives no seconds, and the box is left unwritten with the reason", su.get("kind") == "clips" and su.get("spans_known") is False
+          and not su.get("segments") and bu["wrong"]["text"] == "" and "could not be read" in " ".join(bu["wrong"]["problems"]), str(su)[:200] + " / " + str(bu["wrong"])[:200])
+    clean8 = str(v8 / "clean.mp4")
+    # the user's case: a Wrong frame in generation 1, a Right frame in generation 2 and another Wrong frame back in generation 1, one video
+    bx = _ms.prompt_boxes(None, run7, "08", {"wrong": clean8}, [{"src": "wrong", "role": "wrong", "t": 0.5}, {"src": "wrong", "role": "right", "t": 1.5},
+                                                                {"src": "wrong", "role": "wrong", "t": 3.0}])
+    check("the flawed version's box holds the generation the Wrong frames come from, and the correct version's box the one the Right frame comes from, both of one video",
+          [(s["clip"], s["attempt"]) for s in bx["wrong"]["segments"]] == [("c1", 2)] and [(s["clip"], s["attempt"]) for s in bx["fixed"]["segments"]] == [("c2", 1)]
+          and bx["wrong"]["role"] == "flawed" and bx["fixed"]["role"] == "correct" and "J-C2" not in bx["wrong"]["text"] and "J-C1" not in bx["fixed"]["text"]
+          and bx["wrong"]["text"].startswith("This is a prompt of the flawed version (the generation the frames called WRONG come from): it generated second 0 to second 1 and "
+                                             "second 2.5 to second 4.5 of Video A (generation 1 of 2 · clip c1 · video-08-c1-a2-request.json), and made Frame 1 (WRONG, 0:00.50) "
+                                             "and Frame 3 (WRONG, 0:03.00) of this sample.\nJ-C1-A2"), str(bx)[:900])
+    br = _ms.prompt_boxes(None, run7, "08", {"wrong": clean8}, [{"src": "wrong", "role": "right", "t": 0.5}, {"src": "wrong", "role": "right", "t": 3.0}])
+    check("frames called Right only fill the correct version's box alone, with the one generation they come from", not br["wrong"]["used"] and br["wrong"]["text"] == ""
+          and br["fixed"]["used"] and [s["clip"] for s in br["fixed"]["segments"]] == ["c1"] and "J-C2" not in br["fixed"]["text"], str(br)[:400])
+    s, d, _ = req("POST", "/api/misses/prompt-boxes", {"run": run7, "video": "08", "wrong_path": clean8, "frames": [{"src": "wrong", "role": "right", "t": 0.5}]})
+    check("the form's route answers the same boxes", s == 200 and not d["wrong"]["used"] and [x["clip"] for x in d["fixed"]["segments"]] == ["c1"], str(d)[:300])
+    s, d, _ = req("POST", "/api/misses", {"run": run7, "video": "08", "title": "The can is right, then grows", "model": "wan3_0_prime", "wrong_path": clean8, "wrong_label": "clean.mp4",
+                                          "fixed_prompt": br["fixed"]["text"], "fixed_segments": br["fixed"]["segments"]})
+    jm = d["miss"]["id"] if s == 200 else 0
+    check("a box holding one generation of a take made of two keeps it beside its text (its seconds and its number say which part of the video it made)",
+          s == 200 and len(d["miss"]["fixed_segments"]) == 1 and d["miss"]["fixed_segments"][0]["of"] == 2 and d["miss"]["fixed_segments"][0]["spans"] == [[0.0, 1.0], [2.5, 4.5]]
+          and d["miss"]["wrong_prompt"] == "", str(d)[:400])
+    s, d, _ = req("POST", f"/api/misses/{jm}/moments", {"frames": [{"src": "wrong", "role": "right", "t": 0.5}, {"src": "wrong", "role": "right", "t": 3.0}], "details": "Right here."})
+    jr = d["moment"] if s == 200 else {}
+    s, d, _ = req("GET", f"/api/qc/samples/{jr.get('id')}?prompts=1", key=kq)
+    js_ = d.get("sample") or {}
+    rec = js_.get("record", "")
+    check("a sample of frames called Right only: the judge is told it is the correct version only, with the correct version's prompt alone and no flawed one",
+          js_.get("prompt_sides") == ["fixed"] and f"WHAT {jr.get('id')} IS: THE CORRECT VERSION ONLY (no frame is called wrong)" in rec
+          and f"no flawed version's prompt: none of the frames of {jr.get('id')} is called WRONG" in rec and "the correct version's prompt box: the prompts of the generations the frames called RIGHT come from" in rec
+          and "J-C1-A2" in rec and "J-C2" not in rec and f"made by {jr.get('id')}-P1 (the correct version's prompt box)" in rec
+          and "this sample keeps no flawed version's prompt" in js_.get("prompts_text", ""), rec[:1600])
+    meta8 = json.loads((core.DATA / "samples" / str(jr.get("moment_id")) / "meta.json").read_text(encoding="utf-8")) if jr else {}
+    check("each frame's tag names the generation that made it with every span of it", [(f.get("generation") or {}).get("spans") for f in meta8.get("frames", [])] == [[[0.0, 1.0], [2.5, 4.5]]] * 2,
+          str(meta8.get("frames"))[:300])
+    # a second sample of the report: its Right frame comes from c2, so the correct version's box holds both generations, each naming its sample
+    s, d, _ = req("POST", f"/api/misses/{jm}/moments", {"frames": [{"src": "wrong", "role": "right", "t": 2.0}], "details": "Right in c2 too."})
+    jr2 = d["moment"] if s == 200 else {}
+    s, d, _ = req("GET", f"/api/misses/{jm}")
+    m2 = d.get("miss") or {}
+    check("two or more samples count together: the box written from a joined take follows them, each frame named with its sample",
+          [x["clip"] for x in m2.get("fixed_segments") or []] == ["c1", "c2"] and f"of {jr.get('id')}." in m2.get("fixed_prompt", "")
+          and f"Frame 1 (RIGHT, 0:02.00) of {jr2.get('id')}" in m2.get("fixed_prompt", ""), m2.get("fixed_prompt", "")[:600])
+    pq = _ms.prompts_of(jr2.get("moment_id")) or {}
+    check("each sample reads only the generation its own frames come from", [x["clip"] for x in pq.get("fixed_segments") or []] == ["c2"] and "J-C1" not in pq.get("text", ""), pq.get("text", "")[:400])
+    req("DELETE", f"/api/moments/{jr2.get('moment_id')}")
+    s, d, _ = req("GET", f"/api/misses/{jm}")
+    check("a deleted sample's generation leaves the box Loupe wrote", [x["clip"] for x in (d.get("miss") or {}).get("fixed_segments") or []] == ["c1"]
+          and "J-C2" not in (d.get("miss") or {}).get("fixed_prompt", ""), str((d.get("miss") or {}).get("fixed_segments"))[:300])
+    req("DELETE", f"/api/misses/{jm}")
     late = media.frame_file(Path(six_take), 999)
     check("a frame asked for past the end of a video is its last picture, never an error", late.is_file())
     s, d, _ = req("POST", "/api/misses", {"run": "20261001-000000-07", "video": "03", "title": "The pen became a can", "model": "wan3_0_prime",

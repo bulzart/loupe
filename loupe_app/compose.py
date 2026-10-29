@@ -214,8 +214,11 @@ def gen_words(g: dict | None) -> str:
         return ""
     if g.get("after") is not None:
         return f"after the last generation ({_secs(g['after'])} s)"
+    if g.get("insert"):
+        return f"not generated: {g['insert']} ({_secs(g.get('t_from') or 0)}–{_secs(g.get('t_to') or 0)} s)"
     if (g.get("of") or 1) > 1:
-        return f"generation {g.get('gen')} of {g.get('of')} · clip {g.get('clip') or '-'} ({_secs(g.get('t_from') or 0)}–{_secs(g.get('t_to') or 0)} s)"
+        spans = g.get("spans") or [[g.get("t_from") or 0, g.get("t_to") or 0]]
+        return f"generation {g.get('gen')} of {g.get('of')} · clip {g.get('clip') or '-'} (" + " and ".join(f"{_secs(a)}–{_secs(b)} s" for a, b in spans) + ")"
     return f"clip {g['clip']}" if g.get("clip") else ""
 
 

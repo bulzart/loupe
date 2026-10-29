@@ -419,9 +419,11 @@ def request_prompt(h):
     run, video, path = h.q.get("run", ""), h.q.get("video", ""), h.q.get("path", "")
     seg = runs.prompt_segments(run, video, path)
     segs = seg.get("segments") or []
-    if seg.get("kind") == "clips" and len(segs) >= 2:
-        h.send_json({"ok": True, "prompt": misses.compose_text(segs), "segments": segs, "request": ", ".join(s["request"] for s in segs if s["request"]),
-                     "attempt": 0, "note": seg.get("note", "")})
+    if seg.get("kind") == "clips" and not seg.get("spans_known"):
+        h.send_json({"ok": True, "prompt": "", "segments": [], "spans_known": False, "attempt": 0, "note": seg.get("note", "")})
+    elif seg.get("kind") == "clips" and len(segs) >= 2:
+        h.send_json({"ok": True, "prompt": misses.compose_text(segs), "segments": segs, "inserts": seg.get("inserts") or [], "spans_known": True,
+                     "request": ", ".join(s["request"] for s in segs if s["request"]), "attempt": 0, "note": seg.get("note", "")})
     elif seg.get("kind") in ("clip", "clips") and segs:
         s = segs[0]
         h.send_json({"ok": True, "prompt": s["prompt"], "request": s["request"], "attempt": s["attempt"], "clip": s["clip"], "note": seg.get("note", "")})
@@ -604,6 +606,20 @@ def misses_suggest_kinds(h):
 @route("POST", "/api/misses", scope="admin")
 def misses_create(h):
     h.send_json({"ok": True, "miss": misses.create(h.body_json(), h.pr.name)})
+
+
+@route("POST", "/api/misses/prompt-boxes", scope="admin")
+def misses_prompt_boxes(h):
+    """What Fill writes in each prompt box of a report, for the form (misses.prompt_boxes, the user, 2026-10-29): the flawed version's box holds the prompts
+    of the generations the frames called WRONG come from, the correct version's box those of the generations the frames called RIGHT come from, an
+    Examples sample's one box those its Example frames come from, every sample of the report counted; a box no frame feeds stays empty.  Body: {miss_id?,
+    run, video, wrong_path, fixed_path, frames (on screen), editing (the moment id being changed, or none)}.  Read only: nothing is saved."""
+    b = h.body_json()
+    miss = misses.get(int(b["miss_id"])) if str(b.get("miss_id") or "").isdigit() else None
+    editing = int(b["editing"]) if str(b.get("editing") or "").isdigit() else None
+    frames = [f for f in (b.get("frames") or []) if isinstance(f, dict)][:misses.compose.MAX_FRAMES]
+    h.send_json({"ok": True, **misses.prompt_boxes(miss, str(b.get("run") or ""), str(b.get("video") or ""),
+                                                   {"wrong": str(b.get("wrong_path") or ""), "fixed": str(b.get("fixed_path") or "")}, frames, editing)})
 
 
 @route("GET", r"/api/misses/(\d+)", scope="admin")

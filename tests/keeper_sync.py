@@ -489,7 +489,9 @@ misses.update(pm_id, {"wrong_prompt": "WRONGPROMPT-MARK the can on the desk.", "
 fresh, current, text = ask()
 check("saving the prompts of both takes re-syncs the keeper (the library version counts them)", fresh and current)
 line = line_of(pm_mo)
-check("its digest line says the prompts are saved and carries the admin's note, never the prompts", "PROMPTS OF BOTH TAKES SAVED" in line and "NOTE-ON-PROMPT" in line and "WRONGPROMPT-MARK" not in line and "FIXEDPROMPT-MARK" not in line, line[:300])
+check("its digest line says which prompts are saved, named by what they are, and carries the admin's note, never the prompts",
+      "PROMPTS SAVED: FLAWED + CORRECT; sample_origin reads them" in line
+      and "NOTE-ON-PROMPT" in line and "WRONGPROMPT-MARK" not in line and "FIXEDPROMPT-MARK" not in line, line[:300])
 check("the header and the role tell the keeper to read the prompts through sample_origin and judge what changed itself, never to assume", "sample_origin" in qc.LIB_HEADER and "Never assume what changed without reading them" in qc.ROLE)
 qc._run_claude = scripted
 script[:] = [{"relevant": [], "needs": [{"kind": "sample_origin", "id": f"S{pm_mo}", "why": "what the corrected prompt said"}]},

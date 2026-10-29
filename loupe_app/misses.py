@@ -63,28 +63,56 @@ SAMPLE_FILES_MAX = 4   # images the admin may tick for the product sample (the b
 # (segment_line).  The field keeps its text as the form wrote it; the generations kept beside it let prompts_of() tell the judge, sample by sample,
 # which generations that sample's frames come from.  A prompt typed by hand replaces them.
 SEGMENT_COLS = ("wrong_segments", "fixed_segments")
-SEGMENTS_MAX = 12
-ROLE_WORD = {"wrong": "WRONG", "right": "RIGHT", "example": "EXAMPLE"}
+# No cap on how many generations a box keeps either (the user, 2026-10-29: "make sure that video generation prompts from the samples are not trimmed in
+# any way"): every generation the frames come from is kept, with its whole prompt.
+ROLE_WORD ={"wrong": "WRONG", "right": "RIGHT", "example": "EXAMPLE"}
 SIDE_ROLE = {"wrong": "wrong", "fixed": "right"}      # the frames each side's prompts are for
 VIDEO_NAME = {"wrong": "Video A", "fixed": "Video B"}
 
 
+def _spans_clean(v) -> list[list[float]]:
+    out = []
+    for sp in (v if isinstance(v, list) else []):
+        try:
+            a, b = float(sp[0]), float(sp[1])
+        except (TypeError, ValueError, IndexError, KeyError):
+            continue
+        if b > a:
+            out.append([round(max(0.0, a), 3), round(b, 3)])
+    return sorted(out)
+
+
+def _spans(s: dict) -> list[list[float]]:
+    """Every span of seconds a generation made (a clip that comes back after another one has two); an older segment has only t_from / t_to."""
+    return _spans_clean(s.get("spans")) or ([[float(s["t_from"]), float(s["t_to"])]] if float(s.get("t_to") or 0) > float(s.get("t_from") or 0) else [])
+
+
 def _segments_clean(v, side: str) -> list[dict]:
     out = []
-    for x in (v if isinstance(v, list) else [])[:SEGMENTS_MAX]:
+    for x in (v if isinstance(v, list) else []):
         if not isinstance(x, dict):
             continue
         try:
-            a, b = float(x.get("t_from") or 0), float(x.get("t_to") or 0)
+            spans = _spans_clean(x.get("spans")) or _spans_clean([[x.get("t_from") or 0, x.get("t_to") or 0]])
         except (TypeError, ValueError):
             continue
-        if b <= a:
+        if not spans:
             continue
         att, src = str(x.get("attempt") or "0"), str(x.get("src") or side)
-        out.append({"src": src if src in VIDEO_NAME else side, "clip": str(x.get("clip") or "")[:12], "attempt": int(att) if att.isdigit() else 0,
-                    "request": str(x.get("request") or "")[:160], "t_from": round(max(0.0, a), 3), "t_to": round(b, 3), "prompt": _prompt_text(x.get("prompt"))})
-    out.sort(key=lambda s: (s["src"] != "wrong", s["t_from"]))
+        seg = {"src": src if src in VIDEO_NAME else side, "clip": str(x.get("clip") or "")[:12], "attempt": int(att) if att.isdigit() else 0,
+               "request": str(x.get("request") or "")[:160], "t_from": spans[0][0], "t_to": spans[0][1], "spans": spans, "prompt": _prompt_text(x.get("prompt"))}
+        g, o = x.get("gen"), x.get("of")
+        if isinstance(g, int) and isinstance(o, int) and not isinstance(g, bool) and 1 <= g <= o:
+            seg["gen"], seg["of"] = g, o          # its number in its take, read from the run's join ('generation 1 of 2')
+        out.append(seg)
+    out.sort(key=lambda s: (s["src"] != "wrong", s["spans"][0][0]))
     return out if any(s["prompt"] for s in out) else []
+
+
+def _multi(segs: list[dict]) -> bool:
+    """Whether a box's generations are kept beside its text: two or more, or one generation of a take made of several (its seconds and its number say
+    which part of the video that prompt made)."""
+    return len(segs) >= 2 or bool(segs and int(segs[0].get("of") or 1) >= 2)
 
 
 def _segments_of(raw) -> list[dict]:
@@ -100,13 +128,15 @@ def _secs(x) -> str:
 
 
 def _numbered(segs: list[dict], side: str) -> list[dict]:
-    """Each generation with its video (src) and its number in that video's take (generation `gen` of `of`)."""
+    """Each generation with its video (src) and its number in that video's take (generation `gen` of `of`): the number read from the run's join when
+    the segment carries it, else (an older one) its place among the segments of its video."""
     srcs = [s.get("src") or side for s in segs]
     seen: dict = {}
     out = []
     for s, src in zip(segs, srcs):
         seen[src] = seen.get(src, 0) + 1
-        out.append({**s, "src": src, "gen": seen[src], "of": srcs.count(src)})
+        known = isinstance(s.get("gen"), int) and isinstance(s.get("of"), int)
+        out.append({**s, "src": src, "gen": s["gen"] if known else seen[src], "of": s["of"] if known else srcs.count(src)})
     return out
 
 
@@ -116,26 +146,50 @@ def _mmss(t) -> str:
 
 
 def frames_words(frames: list[dict]) -> str:
-    """'Frame 1 (WRONG, 0:03.00) and Frame 3 (WRONG, 0:05.20)': the frames as the sample's image tags them (FRAME n, the role, the time)."""
-    it = [f"Frame {f['n']} ({ROLE_WORD.get(f['role'], str(f['role']).upper())}, {_mmss(f['t'])})" for f in frames]
+    """'Frame 1 (WRONG, 0:03.00) and Frame 3 (WRONG, 0:05.20)': the frames as the sample's image tags them (FRAME n, the role, the time); frames of
+    several samples are named with their sample ('Frame 1 (RIGHT, 0:00.00) of S39 and Frame 2 (WRONG, 0:05.00) of S40')."""
+    by = {f.get("sample") for f in frames}
+    it = [f"Frame {f['n']} ({ROLE_WORD.get(f['role'], str(f['role']).upper())}, {_mmss(f['t'])})" + (f" of {f['sample']}" if len(by) > 1 and f.get("sample") else "")
+          for f in frames]
     return it[0] if len(it) == 1 else ", ".join(it[:-1]) + " and " + it[-1]
 
 
-def segment_line(s: dict) -> str:
-    """The line over a generation's prompt (the user, 2026-10-28): the frames of the sample it is responsible for, named as the image tags them, then the
-    seconds of which video it generated; with no frame known, only the seconds."""
-    where = (f"second {_secs(s['t_from'])} to second {_secs(s['t_to'])} of {VIDEO_NAME.get(s.get('src') or '', 'this video')} (generation "
+# What a generation's prompt is, named on its own line wherever it is written (the user, 2026-10-29: the agents, the QC, the keeper and the judge must
+# understand which prompt is wrong, which is correct and which is just an example): a prompt behind frames called WRONG generated the flawed version,
+# one behind frames called RIGHT the correct one, one behind frames called EXAMPLE is an example.
+ROLE_PHRASE = {"wrong": "a prompt of the flawed version (the generation the frames called WRONG come from)",
+               "right": "a prompt of the correct version (the generation the frames called RIGHT come from)",
+               "example": "an example prompt (the generation the frames called EXAMPLE come from: a suggestion of what could have changed or been done another "
+                          "way, neither a bad generation nor a correct one)"}
+
+
+def spans_words(s: dict) -> str:
+    """'second 0 to second 1.9 and second 3.4 to second 5.866': every span a generation made."""
+    return " and ".join(f"second {_secs(a)} to second {_secs(b)}" for a, b in _spans(s))
+
+
+def segment_line(s: dict, role: str = "") -> str:
+    """The line over a generation's prompt (the user, 2026-10-28 and 2026-10-29): what that prompt is (the flawed version's, the correct version's, an
+    example: ROLE_PHRASE, from the frames it made, else `role`), the seconds of which video it generated, its number in that take, and the frames it
+    made, named as the image tags them; with no frame known, only the seconds."""
+    where = (f"{spans_words(s)} of {VIDEO_NAME.get(s.get('src') or '', 'this video')} (generation "
              f"{s.get('gen') or 1} of {s.get('of') or 1} · clip {s.get('clip') or '-'} · {s.get('request') or 'request not named'})")
+    roles = list(dict.fromkeys(f["role"] for f in s.get("frames") or [])) or ([role] if role else [])
+    what = " and ".join(ROLE_PHRASE[r] for r in roles if r in ROLE_PHRASE)
+    if not what:
+        return f"This is the prompt that generated {where}" + ("; no frame of this sample comes from it." if "frames" in s else ".")
     if "frames" not in s:
-        return f"This is the prompt that generated {where}."
+        return f"This is {what}: it generated {where}."
     if s["frames"]:
-        return f"This is the prompt responsible for {frames_words(s['frames'])} of this sample: it generated {where}."
-    return f"This is the prompt that generated {where}; no frame of this sample comes from it."
+        samples = list(dict.fromkeys(f.get("sample") for f in s["frames"]))
+        tail = " of this sample" if samples == [None] else (f" of {samples[0]}" if len(samples) == 1 else "")
+        return f"This is {what}: it generated {where}, and made {frames_words(s['frames'])}{tail}."
+    return f"This is {what}: it generated {where}; no frame of this sample comes from it."
 
 
-def compose_text(segs: list[dict], side: str = "") -> str:
-    """The prompts of a take's generations as one text, each under its line (no frames named): a side's prompt field when only its generations came."""
-    return "\n\n".join(f"{segment_line(s)}\n{s.get('prompt') or ''}" for s in _numbered(segs, side))
+def compose_text(segs: list[dict], side: str = "", role: str = "") -> str:
+    """The prompts of a box's generations as one text, each under its line: the frames each made when the segments carry them, else only its seconds."""
+    return "\n\n".join(f"{segment_line(s, role)}\n{s.get('prompt') or ''}" for s in _numbered(segs, side))
 
 
 ROLE_DEFAULT = {"wrong": "flawed", "fixed": "correct"}      # what a report's two prompts are unless they are an Example's
@@ -156,13 +210,16 @@ def prompt_roles(frames: list[dict]) -> dict:
 
 
 def prompt_sides(frames: list[dict]) -> list[str]:
-    """The prompt boxes a sample speaks through (the user, 2026-10-29: "examples -> one fill from prompt box since we will only use one video for
-    examples ... and then there's right or wrong who have two input boxes"): a miss with its correct take has two, Video A's (the frames called WRONG)
-    and Video B's (those called RIGHT); an Examples sample takes all its frames from one video and has one box, that video's, holding the prompt of every
-    generation of it, each under the seconds it made.  Both for a sample in words only, and for an older Examples sample that took its frames from two videos."""
-    if frames and all(f["role"] == "example" for f in frames):
+    """The prompt boxes a sample speaks through (the user, 2026-10-29: "examples -> one fill from prompt box ... right or wrong who have two input
+    boxes", then "if there's only 3 right frames or 3 wrong frames, or 3 examples then only fill in one prompt"): the flawed version's box (column
+    wrong) when a frame is called WRONG, the correct version's box (column fixed) when one is called RIGHT, so a sample of frames called RIGHT only speaks
+    through the correct version's box alone; an Examples sample takes all its frames from one video and has one box, that video's.  Both, as saved, for a
+    sample in words only (no frame) and for an older Examples sample that took its frames from two videos."""
+    if not frames:
+        return ["wrong", "fixed"]
+    if all(f["role"] == "example" for f in frames):
         return [side for side in ("wrong", "fixed") if any(f["src"] == side for f in frames)]
-    return ["wrong", "fixed"]
+    return [side for side in ("wrong", "fixed") if any(f["role"] == SIDE_ROLE[side] for f in frames)]
 
 
 def sample_prompts_kind(miss: dict, frames: list[dict]) -> str:
@@ -172,12 +229,16 @@ def sample_prompts_kind(miss: dict, frames: list[dict]) -> str:
 
 
 def take_words(side: str, role: str, only_examples: bool = False) -> str:
-    """How a side's take is named to the judge and the agents: the flawed take (its prompt generated the flawed version), the correct take, or an example
-    take of Video A or B (a suggestion of what could have changed or how it could have been done another way, neither a bad generation nor a correct one)."""
+    """How a box is named to the judge and the agents (the user, 2026-10-29: clear which prompt is wrong, which is correct and which is just an example):
+    the flawed version's prompt box (the generations the frames called WRONG come from), the correct version's (those called RIGHT come from, from
+    whichever video), or the example prompt box of Video A or B (the generations the Example frames come from: a suggestion of what could have changed
+    or how it could have been done another way, neither a bad generation nor a correct one)."""
     if role == "example":
         why = "this sample's frames are all Examples" if only_examples else "the frames of this sample it speaks for are called EXAMPLE"
-        return f"the example take of {VIDEO_NAME[side]} ({why}; an example is a suggestion of what could have changed or how it could have been done another way, neither a bad generation nor a correct one)"
-    return "the flawed take (Video A: its prompt generated the flawed version)" if side == "wrong" else "the correct take (Video B)"
+        return (f"the example prompt box of {VIDEO_NAME[side]} (the generations of {VIDEO_NAME[side]} the Example frames come from; {why}; an example is a suggestion of what "
+                "could have changed or how it could have been done another way, neither a bad generation nor a correct one)")
+    return ("the flawed version's prompt box (the generations the frames called WRONG come from: they generated the flawed version)" if side == "wrong"
+            else "the correct version's prompt box (the generations the frames called RIGHT come from: they generated the correct version)")
 
 
 def sync_prompt_roles(miss_id: int) -> dict:
@@ -199,44 +260,60 @@ def sync_prompt_roles(miss_id: int) -> dict:
         con.close()
 
 
+def _in_spans(t: float, spans: list[list[float]], end: float) -> bool:
+    """A time inside one of a generation's spans: from its start up to (not at) its end, where the next span starts; at the very end of the take too."""
+    return any(a - 1e-6 <= t and (t < b - 1e-9 or (abs(b - end) < 1e-6 and t <= b + 1e-3)) for a, b in spans)
+
+
 def _with_frames(segs: list[dict], frames: list[dict], side: str, every: bool = False) -> list[dict]:
-    """The generations of a side's take that a sample's frames come from, each numbered in its take and with those frames (numbered as in the sample's
-    image); every generation, with no frame, when none of them holds one, and every generation with the frames each holds when `every` (an Examples
-    sample's one box: the prompt of every generation of its video).  A side's frames are the frames called WRONG (the flawed take's prompts) or
-    RIGHT (the correct take's), else the frames called EXAMPLE taken from that side's video."""
+    """The generations of a box that a sample's frames come from, each numbered in its take and with those frames (numbered as in the sample's image),
+    and only those (the user, 2026-10-29: "only include that generation prompts in the prompt filler not more"); `every` keeps the others too, with no
+    frame.  The frames a box speaks for are those called WRONG (the flawed version's box) or RIGHT (the correct version's, from whichever video), else, in
+    an Examples sample, the frames called EXAMPLE taken from that box's video."""
     mine = [f for f in frames if f["role"] == SIDE_ROLE[side]] or [f for f in frames if f["src"] == side and f["role"] == "example"]
+    numbered = _numbered(segs, side)
     out = []
-    for s in _numbered(segs, side):
-        last = s["gen"] == s["of"]
-        fr = [f for f in mine if f["src"] == s["src"] and s["t_from"] - 1e-6 <= f["t"] and (f["t"] <= s["t_to"] + 1e-3 if last else f["t"] < s["t_to"])]
-        out.append({**s, "frames": [{"n": f["n"], "role": f["role"], "t": f["t"]} for f in fr]})
-    return out if every else ([s for s in out if s["frames"]] or out)
+    for s in numbered:
+        end = max((b for x in numbered if x["src"] == s["src"] for _a, b in _spans(x)), default=0.0)
+        fr = [f for f in mine if f["src"] == s["src"] and _in_spans(float(f["t"]), _spans(s), end)]
+        out.append({**s, "frames": [{"n": f["n"], "role": f["role"], "t": f["t"], **({"sample": f["sample"]} if f.get("sample") else {})} for f in fr]})
+    return out if every else [s for s in out if s["frames"]]
 
 
 def prompts_text(pp: dict) -> str:
-    """The prompts of a sample's two takes as the judge reads them, whole (an Examples sample's one box: its one video's prompt alone, prompt_sides).  A
-    take made of several generations gives the prompt of each generation this sample's frames come from (all of them when none does, and all of them in
-    an Examples sample's one box), each under the line that says which seconds it is responsible for and which frames of this sample it made."""
+    """The prompts of a sample as the judge reads them, whole (the user, 2026-10-29: clear which prompt is wrong, which is correct and which is just an
+    example): the flawed version's box when a frame is called WRONG, the correct version's when one is called RIGHT, an Examples sample's one box; in each
+    only the generations this sample's frames come from, each under the line that says what that prompt is, which seconds of which video it generated
+    and which frames of this sample it made; a box this sample has no frame for is named as absent, never filled in."""
     lines = []
     roles, only_ex = pp.get("prompt_roles") or {}, bool(pp.get("examples_only"))
     sides = [s for s in (pp.get("prompt_sides") or ("wrong", "fixed")) if s in VIDEO_NAME]
+    fr = pp.get("frames") or []
     if only_ex and len(sides) == 1:
         lines.append("this sample's frames are all Examples, each a suggestion of what could have changed or how it could have been done another way, neither a bad "
-                     f"generation nor a correct one; an Examples sample takes all its frames from one video, here {VIDEO_NAME[sides[0]]}, and keeps that one "
-                     "video's prompt: below is the prompt of every generation of it, each under the seconds it made")
+                     f"generation nor a correct one; an Examples sample takes all its frames from one video, here {VIDEO_NAME[sides[0]]}, and keeps one prompt box: "
+                     "the example prompt of each generation its Example frames come from, each under the seconds it made (no flawed and no correct prompt)")
     elif only_ex:
         lines.append("this sample's frames are all Examples, each a suggestion of what could have changed or how it could have been done another way, neither a bad generation nor a correct one: the prompts below are the prompts of those example takes (an older sample that took its Examples from two videos)")
+    elif fr:
+        if "wrong" not in sides:
+            lines.append("this sample keeps no flawed version's prompt: none of its frames is called WRONG, so its frames called RIGHT show the correct version only")
+        if "fixed" not in sides:
+            lines.append("this sample keeps no correct version's prompt: none of its frames is called RIGHT (nothing of it shows the correct version)")
     for side in sides:
         what = take_words(side, roles.get(side, ""), only_ex)
         segs = pp.get(f"{side}_segments") or []
         if segs:
             of = max(int(s.get("of") or 0) for s in segs) or len(segs)
-            lines.append(f"{what} was made of {of} generations, each with its own prompt; "
-                         + ("the prompt of each generation this sample's frames come from:" if len(segs) < of else "the prompt of each:"))
+            lines.append(f"{what}: the prompt of each generation this sample's frames come from ({len(segs)} of the {of} generation(s) that take was made of), "
+                         "each under the line that says what it is, the seconds it generated and the frames it made:")
             lines += [f"{segment_line(s)}\n{(s.get('prompt') or '').strip() or 'not saved'}" for s in segs]
+        elif pp.get(f"{side}_unmatched"):
+            lines.append(f"{what}: none of the generations it holds made a frame of this sample, so no prompt of it is this sample's (the admin's report keeps "
+                         "it for its other samples)")
         else:
             txt = (pp.get(f"{side}_prompt") or "").strip()
-            lines.append(f"the prompt of {what} (whole, as the admin saved it):\n{txt or 'not saved'}")
+            lines.append(f"{what} (whole, as the admin saved it):\n{txt or 'not saved'}")
     if pp.get("prompt_note"):
         lines.append("the admin's note on the prompt: " + str(pp["prompt_note"])[:600])
     return "\n\n".join(lines)
@@ -380,9 +457,9 @@ def create(data: dict, actor: str) -> dict:
     prompts, segcols = {k: _field_text(data.get(k)) for k in ("wrong_prompt", "fixed_prompt")}, {}
     for side in ("wrong", "fixed"):          # a take made of several generations: each one's prompt and seconds, kept beside the side's prompt text
         segs = _segments_clean(data.get(f"{side}_segments"), side)
-        segcols[side] = json.dumps(segs, ensure_ascii=False) if len(segs) >= 2 else ""
+        segcols[side] = json.dumps(segs, ensure_ascii=False) if _multi(segs) else ""
         if segs and not prompts[f"{side}_prompt"]:
-            prompts[f"{side}_prompt"] = compose_text(segs, side) if len(segs) >= 2 else segs[0]["prompt"]
+            prompts[f"{side}_prompt"] = compose_text(segs, side) if _multi(segs) else segs[0]["prompt"]
     con = core.db()
     try:
         cur = con.execute("""INSERT INTO misses(created,updated,run,video,title,explanation,kinds,model,mode,product,status,wrong_path,wrong_label,
@@ -483,9 +560,9 @@ def update(mid: int, patch: dict, actor: str) -> dict | None:
         sk, pk = f"{side}_segments", f"{side}_prompt"
         if sk in patch:
             segs = _segments_clean(patch[sk], side)
-            cols[sk] = json.dumps(segs, ensure_ascii=False) if len(segs) >= 2 else ""
+            cols[sk] = json.dumps(segs, ensure_ascii=False) if _multi(segs) else ""
             if segs and not _field_text(patch.get(pk)):
-                cols[pk] = compose_text(segs, side) if len(segs) >= 2 else segs[0]["prompt"]
+                cols[pk] = compose_text(segs, side) if _multi(segs) else segs[0]["prompt"]
         elif pk in patch and cur.get(sk) and _field_text(patch[pk]) != (cur.get(pk) or ""):
             cols[sk] = ""
     if "sample_files" in patch:
@@ -569,6 +646,7 @@ def add_moment(miss_id: int, data: dict, actor: str) -> dict:
             con.close()
     regenerate(mid)
     core.audit(actor, "moment.add", f"moment {mid}", f"miss {miss_id}: " + ", ".join(f"{f['role']} @ {f['t']:.2f}s" for f in frames))
+    refresh_boxes(miss_id, actor)          # the report's boxes Loupe wrote from a joined take now name this sample's frames by its id
     return moment(mid)
 
 
@@ -609,6 +687,8 @@ def update_moment(mid: int, patch: dict, actor: str) -> dict | None:
         core.audit(actor, "moment.update", f"moment {mid}", ",".join(cols))
         if any(k in cols for k in ("frames", "t_wrong", "t_fixed", "details", "correct_note", "shapes", "idea", "better", "missed")):
             regenerate(mid)
+        if "frames" in cols:
+            refresh_boxes(cur["miss_id"], actor)        # the boxes Loupe wrote from a joined take follow the frames
     return moment(mid)
 
 
@@ -623,6 +703,7 @@ def delete_moment(mid: int, actor: str):
     shutil.rmtree(sample_dir(mid), ignore_errors=True)
     if row:
         sync_prompt_roles(row["miss_id"])
+        refresh_boxes(row["miss_id"], actor)          # a deleted sample's generations leave the boxes Loupe wrote from a joined take
     core.audit(actor, "moment.delete", f"moment {mid}")
 
 
@@ -644,38 +725,207 @@ def side_desc(miss: dict, src: str) -> str:
 VIDEO_LETTER = {"wrong": "A", "fixed": "B"}
 
 
-def _take_generations(miss: dict, src: str) -> list[dict]:
-    """The generations one of the report's videos was made of, each with its clip and seconds: the ones kept with the prompt fields for that video (src),
-    else read from the run (runs.prompt_segments: a take joined from clips, or a take of one clip); [] for a video of one generation or one that cannot be
-    read.  Facts only: they number a frame's generation in its tag, so a frame ties back to the prompt that made it."""
+def _take_generations(miss: dict, src: str) -> dict:
+    """The generations one of the report's videos was made of, each with its clip, its number and every span of seconds it made, read from the run
+    (runs.prompt_segments: how a joined take was put together, or a take of one clip), else the ones kept with the report's prompt boxes for that video
+    (a run that can no longer be read); {segments, inserts}.  Facts only: they number a frame's generation in its tag, so a frame ties back to the
+    prompt that made it."""
+    path = miss.get("fixed_path" if src == "fixed" else "wrong_path") or ""
+    if path:
+        try:
+            seg = runs.prompt_segments(miss.get("run") or "", miss.get("video") or "", path)
+        except Exception:  # noqa: BLE001  (a run that cannot be read: the saved generations, else the frame keeps its video with no generation)
+            seg = {}
+        if seg.get("kind") in ("clips", "clip") and seg.get("segments"):
+            return {"segments": seg["segments"], "inserts": seg.get("inserts") or []}
+        if seg.get("kind") == "clips":
+            return {"segments": [], "inserts": [], "unknown": True}
     saved: list[dict] = []
     for side in ("wrong", "fixed"):
         raw = miss.get(f"{side}_segments")
         for s in (_segments_of(raw) if isinstance(raw, str) or raw is None else raw):
-            if (s.get("src") or side) == src and not any(x.get("clip") == s.get("clip") and abs(float(x["t_from"]) - float(s["t_from"])) < 1e-3 for x in saved):
+            if (s.get("src") or side) == src and isinstance(s.get("gen"), int) and not any(x.get("clip") == s.get("clip") and x.get("attempt") == s.get("attempt") for x in saved):
                 saved.append(s)
-    if len(saved) >= 2:
-        return sorted(saved, key=lambda s: float(s["t_from"]))
-    path = miss.get("fixed_path" if src == "fixed" else "wrong_path") or ""
-    if not path:
-        return []
-    try:
-        seg = runs.prompt_segments(miss.get("run") or "", miss.get("video") or "", path)
-    except Exception:  # noqa: BLE001  (a run that cannot be read: the frame keeps its video, with no generation)
-        return []
-    return (seg.get("segments") or []) if seg.get("kind") in ("clips", "clip") else []
+    return {"segments": sorted(saved, key=lambda s: _spans(s)[0][0] if _spans(s) else 0.0), "inserts": []}
 
 
-def _frame_generation(segs: list[dict], t: float) -> dict | None:
-    """The generation of a take that made the frame at t: its number in the take, its clip and its seconds; after the last one, where that one ends."""
+def _frame_generation(take, t: float) -> dict | None:
+    """The generation of a take that made the frame at t: its number in the take, its clip, the span holding t and all its spans; inside an insert, that
+    insert (not generated); after the last generation, where it ends."""
+    segs = take.get("segments") if isinstance(take, dict) else (take or [])
     if not segs:
         return None
-    n = len(segs)
+    end = max(b for s in segs for _a, b in _spans(s))
     for k, s in enumerate(segs):
-        a, b = float(s["t_from"]), float(s["t_to"])
-        if a - 1e-6 <= t and (t <= b + 1e-3 if k == n - 1 else t < b):
-            return {"gen": k + 1, "of": n, "clip": str(s.get("clip") or ""), "t_from": round(a, 3), "t_to": round(b, 3)}
-    return {"after": round(float(segs[-1]["t_to"]), 3)} if t > float(segs[-1]["t_to"]) else None
+        if _in_spans(float(t), _spans(s), end):
+            a, b = next(((a, b) for a, b in _spans(s) if a - 1e-6 <= t <= b + 1e-3), _spans(s)[0])
+            g = {"gen": int(s.get("gen") or k + 1), "of": int(s.get("of") or len(segs)), "clip": str(s.get("clip") or ""), "t_from": round(a, 3), "t_to": round(b, 3)}
+            if len(_spans(s)) > 1:
+                g["spans"] = _spans(s)
+            return g
+    for a, b, f in (take.get("inserts") or []) if isinstance(take, dict) else []:
+        if a - 1e-6 <= t < b:
+            return {"insert": str(f), "t_from": round(a, 3), "t_to": round(b, 3)}
+    return {"after": round(end, 3)} if t > end else None
+
+
+# ------------------------------------------------------------------ what Fill writes in each prompt box (the user, 2026-10-29)
+# "if two or more samples are from one video generation only ... include that generation prompts in the prompt filler not more, but if the frames used as
+# wrong, right or examples are from more than a single generation ... then in the prompt fill of flawed versions include the video prompts of the
+# generations whom's frames turned out wrong ..., and in the right/correct prompt filler box put the prompts that generated the correct version ..., but
+# if there's only 3 right frames or 3 wrong frames, or 3 examples then only fill in one prompt".  A frame called WRONG feeds the flawed version's box
+# (column wrong), one called RIGHT the correct version's box (column fixed), from whichever video it comes from; an Example feeds the one box of the video
+# it comes from.  Every sample of the report counts (the boxes belong to the report), each frame goes to the generation that made it (read from the run's
+# join), and a box holds the prompt of each of those generations and of no other; a box no frame feeds stays empty.  One implementation serves the
+# report form (POST /api/misses/prompt-boxes), the boxes kept in step after a sample is saved or deleted, and the library's own maintenance.
+COLUMN_OF_ROLE = {"wrong": "wrong", "right": "fixed"}
+BOX_ROLE = {"wrong": "flawed", "right": "correct", "example": "example"}
+
+
+def _column(f: dict) -> str:
+    return COLUMN_OF_ROLE.get(f["role"]) or f["src"]
+
+
+def _box_take(run: str, video: str, path: str) -> dict:
+    """What the run says of one of the report's videos, for the boxes: a joined take (its generations and their spans), a take of one generation (its
+    prompt), a joined take whose seconds cannot be told, or nothing."""
+    if not path:
+        return {"kind": "none"}
+    seg = runs.prompt_segments(run, video, path)
+    if seg.get("kind") == "clips":
+        if seg.get("spans_known") and seg.get("segments"):
+            return {"kind": "joined", "segments": seg["segments"], "inserts": seg.get("inserts") or [], "note": seg.get("note", "")}
+        return {"kind": "unknown", "note": seg.get("note", "")}
+    if seg.get("kind") == "clip" and seg.get("segments"):
+        s = seg["segments"][0]
+        return {"kind": "single", "prompt": s["prompt"], "request": s["request"], "attempt": s["attempt"], "clip": s["clip"], "duration": s["t_to"], "note": seg.get("note", "")}
+    r = runs.request_prompt_for(run, video, path)
+    if not r.get("prompt"):
+        return {"kind": "none", "note": r.get("note") or "no request file with a prompt was found for that version: paste it"}
+    try:
+        dur = round(float(media.probe(media.resolve_media(path)).get("duration") or 0), 3)
+    except (OSError, PermissionError, ValueError):
+        dur = 0.0
+    return {"kind": "single", "prompt": r["prompt"], "request": r.get("request", ""), "attempt": r.get("attempt", 0), "clip": "", "duration": dur, "note": ""}
+
+
+def prompt_boxes(miss: dict | None, run: str, video: str, paths: dict, frames_now: list[dict] | None = None, editing: int | None = None) -> dict:
+    """What Fill writes in each of a report's two prompt boxes (see above): {"wrong": box, "fixed": box, "notes": [...]}, a box being {used, role
+    (flawed | correct | example, or several joined by '+'), text, segments (kept beside the text: the generations of a take made of several), frames (the
+    frames that feed it, each with the generation that made it), problems (frames no prompt can be tied to, and why)}.  `frames_now` are the frames on
+    screen (the sample being added, or `editing`, the sample being changed); the report's other saved samples count too.  A report in words only (no frame
+    at all) gives each box its own video's whole take, as before."""
+    fr = []
+    for m in (miss or {}).get("moments") or []:
+        if editing and m.get("moment_id") == editing:
+            continue
+        for i, f in enumerate(m.get("frames") or []):
+            fr.append({"src": f["src"], "role": f["role"], "t": float(f["t"]), "n": i + 1, "sample": m.get("id") or f"S{m.get('moment_id')}"})
+    here = f"S{editing}" if editing else "the sample being added"
+    for i, f in enumerate(frames_now or []):
+        fr.append({"src": "fixed" if f.get("src") == "fixed" else "wrong", "role": {"right": "right", "example": "example"}.get(f.get("role"), "wrong"),
+                   "t": max(0.0, float(f.get("t") or 0)), "n": i + 1, "sample": here})
+    if len({f["sample"] for f in fr}) <= 1:
+        for f in fr:
+            f.pop("sample", None)          # one sample: its frames are named 'of this sample'
+    takes: dict = {}
+
+    def take(src):
+        if src not in takes:
+            takes[src] = _box_take(run, video, paths.get(src) or "")
+        return takes[src]
+    out: dict = {"notes": []}
+    for col in ("wrong", "fixed"):
+        box = {"used": False, "role": "", "text": "", "segments": [], "frames": [], "problems": []}
+        out[col] = box
+        if not fr:       # a scenario in words only: the box of each video holds that video's whole take
+            tk = take(col)
+            if tk["kind"] == "single":
+                box.update(used=bool(tk["prompt"]), text=tk["prompt"])
+            elif tk["kind"] == "joined":
+                segs = [dict(s, src=col) for s in tk["segments"]]
+                box.update(used=True, segments=segs, text=compose_text(segs, col))
+            elif tk.get("note"):
+                box["problems"].append(tk["note"])
+            continue
+        feed = [f for f in fr if _column(f) == col]
+        if not feed:
+            continue
+        box["used"] = True
+        box["role"] = "+".join(dict.fromkeys(BOX_ROLE[f["role"]] for f in feed))
+        gens: dict = {}
+        for f in sorted(feed, key=lambda f: (f["src"] != "wrong", f["t"])):
+            tk = take(f["src"])
+            word = frames_words([f]) + (f" of {f['sample']}" if f.get("sample") else "")
+            if tk["kind"] == "joined":
+                g = _frame_generation(tk, f["t"])
+                s = next((x for x in tk["segments"] if g and g.get("clip") == x["clip"] and g.get("gen") == x["gen"]), None)
+                if not s:
+                    why = (f"inside {g['insert']}, which no generation made" if g and g.get("insert") else
+                           f"after the end of the last generation (second {_secs(g['after'])})" if g and g.get("after") is not None else "in no generation's seconds")
+                    box["problems"].append(f"{word} of {VIDEO_NAME[f['src']]} is {why}: no prompt made it")
+                    continue
+                key = (f["src"], s["clip"], s["attempt"])
+                gens.setdefault(key, {**s, "src": f["src"], "frames": []})["frames"].append(f)
+            elif tk["kind"] == "single":
+                key = (f["src"], tk["clip"], tk["attempt"])
+                gens.setdefault(key, {"src": f["src"], "clip": tk["clip"], "attempt": tk["attempt"], "request": tk["request"], "t_from": 0.0,
+                                      "t_to": tk["duration"] or 0.0, "spans": [[0.0, tk["duration"]]] if tk["duration"] else [], "gen": 1, "of": 1,
+                                      "prompt": tk["prompt"], "single": True, "frames": []})["frames"].append(f)
+            else:
+                box["problems"].append(f"{word} of {VIDEO_NAME[f['src']]}: " + (tk.get("note") or f"{VIDEO_NAME[f['src']]} is not picked"))
+        if box["problems"] and any("could not be read" in p or "not picked" in p for p in box["problems"]):
+            continue         # a frame whose generation cannot be told: nothing is written for it, never a guess
+        order = sorted(gens.values(), key=lambda g: (g["src"] != "wrong", int(g.get("gen") or 1)))
+        box["frames"] = [{"src": f["src"], "role": f["role"], "t": f["t"], "n": f["n"], **({"sample": f["sample"]} if f.get("sample") else {}),
+                          "clip": g.get("clip") or "", "gen": g.get("gen"), "of": g.get("of")} for g in order for f in g["frames"]]
+        if len(order) == 1 and order[0].get("single"):
+            box["text"] = order[0]["prompt"]          # one take of one generation: its prompt, as before
+            continue
+        box["segments"] = [{k: v for k, v in g.items() if k not in ("frames", "single")} for g in order]
+        box["text"] = "\n\n".join(f"{segment_line(dict(g, frames=g['frames']))}\n{g.get('prompt') or ''}" for g in order)
+    for src in ("wrong", "fixed"):
+        tk = takes.get(src)
+        if tk and tk.get("note") and tk["kind"] == "joined":
+            out["notes"].append(f"{VIDEO_NAME[src]}: {tk['note']}")
+    return out
+
+
+def refresh_boxes(miss_id: int, actor: str = "system") -> dict:
+    """Keeps a report's boxes that Loupe wrote from a joined take (their generations are kept beside them) in step with its samples after a sample is
+    saved or deleted: the prompts of the generations the frames come from, named with their samples, and an emptied box when no frame feeds it any more.
+    A box typed by hand, or holding one generation's prompt alone, is left as it is."""
+    m = get(miss_id)
+    if not m:
+        return {}
+    cols = {}
+    boxes = None
+    for side in ("wrong", "fixed"):
+        if not m.get(f"{side}_segments"):
+            continue
+        if boxes is None:
+            try:
+                boxes = prompt_boxes(m, m.get("run") or "", m.get("video") or "", {"wrong": m.get("wrong_path") or "", "fixed": m.get("fixed_path") or ""})
+            except Exception as e:  # noqa: BLE001  (the run cannot be read: the boxes stay as saved)
+                core.audit(actor, "miss.boxes.unread", f"miss {miss_id}", str(e)[:300])
+                return {}
+        b = boxes[side]
+        if b["problems"] and not b["text"]:
+            continue
+        segs = _segments_clean(b["segments"], side)
+        new_text = b["text"] if b["used"] else ""
+        if new_text != (m.get(f"{side}_prompt") or "") or json.dumps(segs) != json.dumps(_segments_clean(m.get(f"{side}_segments"), side)):
+            cols[f"{side}_prompt"], cols[f"{side}_segments"] = new_text, (json.dumps(segs, ensure_ascii=False) if _multi(segs) else "")
+    if cols:
+        cols["updated"] = core.now()
+        con = core.db()
+        try:
+            con.execute("UPDATE misses SET " + ",".join(f"{k}=?" for k in cols) + " WHERE id=?", list(cols.values()) + [miss_id])
+            con.commit()
+        finally:
+            con.close()
+        core.audit(actor, "miss.boxes", f"miss {miss_id}", ",".join(k for k in cols if k != "updated"))
+    return cols
 
 
 def regenerate(mid: int):
@@ -764,10 +1014,12 @@ def moment_file(mid: int, kind: str) -> Path | None:
 
 
 def _generations(miss: dict, side: str) -> int:
-    """How many generations made a take, as the report keeps their prompts: the number of its segments, 1 for a single prompt, 0 for none."""
+    """How many generations made the take a box's prompts come from, as the report keeps them: the take's own count when its segments carry it ('of'),
+    else the number of its segments, 1 for a single prompt, 0 for none."""
     segs = miss.get(f"{side}_segments")
-    n = len(_segments_of(segs) if isinstance(segs, str) else (segs or []))
-    return n if n >= 2 else (1 if (miss.get(f"{side}_prompt") or "").strip() else 0)
+    segs = _segments_of(segs) if isinstance(segs, str) else (segs or [])
+    n = max([int(s.get("of") or 0) for s in segs if isinstance(s, dict)] + [len(segs)])
+    return n if segs else (1 if (miss.get(f"{side}_prompt") or "").strip() else 0)
 
 
 def moment_view(r, miss: dict) -> dict:
@@ -819,10 +1071,12 @@ def prompts_of(mid: int) -> dict | None:
     d["prompt_sides"] = prompt_sides(d["frames"])       # an Examples sample has one box, its one video's; a miss with its correct take has two
     for side in ("wrong", "fixed"):          # a take made of several generations: the prompt of each generation this sample's frames come from, its seconds, those frames
         if side not in d["prompt_sides"]:
-            d[f"{side}_prompt"], d[f"{side}_segments"] = "", []      # the other box of an Examples sample: no prompt of this sample
+            d[f"{side}_prompt"], d[f"{side}_segments"] = "", []      # a box this sample has no frame for (no frame called WRONG, or RIGHT; the other box of an Examples sample)
             continue
         segs = _segments_of(m.get(f"{side}_segments"))
-        d[f"{side}_segments"] = _with_frames(segs, d["frames"], side, every=d["examples_only"]) if len(segs) >= 2 else []
+        d[f"{side}_segments"] = (_with_frames(segs, d["frames"], side) if d["frames"] else _numbered(segs, side)) if segs else []
+        if segs and not d[f"{side}_segments"]:
+            d[f"{side}_prompt"], d[f"{side}_unmatched"] = "", True     # the box holds generations none of this sample's frames come from
     d["prompts"] = prompts_kind(d)
     d["text"] = prompts_text(d)
     return d

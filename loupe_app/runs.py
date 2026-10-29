@@ -761,16 +761,302 @@ def _clip_dirs(vd: Path) -> list[Path]:
     return sorted((x for x in vd.iterdir() if x.is_dir() and re.fullmatch(r"c\d+", x.name)), key=lambda x: int(x.name[1:])) if vd.is_dir() else []
 
 
-def _clip_attempt_used(rd: Path, nn: str, cd: Path) -> int:
-    """The attempt of a clip that went into the video: the attempts result.json records for that clip, else the highest attempt folder holding a file."""
+def _copy_attempt(cd: Path, p: Path) -> int:
+    """The attempt folder of clip cd holding a file byte for byte equal to p (the piece a join used is often a copy of one attempt's trimmed file), else 0."""
+    try:
+        size, sha = p.stat().st_size, ""
+    except OSError:
+        return 0
+    for ad in reversed(_attempt_dirs(cd)):
+        for f in _mp4s(ad):
+            try:
+                if f.stat().st_size == size:
+                    sha = sha or media.sha1_file(p)
+                    if media.sha1_file(f) == sha:
+                        return int(ad.name[1:])
+            except OSError:
+                continue
+    return 0
+
+
+def _clip_attempt(rd: Path, nn: str, cd: Path) -> tuple[int, str]:
+    """The attempt of a clip that went into the video and how that is known, in order: the clip's own piece (c1/c1.mp4) is a byte-for-byte copy of an
+    attempt's file; the run's result says which attempt it shipped ('shipped': 'a1 ...'); the number of attempts the run made for it (each new attempt
+    replaced the one before); the highest attempt folder holding a file.  (0, '') when none tells."""
+    piece = cd / f"{cd.name}.mp4"
+    if piece.is_file():
+        n = _copy_attempt(cd, piece)
+        if n:
+            return n, f"{cd.name}/{piece.name} is a copy of a{n}'s file"
     res = _json(rd / "60-outputs" / f"video-{nn}" / "result.json") or {}
-    for j in res.get("jobs") or []:
-        if isinstance(j, dict) and str(j.get("clip") or "").lower() == cd.name and str(j.get("attempts") or "").isdigit() and (cd / f"a{j['attempts']}").is_dir():
-            return int(j["attempts"])
+    jobs = [j for j in (res.get("jobs") or []) if isinstance(j, dict) and str(j.get("clip") or "").lower() == cd.name]
+    for j in jobs:
+        m = re.match(r"\s*a(\d+)\b", str(j.get("shipped") or ""), re.I)
+        if m and (cd / f"a{m.group(1)}").is_dir():
+            return int(m.group(1)), f"the run's result says {cd.name} shipped a{m.group(1)}"
+    for j in jobs:
+        if str(j.get("attempts") or "").isdigit() and (cd / f"a{j['attempts']}").is_dir():
+            return int(j["attempts"]), f"the last of the {j['attempts']} attempt(s) the run made for {cd.name}"
     for ad in reversed(_attempt_dirs(cd)):
         if any((ad / n).is_file() for n in CLIP_PART_FILES):
-            return int(ad.name[1:])
-    return 0
+            return int(ad.name[1:]), f"the highest attempt folder of {cd.name}"
+    return 0, ""
+
+
+def _clip_attempt_used(rd: Path, nn: str, cd: Path) -> int:
+    return _clip_attempt(rd, nn, cd)[0]
+
+
+# Which seconds of a joined version each generation made (the user, 2026-10-29: a frame is tied to the generation that made it, and a prompt box holds
+# only the prompts of the generations its frames come from).  The join is read, never assumed: the record awl.py concat writes beside its output, a
+# concat list (ffmpeg's `file '...'` lines) beside the file or beside a byte-for-byte copy of it, the clips' own pieces (c1/c1.mp4 ...), or the clips'
+# trimmed files in clip order; a preview or deliverable rendered from the CapCut project is read through that project.  Each is used only when its
+# pieces add up to the file's length, so a clip split around another one (c1, c2, then c1 again) or trimmed in the join is told as it is.
+JOIN_TOL = 0.1                   # seconds: the pieces of a join must add up to the file's length within this to be trusted
+JOIN_RECORD_SUFFIX = ".join.json"      # written by awl.py concat beside its output: the output's sha1 and every piece with its clip, attempt and seconds
+_CONCAT_FILE = re.compile(r"""^\s*file\s+(?:'(.*)'|"(.*)"|(\S+))\s*$""")
+
+
+def _dur(p: Path) -> float:
+    try:
+        return float(media.probe(p).get("duration") or 0)
+    except Exception:  # noqa: BLE001  (an unreadable file has no length)
+        return 0.0
+
+
+def _where_in_video(vd: Path, p: Path) -> tuple[str, int]:
+    """The clip (c1, c2 ...) and attempt a file of a video's folder sits in: c1/a2/c1a.mp4 is clip c1 attempt 2, c1/c1.mp4 clip c1 attempt 0 (in no
+    attempt folder); ('', 0) for a file outside every clip folder (an insert, a clean video)."""
+    try:
+        parts = p.resolve().relative_to(vd.resolve()).parts[:-1]
+    except (OSError, ValueError):
+        return "", 0
+    clip = next((x for x in parts if re.fullmatch(r"c\d+", x)), "")
+    if not clip:
+        return "", 0
+    return clip, next((int(x[1:]) for x in parts[parts.index(clip) + 1:] if re.fullmatch(r"a\d+", x)), 0)
+
+
+def _copies(vd: Path, p: Path) -> list[Path]:
+    """p and the files under its video's folder that are byte for byte p, those inside an attempt folder first: a clean video copied up from the attempt
+    folder it was joined in left its join record or list there."""
+    out = [p]
+    try:
+        size, rp, sha = p.stat().st_size, p.resolve(), ""
+    except OSError:
+        return out
+    for f in (sorted(vd.rglob("*.mp4")) if vd.is_dir() else []):
+        try:
+            if f.resolve() == rp or f.stat().st_size != size:
+                continue
+            sha = sha or media.sha1_file(p)
+            if media.sha1_file(f) == sha:
+                out.append(f)
+        except OSError:
+            continue
+    in_attempt = lambda f: any(re.fullmatch(r"a\d+", x) for x in f.parts[-3:-1])  # noqa: E731
+    return sorted(out, key=lambda f: (0 if in_attempt(f) else 1, 0 if f == p else 1))
+
+
+def _concat_list(txt: Path) -> list[tuple[Path, float]] | None:
+    """The pieces of an ffmpeg concat list, each with the seconds it lasts in the join (its inpoint/outpoint/duration lines when given), or None when the
+    file is not such a list or a piece is missing."""
+    try:
+        lines = txt.read_text(encoding="utf-8", errors="replace").splitlines()
+    except OSError:
+        return None
+    items: list[dict] = []
+    for ln in lines:
+        if not ln.strip() or ln.strip().startswith(("#", "ffconcat")):
+            continue
+        m = _CONCAT_FILE.match(ln)
+        if m:
+            name = next(g for g in m.groups() if g is not None).replace("'\\''", "'")
+            items.append({"path": (txt.parent / name) if not Path(name).is_absolute() else Path(name)})
+            continue
+        d = re.match(r"^\s*(inpoint|outpoint|duration)\s+([0-9]+(?:\.[0-9]+)?)\s*$", ln)
+        if not d or not items:
+            return None
+        items[-1][d.group(1)] = float(d.group(2))
+    if not items or not all(it["path"].is_file() for it in items):
+        return None
+    out = []
+    for it in items:
+        full = _dur(it["path"])
+        a = it.get("inpoint", 0.0)
+        b = it.get("outpoint", a + it["duration"] if "duration" in it else full)
+        out.append((it["path"], max(0.0, min(b, full) - a)))
+    return out
+
+
+def _join_record(vd: Path, p: Path) -> tuple[list[tuple[Path, float, str, int]], str] | None:
+    """The pieces of the join that made p, from the record awl.py concat wrote beside its output (matched on the output's sha1, so a copy finds it)."""
+    try:
+        sha = media.sha1_file(p)
+    except OSError:
+        return None
+    for rec in (sorted(vd.rglob("*" + JOIN_RECORD_SUFFIX)) if vd.is_dir() else []):
+        j = _json(rec) or {}
+        if j.get("sha1") != sha or not isinstance(j.get("pieces"), list):
+            continue
+        out = []
+        for x in j["pieces"]:
+            try:
+                out.append((Path(str(x.get("file") or "")), float(x["t_to"]) - float(x["t_from"]), str(x.get("clip") or ""), int(x.get("attempt") or 0)))
+            except (TypeError, ValueError, KeyError):
+                return None
+        return out, f"the join record {rec.relative_to(vd).as_posix()}"
+    return None
+
+
+def _render_of_clean(rd: Path, nn: str, p: Path) -> Path | None:
+    """The clean video a render of the whole timeline (a preview, a proxy, a deliverable with text only) shows: the run's recorded clean video, else
+    clean.mp4 of the video's folder, of the same length within JOIN_TOL and written before this file (a render made before the clean was replaced shows
+    an older take: it is never read as the newer one)."""
+    rec = recorded_outputs(rd, nn)
+    for c in (rec["clean"], rd / "60-outputs" / f"video-{nn}" / "clean.mp4"):
+        try:
+            if c and c.is_file() and not _same_file(c, p) and abs(_dur(c) - _dur(p)) <= JOIN_TOL and c.stat().st_mtime <= p.stat().st_mtime + 1:
+                return c
+        except OSError:
+            continue
+    return None
+
+
+def _capcut_stores() -> list[Path]:
+    out = []
+    for _name, lib in core.LIBS:
+        d = ((_json(lib / "config.json") or {}).get("capcut") or {}).get("drafts_dir")
+        if d and Path(d) not in out:
+            out.append(Path(d))
+    default = Path(os.environ.get("LOCALAPPDATA", "")) / "CapCut" / "User Data" / "Projects" / "com.lveditor.draft"
+    return out + ([default] if default not in out else [])
+
+
+def _capcut_pieces(rd: Path, nn: str, p: Path) -> tuple[list[tuple[Path, float, float, float]], str] | None:
+    """The main video track of the video's CapCut project as [(file, timeline start, source start, seconds)], when p is a render of it: the project the
+    run recorded, unchanged since p was written, as long as p."""
+    st = _json(rd / "state.json") or {}
+    ent = next((v for v in (st.get("videos") or []) if isinstance(v, dict) and core.nn(v.get("video")) == nn), {})
+    res = _json(rd / "60-outputs" / f"video-{nn}" / "result.json") or {}
+    name = str(res.get("capcut_project") or ent.get("capcut_project") or "")
+    if not name:
+        return None
+    draft = next((s / name / "draft_content.json" for s in _capcut_stores() if (s / name / "draft_content.json").is_file()), None)
+    if not draft:
+        return None
+    try:
+        if draft.stat().st_mtime > p.stat().st_mtime + 1:
+            return None
+        c = json.loads(draft.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if abs(float(c.get("duration") or 0) / 1e6 - _dur(p)) > JOIN_TOL:
+        return None
+    vids = {m.get("id"): m for m in (c.get("materials") or {}).get("videos") or [] if isinstance(m, dict)}
+    main = next((t for t in c.get("tracks") or [] if t.get("type") == "video"), None)
+    out = []
+    for sg in sorted((main or {}).get("segments") or [], key=lambda s: int((s.get("target_timerange") or {}).get("start") or 0)):
+        m, tr, sr = vids.get(sg.get("material_id")) or {}, sg.get("target_timerange") or {}, sg.get("source_timerange") or {}
+        if not m.get("path"):
+            continue
+        if abs(int(sr.get("duration") or 0) - int(tr.get("duration") or 0)) > 50000:      # a speed change: its seconds are not the source's
+            return None
+        out.append((Path(m["path"]), int(tr.get("start") or 0) / 1e6, int(sr.get("start") or 0) / 1e6, int(tr.get("duration") or 0) / 1e6))
+    return (out, f"the CapCut project {name}") if out else None
+
+
+def _through(rd: Path, nn: str, vd: Path, segments: list[tuple[Path, float, float, float]]) -> list[dict]:
+    """The pieces of a CapCut main track [(file, timeline start, source start, seconds)] mapped to generations: a clip's take is that clip, a joined file
+    its own join (_take_spans), anything else (an insert cut from the reference) is not a generation."""
+    out = []
+    for f, at, src0, secs in segments:
+        clip, att = _where_in_video(vd, f)
+        if clip:
+            out.append({"t_from": round(at, 3), "t_to": round(at + secs, 3), "clip": clip, "attempt": att, "how": "the folder it sits in", "file": f.name})
+            continue
+        sub = _take_spans(rd, nn, f, 1) if f.is_file() else {"pieces": []}
+        if not sub["pieces"]:
+            out.append({"t_from": round(at, 3), "t_to": round(at + secs, 3), "clip": "", "attempt": 0, "how": "", "file": f.name})
+            continue
+        for x in sub["pieces"]:
+            a, b = max(x["t_from"], src0), min(x["t_to"], src0 + secs)
+            if b > a:
+                out.append({**x, "t_from": round(at + a - src0, 3), "t_to": round(at + b - src0, 3)})
+    return out
+
+
+def _take_spans(rd: Path, nn: str, p: Path, depth: int = 0) -> dict:
+    """Which seconds of the version p each generation made: {pieces: [{t_from, t_to, clip, attempt, how, file}], source, note} (a piece with no clip is
+    not a generation: an insert or other footage), or {pieces: [], note} when the join cannot be read.  See the block comment above."""
+    vd = rd / "60-outputs" / f"video-{nn}"
+    total = _dur(p)
+
+    def done(pieces, source):
+        t, out = 0.0, []
+        for path, secs, clip, att in pieces:
+            how = "the folder it sits in" if att else ""
+            if clip and not att:
+                att = _copy_attempt(vd / clip, path) if path.is_file() else 0
+                how = f"a copy of a{att}'s file" if att else ""
+                if not att:
+                    att, how = _clip_attempt(rd, nn, vd / clip)
+            out.append({"t_from": round(t, 3), "t_to": round(t + secs, 3), "clip": clip, "attempt": att, "how": how, "file": path.name})
+            t += secs
+        return {"pieces": out, "source": source, "total": round(t, 3)}
+
+    def fits(pieces):
+        return pieces and abs(sum(x[1] for x in pieces) - total) <= JOIN_TOL
+
+    def from_lists(files):
+        for f in files:
+            for txt in sorted(f.parent.glob("*.txt")):
+                lst = _concat_list(txt)
+                if lst:
+                    pieces = [(path, secs, *_where_in_video(vd, path)) for path, secs in lst]
+                    if fits(pieces) and any(x[2] for x in pieces):
+                        return done(pieces, f"the concat list {txt.relative_to(vd).as_posix() if _inside(txt, vd) else txt.name}")
+        return None
+    rec = _join_record(vd, p)
+    if rec and fits(rec[0]):
+        return done(rec[0], rec[1])
+    if depth == 0:          # a render of the CapCut project (unchanged since): its main track says which file each second shows
+        cc = _capcut_pieces(rd, nn, p)
+        if cc:
+            got = _through(rd, nn, vd, cc[0])
+            if any(x["clip"] for x in got):
+                return {"pieces": got, "source": cc[1], "total": round(max(x["t_to"] for x in got), 3)}
+    cps = _copies(vd, p)
+    in_attempt = [f for f in cps if any(re.fullmatch(r"a\d+", x) for x in f.parts[-3:-1])]
+    got = from_lists(in_attempt)          # the list in the attempt folder the file was joined in (a copy of it may sit elsewhere, beside an older list)
+    if got:
+        return got
+    if depth == 0:          # a render of the whole clean video (a preview or proxy as long as it, made after it): the clean video's join
+        clean = _render_of_clean(rd, nn, p)
+        if clean:
+            sp = _take_spans(rd, nn, clean, 1)
+            if sp["pieces"]:
+                return {**sp, "source": f"{sp['source']}, through the clean video {clean.name} (this file is a render of it: as long, made after it)"}
+    got = from_lists([f for f in cps if f not in in_attempt])
+    if got:
+        return got
+    clips = _clip_dirs(vd)
+    own = [(cd / f"{cd.name}.mp4", _dur(cd / f"{cd.name}.mp4"), cd.name, 0) for cd in clips if (cd / f"{cd.name}.mp4").is_file()]
+    if len(own) == len(clips) and fits(own):
+        return done(own, "the clips' own pieces (" + ", ".join(f"{c}/{c}.mp4" for _p, _s, c, _a in own) + ") in clip order")
+    naive = []
+    for cd in clips:
+        att, how = _clip_attempt(rd, nn, cd)
+        part = next((cd / f"a{att}" / n for n in CLIP_PART_FILES if (cd / f"a{att}" / n).is_file()), None) if att else None
+        if not part:
+            naive = []
+            break
+        naive.append((part, _dur(part), cd.name, att))
+    if fits(naive):
+        return done(naive, "the clips' trimmed files in clip order")
+    sums =", ".join(f"{c} {s:.3f} s" for _p, s, c, _a in naive) if naive else "the clips' files could not all be found"
+    return {"pieces": [], "source": "", "note": f"which seconds each generation made could not be read from the run: no join record or concat list adds up to "
+                                                  f"this file ({total:.3f} s), and the clips' own lengths ({sums}) do not either (a clip split around another one, an insert, or another cut)"}
 
 
 def _clip_request(rd: Path, nn: str, clip: str, attempt: int) -> Path | None:
@@ -800,12 +1086,13 @@ def _inside(p: Path, d: Path) -> bool:
 
 
 def prompt_segments(run: str, video: str, hint: str = "") -> dict:
-    """The generations a version of a video was made of, each with its prompt and the seconds of that version it made (the user, 2026-10-28: a clip
-    made of several generations keeps each generation's prompt, and the judge is told which seconds, and which frames of a sample, each prompt made).
-    A version joined from clips (the clean video, the preview, a deliverable, joined.mp4 of a video with c1/, c2/ ... folders) gives one segment per
-    clip in their order, each as long as that clip's own file in the join (trimmed.mp4, else conformed.mp4, else raw.mp4), its prompt read from that
-    clip's request; a take of one clip gives that clip's own request.  Read from the run's files, nothing judged.  {kind: clips | clip | "",
-    segments: [{clip, attempt, request, file, t_from, t_to, prompt}], note}; kind "" means a video of one generation (request_prompt_for)."""
+    """The generations a version of a video was made of, each with its prompt and every span of seconds of that version it made, read from how the
+    version was joined (_take_spans, never assumed) and numbered in clip order ('generation 1 of 2'): a clip that comes back after another one (c1, c2,
+    then c1 again) is one generation with two spans, and seconds no generation made (an insert) are listed apart.  A take of one clip gives that clip's
+    own request.  Read from the run's files, nothing judged.  {kind: clips | clip | "", segments: [{clip, attempt, request, file, t_from, t_to, spans,
+    gen, of, prompt, attempt_from}], inserts: [[from, to, file]], spans_known, source, note, file_s}; kind "" means a video of one generation
+    (request_prompt_for).  t_from / t_to are a generation's first span, kept for older readers; `spans` holds all of them.  When the join cannot be read
+    (spans_known false) no segment is given: which generation made a frame is then not known, and nothing is tied to it."""
     loc = locate(hint) if hint else None
     if loc and loc[1] and (loc[0], loc[1]) != (run, core.nn(video)):
         run, video = loc
@@ -822,25 +1109,42 @@ def prompt_segments(run: str, video: str, hint: str = "") -> dict:
     if own:                                   # a take of one clip: its own request, the whole file
         att = next((int(x[1:]) for x in reversed(p.parts[:-1]) if re.fullmatch(r"a\d+", x)), 0) or _clip_attempt_used(rd, nn, own)
         rq = _clip_request(rd, nn, own.name, att)
-        dur = float(media.probe(p).get("duration") or 0)
+        dur = round(_dur(p), 3)
         return {"kind": "clip", "segments": [{"clip": own.name, "attempt": att, "request": rq.name if rq else "", "file": p.name, "t_from": 0.0,
-                                               "t_to": round(dur, 3), "prompt": _request_prompt_text(rq)}],
-                "note": f"a take of clip {own.name} alone: its own request" + ("" if rq else " (no request file of that clip was found)")}
-    segs, t = [], 0.0
-    for cd in clips:
-        att = _clip_attempt_used(rd, nn, cd)
-        part = next((cd / f"a{att}" / n for n in CLIP_PART_FILES if (cd / f"a{att}" / n).is_file()), None) if att else None
-        dur = float(media.probe(part).get("duration") or 0) if part else 0.0
-        rq = _clip_request(rd, nn, cd.name, att)
-        segs.append({"clip": cd.name, "attempt": att, "request": rq.name if rq else "", "file": f"{cd.name}/a{att}/{part.name}" if part else "",
-                     "t_from": round(t, 3), "t_to": round(t + dur, 3), "prompt": _request_prompt_text(rq)})
-        t += dur
-    total = float(media.probe(p).get("duration") or 0)
-    note = (f"{len(segs)} generations joined in clip order; each span is its clip's own length in the join ("
-            + ", ".join(f"{s['clip']} {s['t_to'] - s['t_from']:.3f} s from {s['file'] or 'no file'}" for s in segs) + f"): together {t:.3f} s, this file {total:.3f} s")
-    if total and abs(total - t) > 0.15:
-        note += ". They differ (inserts between the clips, or another cut): check each span against the video before saving"
-    return {"kind": "clips", "segments": segs, "note": note, "clips_s": round(t, 3), "file_s": round(total, 3)}
+                                               "t_to": dur, "spans": [[0.0, dur]], "gen": 1, "of": 1, "prompt": _request_prompt_text(rq)}],
+                "spans_known": True, "note": f"a take of clip {own.name} alone: its own request" + ("" if rq else " (no request file of that clip was found)")}
+    total = _dur(p)
+    sp = _take_spans(rd, nn, p)
+    if not sp["pieces"]:
+        return {"kind": "clips", "segments": [], "inserts": [], "spans_known": False, "source": "", "note": sp.get("note", ""), "file_s": round(total, 3)}
+    keys = []
+    for x in sp["pieces"]:
+        if x["clip"] and (x["clip"], x["attempt"]) not in keys:
+            keys.append((x["clip"], x["attempt"]))
+    keys.sort(key=lambda k: (int(k[0][1:]), k[1]))
+    segs = []
+    for k, (clip, att) in enumerate(keys, 1):
+        mine = [x for x in sp["pieces"] if (x["clip"], x["attempt"]) == (clip, att)]
+        spans: list[list[float]] = []
+        for x in mine:
+            if spans and abs(spans[-1][1] - x["t_from"]) < 1e-3:
+                spans[-1][1] = x["t_to"]
+            else:
+                spans.append([x["t_from"], x["t_to"]])
+        rq = _clip_request(rd, nn, clip, att) if att else None
+        segs.append({"clip": clip, "attempt": att, "request": rq.name if rq else "", "file": ", ".join(dict.fromkeys(x["file"] for x in mine)),
+                     "t_from": spans[0][0], "t_to": spans[0][1], "spans": spans, "gen": k, "of": len(keys), "prompt": _request_prompt_text(rq),
+                     "attempt_from": "; ".join(dict.fromkeys(x["how"] for x in mine if x["how"]))})
+    inserts = [[x["t_from"], x["t_to"], x["file"]] for x in sp["pieces"] if not x["clip"]]
+    note = (f"{len(segs)} generation(s), read from {sp['source']}: "
+            + "; ".join(f"{s['clip']} a{s['attempt'] or '?'} made " + " and ".join(f"{_secs(a)}-{_secs(b)} s" for a, b in s["spans"]) for s in segs)
+            + "".join(f"; {_secs(a)}-{_secs(b)} s is {f}, not a generation" for a, b, f in inserts) + f" (this file {total:.3f} s)")
+    return {"kind": "clips", "segments": segs, "inserts": inserts, "spans_known": True, "source": sp["source"], "note": note,
+            "clips_s": sp.get("total", 0.0), "file_s": round(total, 3)}
+
+
+def _secs(x) -> str:
+    return f"{float(x):.3f}".rstrip("0").rstrip(".")
 
 
 def request_prompt_for(run: str, video: str, hint: str = "") -> dict:
