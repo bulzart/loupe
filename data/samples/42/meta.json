@@ -1,0 +1,38 @@
+{
+ "moment": 42,
+ "miss": 30,
+ "title": "Nueorgum pack was perfectly rendered here in this sample, graphics and package size is on point active",
+ "model": "wan3_0_prime",
+ "run": "20261028-202809-recreate-neurogum-celsius",
+ "video": "04",
+ "t_wrong": 0.0,
+ "t_fixed": 0.0,
+ "sample": "S42",
+ "frames": [
+  {
+   "n": 1,
+   "role": "right",
+   "from": "as generated",
+   "video": "A",
+   "t": 0.0
+  }
+ ],
+ "product_sample_chosen": true,
+ "product_samples": [
+  {
+   "asset": "A44",
+   "label": "Image 4 · the real front render of the E&F 6-piece Spearmint carton",
+   "file": "EF_Gum_6 piece_Spearmint_Single-Front.png"
+  }
+ ],
+ "shapes": [
+  {
+   "type": "rect",
+   "frame": 0,
+   "x1": 0.3926252967136799,
+   "y1": 0.7637168411659984,
+   "x2": 0.7953785884110741,
+   "y2": 0.9778761061946902
+  }
+ ]
+}

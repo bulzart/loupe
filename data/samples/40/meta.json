@@ -1,13 +1,13 @@
 {
- "moment": 39,
- "miss": 28,
- "title": "Nueorgum pack of 6 or 9 i can't really recall was perfectly rendered, graphics and package size is on point",
+ "moment": 40,
+ "miss": 29,
+ "title": "Nueorgum pack of 6 or 9 i can't really recall was perfectly rendered, graphics and package size is on point active",
  "model": "wan3_0_prime",
  "run": "20261028-202809-recreate-neurogum-celsius",
  "video": "02",
  "t_wrong": 0.0,
  "t_fixed": 0.0,
- "sample": "S39",
+ "sample": "S40",
  "frames": [
   {
    "n": 1,
@@ -38,13 +38,13 @@
    "role": "right",
    "from": "as generated",
    "video": "A",
-   "t": 1.033,
+   "t": 3.667,
    "generation": {
     "gen": 1,
     "of": 2,
     "clip": "c1",
-    "t_from": 0.0,
-    "t_to": 1.9,
+    "t_from": 3.4,
+    "t_to": 5.866,
     "spans": [
      [
       0.0,
@@ -61,20 +61,12 @@
  "product_sample_chosen": false,
  "shapes": [
   {
-   "type": "arrow",
-   "frame": 0,
-   "x1": 0.46184864625583827,
-   "y1": 0.7035398567672324,
-   "x2": 0.5656833104796584,
-   "y2": 0.7637168074076155
-  },
-  {
    "type": "rect",
    "frame": 1,
-   "x1": 0.4484760055617011,
-   "y1": 0.6982300682405455,
-   "x2": 0.7568340170231072,
-   "y2": 0.8592920556532598
+   "x1": 0.41071798949115046,
+   "y1": 0.6840707897085004,
+   "x2": 0.7599802382927728,
+   "y2": 0.8787610551952261
   }
  ]
 }
