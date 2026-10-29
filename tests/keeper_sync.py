@@ -47,15 +47,14 @@ ROLE_WORD = {"wrong": "WRONG", "right": "RIGHT", "example": "EXAMPLE", "neutral"
 
 
 def digest_lines() -> dict:
-    """id -> the keeper's digest line."""
-    return {l.split(" | ")[0]: l for l in qc._digest().splitlines() if re.match(r"S\d+ \|", l)}
+    """id -> that sample's record in the keeper's digest (from its === SAMPLE line to its === END OF SAMPLE line)."""
+    return qc.records_of(qc._digest())
 
 
-def roles_in(line: str) -> list:
-    """The frames a digest line names in its own frames part ("2 frames: Frame 1 WRONG 0:01.00, Video A ..."), not the collector's words under READ,
-    which may quote a frame's tag too."""
-    m = re.search(r"(?:^| \| )(\d+ frames?: .*?)(?= \| |$)", line)
-    return sorted(re.findall(r"\b(WRONG|RIGHT|EXAMPLE) \d+:\d\d\.\d\d", m.group(1))) if m else []
+def roles_in(record: str) -> list:
+    """The frames a sample's record lists in its own FRAMES lines ("  Frame 1 WRONG 0:01.00, Video A ..."), not the collector's words under READ, which
+    may quote a frame's tag too."""
+    return sorted(r for _n, r, _t in qc.record_frames(record))
 
 
 def db_rows() -> list:
@@ -213,11 +212,9 @@ def absorb(prompt: str):
     sent) replaces the lines it carries and drops the ids it names as removed."""
     global HELD
     if "LIBRARY (" in prompt:
-        HELD = {ln.split(" | ")[0]: ln for ln in prompt.splitlines() if re.match(r"S\d+ \|", ln)}
+        HELD = qc.records_of(prompt)
     elif DELTA in prompt:
-        for ln in prompt.splitlines():
-            if re.match(r"S\d+ \|", ln):
-                HELD[ln.split(" | ")[0]] = ln
+        HELD.update(qc.records_of(prompt))
         m = re.search(r"Removed from the library, forget them: ([^\n]+)", prompt)
         for k in (m.group(1).split(",") if m else []):
             HELD.pop(k.strip(), None)
@@ -288,12 +285,12 @@ check("an edited explanation reaches the keeper", fresh and current)
 
 misses.update_moment(Am, {"idea": "The can should keep its size from the first shot to the last", "missed": "The agents let the distance change the size"}, "test")
 fresh, current, text = ask()
-check("the idea and what the agents missed reach the keeper", fresh and current and "agents missed: The agents let the distance" in qc._digest(), qc._digest()[:300])
+check("the idea and what the agents missed reach the keeper", fresh and current and "the AI agents missed or could not understand: The agents let the distance" in qc._digest(), qc._digest()[:300])
 
 misses.update_moment(Am, {"frames": [{"src": "wrong", "role": "right", "t": 0.5}, {"src": "wrong", "role": "wrong", "t": 2.0}, {"src": "fixed", "role": "right", "t": 2.0}]}, "test")
 fresh, current, text = ask()
 check("a frame added to a sample reaches the keeper", fresh and current)
-check("and the digest says which frames the image holds", "frames:" in qc._digest() and "3 frames" in qc._digest(), qc._digest()[:400])
+check("and the digest says which frames the image holds", "FRAMES OF" in qc._digest() and "(3 frames)" in qc._digest(), qc._digest()[:400])
 check("and the keeper is told that an image it already looked at may have changed", "image" in text.split(DELTA)[-1].lower() and "again" in text.split(DELTA)[-1].lower() if DELTA in text else False, text[-400:])
 
 misses.update(B, {"status": "archived"}, "test")
@@ -322,7 +319,7 @@ fresh, current, _ = ask()
 check("a scenario in words only reaches the keeper", fresh and current)
 ln = line_of(Wm)
 check("and its digest line holds the idea, what could be better, what the agents missed, and says it has no frames",
-      all(x in ln for x in ("SCENARIO", "idea: The hand keeps", "could be better: State the grip", "agents missed: The agents read", "no frames (the admin's words only)")), ln[:400])
+      all(x in ln for x in ("SCENARIO", "idea (what was meant to happen): The hand keeps", "could have been better: State the grip", "the AI agents missed or could not understand: The agents read", "no frames (the admin's words only)")), ln[:400])
 
 O, Om = mk_only("The label reads as scribbles", [{"src": "wrong", "role": "wrong", "t": 1.0}])
 fresh, current, _ = ask()
@@ -353,7 +350,12 @@ check("and two Example frames are told as two", fresh and current and roles_in(l
 before = qc._digest()
 misses.update_moment(Em, {"shapes": [{"type": "rect", "frame": 0, "x1": .2, "y1": .3, "x2": .6, "y2": .5}]}, "test")
 fresh, current, text = ask()
-check("marks drawn on a frame (the words unchanged) still reach the keeper: its image was rebuilt", fresh and current and qc._digest() == before)
+check("marks drawn on a frame reach the keeper, and that frame's line in the sample's record names them", fresh and current and qc._digest() != before
+      and "marks: 1 box" in line_of(Em), line_of(Em)[:600])
+before = qc._digest()
+misses.regenerate(Em)
+fresh, current, text = ask()
+check("an image rebuilt with the words and marks unchanged still reaches the keeper (its image is part of what it holds)", fresh and current and qc._digest() == before)
 
 misses.update_moment(Wm, {"status": "archived"}, "test")
 fresh, current, _ = ask()
@@ -379,7 +381,7 @@ Sx, Sxm = mk_miss("The cap spins the wrong way")
 check("a library change makes the keeper's status say out of date", not qc.keeper_status()["in_sync"])
 n = len(calls)
 r = qc.sync_keeper("test")
-check("sync tells the keeper the changed library in one call, with the new sample in it", r["state"] == "synced" and len(calls) == n + 1 and "S%d |" % Sxm in calls[-1] and qc.keeper_status()["in_sync"], str(r))
+check("sync tells the keeper the changed library in one call, with the new sample in it", r["state"] == "synced" and len(calls) == n + 1 and "=== SAMPLE S%d " % Sxm in calls[-1] and qc.keeper_status()["in_sync"], str(r))
 fresh, current, _ = ask()
 check("and the first question after the sync does not resend the library", not fresh)
 core.setting_set("keeper", {**(core.setting_get("keeper", {}) or {}), "turns": qc.ROT_TURNS})
@@ -470,10 +472,12 @@ for k in range(qc.CTX_KEEP + 3):
 check("fetched-data folders are pruned to the last %d (no pile-up on disk)" % qc.CTX_KEEP, len(list((core.DATA / "keeper" / "ctx").iterdir())) <= qc.CTX_KEEP)
 _shutil.rmtree(core.DATA / "keeper" / "ctx", ignore_errors=True)
 
-lines = qc._digest().splitlines()
-check("a digest line says where the sample came from (run, video, time, mode)", all("from run" in l for s_, l in zip(qc.library(), lines) if s_.get("run")), lines[0][:200])
-check("a digest line has no empty 'miss: / wrong here: / correct:' fields", not any(re.search(r"\| (miss|wrong here|correct): \|", l) for l in lines))
-check("the boot message explains every field of a line and that an empty kinds field means untagged", "empty kinds field" in qc.LIB_HEADER and "where it came from" in qc.LIB_HEADER)
+recs = digest_lines()
+check("a sample's record says where the sample came from (run, video, time, mode)", all(f"WHERE {s_['id']} CAME FROM: " in recs.get(s_["id"], "") and "from run" in recs.get(s_["id"], "")
+      for s_ in qc.library() if s_.get("run")), str(list(recs.values())[:1])[:300])
+check("a sample's record has no empty 'wrong here: / note: / correct:' line", not any(re.search(r"^  S\d+ · (wrong here|note|correct)[^\n:]*: *$", r, re.M) for r in recs.values()))
+check("the boot message explains every part of a record and that an empty kinds field means untagged", "One record per sample" in qc.LIB_HEADER
+      and "empty kinds field" in qc.LIB_HEADER and "WHERE S.. CAME FROM" in qc.LIB_HEADER and "FRAMES OF S.." in qc.LIB_HEADER and "PROMPTS OF S.." in qc.LIB_HEADER)
 qc._run_claude = fake_claude
 
 print("\n[the prompts of the two takes: in the record, read whole by the keeper on request, never in its digest, never diffed]")
@@ -598,8 +602,8 @@ ask()                                                       # a fresh session to
 n_lib = len(digest_lines())
 r_id, r_mo = mk_miss("one more can that grows", video="09")
 fresh, current, text = ask()
-check("a one-sample change sends only that sample's line, never the whole library again", fresh and current and DELTA in text and "LIBRARY (" not in text
-      and sum(1 for ln in text.splitlines() if re.match(r"S\d+ \|", ln)) == 1, text[:300])
+check("a one-sample change sends only that sample's record, never the whole library again", fresh and current and DELTA in text and "LIBRARY (" not in text
+      and list(qc.records_of(text)) == [f"S{r_mo}"], text[:300])
 st = core.setting_get("keeper", {})
 st["chars"] = qc.ROT_CHARS + 1
 core.setting_set("keeper", st)
@@ -622,7 +626,7 @@ long = "a detail of the frames that is long enough to matter. " * 30
 line = line_of(int(s_any["id"][1:]))
 check("the digest carries only the short collection (three fields, each cut) and the path of the full one; the frames, the admin's words and what was unclear stay in the file",
       "READ (collected from its picture, no verdict" in line and "full collection:" in line and not any(m in line for m in ("WORDS-MARK", "OPEN-MARK", "FRAME-MARK"))
-      and len(line.split("READ (collected from its picture", 1)[1]) < 1000, line[-400:])
+      and len(line.split("READ (collected from its picture", 1)[1].split("\n", 1)[0]) < 1000, line[-400:])
 (ud / f"{s_any['id']}.json").unlink()
 
 print("\n[the same library everywhere]")

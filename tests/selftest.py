@@ -441,7 +441,7 @@ def main(with_keeper=False):
     sim = Image.open(sdir / "composite.png").convert("RGB")
     check("its image holds the words on a dark band", s == 200 and sim.width == 1192 and sim.height > 150 and sum(sim.getpixel((5, sim.height - 3))) < 120, str(sim.size))
     s, d, _ = req("POST", "/api/qc/brief", {"q": "the agents let the can go out of the hand", "model": "wan3_0_prime"}, key=kq)
-    check("QC sees it as a scenario with the three texts", "SCENARIO" in d["text"] and "THE AI AGENTS MISSED OR COULD NOT UNDERSTAND: The agents read the hold" in d["text"] and "IDEA (what was meant to happen)" in d["text"], d["text"][:400])
+    check("QC sees it as a scenario with the three texts", "SCENARIO" in d["text"] and "the AI agents missed or could not understand: The agents read the hold" in d["text"] and "idea (what was meant to happen)" in d["text"], d["text"][:400])
     s, d, _ = req("GET", "/api/qc/samples?limit=30", key=kq)
     check("and the QC list marks it", any(x["id"] == sc["id"] and x["sample_kind"] == "scenario" and x["missed"] for x in d["samples"]))
     s, d, _ = req("PATCH", f"/api/misses/{wm['id']}", {"wrong_path": wrong})
@@ -585,6 +585,10 @@ def main(with_keeper=False):
         from loupe_app import qc as _q
         return _q._digest().splitlines()
 
+    def _qcs_records():
+        from loupe_app import qc as _q
+        return _q.records_of(_q._digest())
+
     def mkclip(path, secs):
         path.parent.mkdir(parents=True, exist_ok=True)
         cp = subprocess.run([media.find_tool("ffmpeg"), "-y", "-loglevel", "error", "-f", "lavfi", "-i", f"color=c=0x203040:s=360x640:r=30:d={secs}",
@@ -637,7 +641,7 @@ def main(with_keeper=False):
     im7 = Image.open(core.DATA / "samples" / str(smo) / "composite.png").convert("RGB")
     check("each frame's tag has a second line under FRAME n (its video, source and generation, on a dark ground)", im7.getpixel((27, 55)) == (255, 45, 45)
           and im7.getpixel((27, 85)) == (46, 50, 60), f"{im7.getpixel((27, 55))} {im7.getpixel((27, 85))}")
-    dg7 = [ln for ln in _qcs_digest_lines() if ln.startswith(f"S{smo} ")]
+    dg7 = [r for k, r in _qcs_records().items() if k == f"S{smo}"]
     check("the keeper's digest names each frame as its tag does: number, role, time, video, source and generation",
           dg7 and "Frame 1 WRONG 0:01.00, Video A (as generated), generation 1 of 2 · clip c1 (0–2 s)" in dg7[0]
           and "Frame 2 WRONG 0:04.00, Video A (as generated), generation 2 of 2 · clip c2 (2–5 s)" in dg7[0], (dg7 or [""])[0][:500])
@@ -707,7 +711,7 @@ def main(with_keeper=False):
     ex3 = emoment([{"src": "wrong", "role": "wrong", "t": 1.0}, {"src": "fixed", "role": "right", "t": 0.5}])
     check("a sample of a Wrong and a Right frame: Video A's prompt generated the flawed version, Video B's is the correct take",
           ex3.get("prompt_roles") == {"wrong": "flawed", "fixed": "correct"}, str(ex3.get("prompt_roles")))
-    dlines = {ln.split(" ", 1)[0]: ln for ln in _qcs_digest_lines() if ln.startswith("S")}
+    dlines = _qcs_records()
     check("the keeper's digest names the Examples sample's one box as an example take, and a pair as before",
           "PROMPT OF THE EXAMPLE TAKE OF VIDEO A SAVED (the one prompt box of this Examples sample" in dlines.get(ex1.get("id"), "")
           and "PROMPTS OF BOTH EXAMPLE TAKES SAVED" not in dlines.get(ex1.get("id"), "") and "neither a bad generation nor a correct one" in dlines.get(ex1.get("id"), "")
@@ -724,6 +728,31 @@ def main(with_keeper=False):
     lib_ex = {x["id"]: x for x in _qce.library()}
     bl = _qce.sample_lines(lib_ex[ex1["id"]]) if ex1.get("id") in lib_ex else ""
     check("the brief says the one prompt kept is an example take's, Video A's", "Video A's prompt, an example take" in bl and "Video B's prompt" not in bl, bl[:600])
+    # one record per sample wherever an agent is handed samples (the user, 2026-10-29): which frame of which sample, its video, the prompt that made it
+    recs = _qcs_records()
+    r3 = recs.get(ex3.get("id"), "")
+    full3 = _qce.sample_record(lib_ex[ex3["id"]], "full") if ex3.get("id") in lib_ex else ""
+    check("each sample reaches the keeper as one record that opens and closes with its id and names its generation miss and that report's other sample",
+          r3.startswith(f"=== SAMPLE {ex3['id']} · generation miss R{em} (sample 2 of 2 of that report; its other sample: {ex1['id']})")
+          and r3.endswith(f"=== END OF SAMPLE {ex3['id']} ===") and f"THE GENERATION MISS R{em} OF {ex3['id']}: " in r3
+          and f"WHAT {ex3['id']} IS: " in r3 and f"WHERE {ex3['id']} CAME FROM: " in r3, r3[:400])
+    check("the frames in a record name their video and the label of the prompt that made them",
+          f"  {ex3['id']} · Frame 1 WRONG 0:01.00, Video A" in r3 and f"made by {ex3['id']}-P1" in r3 and f"  {ex3['id']} · Frame 2 RIGHT 0:00.50, Video B" in r3
+          and f"made by {ex3['id']}-P2" in r3 and f"  {ex3['id']}-P1 · Video A's prompt box · one text · made Frame 1 of {ex3['id']}" in r3, r3[:1400])
+    p1 = full3.split(f"--- {ex3['id']}-P1 (sample {ex3['id']}, generation miss R{em}) · ")[-1].split(f"--- end of {ex3['id']}-P1 (sample {ex3['id']}) ---")[0]
+    p2 = full3.split(f"--- {ex3['id']}-P2 (sample {ex3['id']}, generation miss R{em}) · ")[-1].split(f"--- end of {ex3['id']}-P2 (sample {ex3['id']}) ---")[0]
+    check("its whole record gives each prompt under that label, in its box, with the frames it made, and nothing of the other",
+          p1.startswith("Video A's prompt box: the prompt that generated the flawed version ---") and "Frame 1 (WRONG, 0:01.00)" in p1 and "EX-PROMPT-A" in p1 and "EX-PROMPT-B" not in p1
+          and p2.startswith("Video B's prompt box: the prompt of the correct take ---") and "Frame 2 (RIGHT, 0:00.50)" in p2 and "EX-PROMPT-B" in p2 and "EX-PROMPT-A" not in p2, full3[:1800])
+    check("the admin's words are tied to the frames they speak of",
+          "wrong here (what is wrong at the marked place of Frame 1 (WRONG, 0:01.00), called WRONG): kept to remember" in full3, full3[:900])
+    both = _qce.records_of("\n\n".join(_qce._prompts_text(k, lib_ex[k]) for k in (ex1["id"], ex3["id"]) if k in lib_ex))
+    check("records handed to the judge together stay apart: each holds its own frames and prompts and none of the other's",
+          set(both) == {ex1["id"], ex3["id"]} and f"made by {ex1['id']}-P1" in both.get(ex1["id"], "") and f"{ex3['id']}-P" not in both.get(ex1["id"], "")
+          and f"{ex1['id']}-P" not in both.get(ex3["id"], "") and "EX-PROMPT-B" not in both.get(ex1["id"], ""), str(sorted(both)))
+    bt = _qce.brief({"model": "wan3_0_prime"}, 50)
+    check("the QC brief hands its samples as the same records", ex3["id"] in _qce.records_of(bt.get("text", "")) and "one record per sample" in bt.get("text", ""),
+          bt.get("text", "")[:300])
     req("DELETE", f"/api/moments/{ex3['moment_id']}")
     check("deleting the other samples makes the report's prompts examples again in the database", db_roles() == ("example", "example"), str(db_roles()))
     # the one box of an Examples sample holds the prompt of every generation of its video, the one with no frame of it too (the user, 2026-10-29)
@@ -735,10 +764,27 @@ def main(with_keeper=False):
           "EXSEG-ONE" in et2 and "EXSEG-TWO" in et2 and len((d.get("sample") or {}).get("wrong_segments") or []) == 2
           and "responsible for Frame 1 (EXAMPLE, 0:00.50) and Frame 2 (EXAMPLE, 0:01.00) of this sample: it generated second 0 to second 1.5 of Video A (generation 1 of 2" in et2
           and "This is the prompt that generated second 1.5 to second 3 of Video A (generation 2 of 2" in et2 and "no frame of this sample comes from it" in et2, et2[:900])
-    long_box = "\n\n".join(f"This is the prompt that generated second {k} to second {k + 1} of Video A.\n" + "P" * 4000 for k in range(4))
+    from loupe_app import runs as _runs
+    # no video generation prompt is ever cut (the user, 2026-10-29): a long generation's prompt, a long box, the judge's template, a run's request prompt
+    long_seg = "SEG-LONG " + "the can stands on the desk, as tall as the mug. " * 700 + "SEG-LONG-END"
+    req("PATCH", f"/api/misses/{em}", {"wrong_segments": [{"clip": "c1", "attempt": 1, "request": "video-07-c1-request.json", "t_from": 0, "t_to": 1.5, "prompt": long_seg},
+                                                        {"clip": "c2", "attempt": 1, "request": "video-07-c2-request.json", "t_from": 1.5, "t_to": 3.0, "prompt": "EXSEG-TWO the can in the hand."}]})
+    s, d, _ = req("GET", f"/api/qc/samples/{ex1.get('id')}?prompts=1", key=kq)
+    rec_long = (d.get("sample") or {}).get("record", "")
+    check("a generation's prompt of over 30000 characters is stored and handed to the judge whole, in the sample's record",
+          len(long_seg) > 30000 and long_seg in rec_long and long_seg in str((d.get("sample") or {}).get("prompts_text", "")), str(len(rec_long)))
+    long_box = "\n\n".join(f"This is the prompt that generated second {k} to second {k + 1} of Video A.\n" + "P" * 60000 for k in range(4))
     s, d, _ = req("PATCH", f"/api/misses/{em}", {"wrong_prompt": long_box})
-    check("a box that holds the prompts of several generations is kept whole past one prompt's 12000 characters",
+    check("a box that holds the prompts of several generations is kept whole, however long (here 240000 characters)",
           s == 200 and d["miss"]["wrong_prompt"] == long_box.strip(), str(len((d.get("miss") or {}).get("wrong_prompt", ""))))
+    check("the judge's template is kept whole, however long", _qce.template_from({"template": "T" * 50000}, {})["template"] == "T" * 50000)
+    rq7 = sorted((_runs.run_dir("20261001-000000-07") / "50-requests").glob("video-07*request.json"))
+    if rq7:
+        j7 = json.loads(rq7[0].read_text(encoding="utf-8"))
+        (j7.setdefault("params", {}))["prompt"] = "REQ-LONG " + "x " * 20000 + "REQ-LONG-END"
+        (rq7[0].parent / "video-98-request.json").write_text(json.dumps(j7), encoding="utf-8")
+    pr98 = _qce._request_prompt(_runs.run_dir("20261001-000000-07"), "98")
+    check("a run's request prompt reaches the judge whole (sample_origin, a request_prompt need)", pr98.endswith("REQ-LONG-END") and len(pr98) > 40000, str(len(pr98)))
     req("DELETE", f"/api/misses/{em}")
     late = media.frame_file(Path(six_take), 999)
     check("a frame asked for past the end of a video is its last picture, never an error", late.is_file())
@@ -840,9 +886,12 @@ def main(with_keeper=False):
                 return {"result": json.dumps({"template": "TEMPLATE-MARK Shot 1: the can stands on the desk, as tall as the mug. [SLOT: the product's upload tag]",
                                               "basis": [{"id": sid0, "worked": "the height against the mug", "failed": "no size stated", "where": "shot 1"}, {"id": "S999"}],
                                               "notes": "keep the mug line", "changes": [{"what": "beat 2's cut", "why": "w", "id": sid0}], "not_covered": ""}), "total_cost_usd": 0}
-            if "rests on samples whose two prompts" in prompt:
+            if "rests on samples whose prompts" in prompt:
                 return {"result": json.dumps({"relevant": [{"id": sid0, "why": "judged after reading both prompts", "check": "c", "wrong_pattern": "p"}], "advice": "a",
-                                              "cause": "shot 1 gave no size", "template_fix": "the can as tall as the mug"}), "total_cost_usd": 0}
+                                              "cause": "shot 1 gave no size", "template_fix": "the can as tall as the mug",
+                                              "flags": [{"id": sid0, "what": "FLAG-MARK the right frame's prompt was saved as one text", "effect": "the cause rests on one prompt"},
+                                                        {"id": "S999", "what": "a sample that does not exist"},
+                                                        {"what": "LIB-FLAG no sample shows the can carried through a doorway"}]}), "total_cost_usd": 0}
             if "QC question" in prompt:
                 return {"result": json.dumps({"relevant": [{"id": sid0, "why": "first answer", "check": "c", "wrong_pattern": "p"}], "advice": "a",
                                               "cause": "first cause", "template_fix": "first fix"}), "total_cost_usd": 0}
@@ -871,6 +920,10 @@ def main(with_keeper=False):
         check("before the QC answer is final the judge gets both prompts of the sample it cites, whole, and its second answer is kept",
               longw.strip() in rp and d.get("prompts_judged") == [sid0] and d["relevant"][0]["why"] == "judged after reading both prompts", str(d)[:300])
         check("the QC answer carries the judge's cause and the part rewritten", d.get("cause") == "shot 1 gave no size" and d.get("template_fix") == "the can as tall as the mug", str(d)[:300])
+        check("the judge's flags on a sample's record reach the answer (only samples that exist, or the library as a whole) and the consult log",
+              d.get("flags") == [{"id": sid0, "what": "FLAG-MARK the right frame's prompt was saved as one text", "effect": "the cause rests on one prompt"},
+                                 {"id": "", "what": "LIB-FLAG no sample shows the can carried through a doorway", "effect": ""}]
+              and any((c.get("asks") or {}).get("flags") for c in (req("GET", "/api/qc/keeper")[1] or {}).get("consults", [])), str(d.get("flags")))
         seen.clear()
 
         def judge_origin(prompt, *a, **k):

@@ -657,7 +657,7 @@ def moments_image(h, mid):
 
 # ======================================================================= QC (what the QC phase and the keeper use)
 def _qc_sample(s: dict) -> dict:
-    return {k: s[k] for k in ("id", "title", "explanation", "details", "correct_note", "kinds", "model", "mode", "product", "run", "video",
+    return {k: s[k] for k in ("id", "miss_id", "title", "explanation", "details", "correct_note", "kinds", "model", "mode", "product", "run", "video",
                               "t_wrong", "t_fixed", "frames", "n_frames", "idea", "better", "missed", "prompts", "prompt_sides", "prompt_note", "sample_kind", "has_right", "image_url", "zoom_url", "composite_path", "created") if k in s}
 
 
@@ -679,6 +679,7 @@ def qc_sample(h, mid):
         pp = misses.prompts_of(int(mid)) or {}
         out.update({k: v for k, v in pp.items() if k in ("wrong_prompt", "fixed_prompt", "prompt_note", "wrong_segments", "fixed_segments", "prompt_roles", "examples_only", "prompt_sides")})
         out["prompts_text"] = pp.get("text", "")        # as the judge reads them: a take of several generations, each prompt with its seconds and this sample's frames
+        out["record"] = qc.sample_record(s, "full")      # the sample's whole record: its generation miss, the admin's words, its frames with the prompt that made each, every prompt under its label
     h.send_json({"ok": True, "sample": out})
 
 

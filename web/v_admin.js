@@ -39,7 +39,8 @@ export async function keeper() {
         r.advice ? h('p', {}, r.advice) : null, r.text ? h('pre', {}, r.text) : null,
         (r.relevant || r.samples || []).map((s) => h('div', { class: 'card', style: 'margin-top:8px' }, h('b', {}, s.id), ' ', s.why || s.title || '', s.check ? h('div', { class: 'muted' }, 'Check: ' + s.check) : null,
           s.image_url ? h('img', { src: s.image_url, style: 'width:240px;margin-top:6px;border-radius:8px' }) : null)),
-        r.not_covered ? h('p', { class: 'muted' }, 'Not covered: ' + r.not_covered) : null, r.keeper_error ? h('p', { class: 'muted' }, 'Keeper unavailable, fallback used: ' + r.keeper_error) : null);
+        r.not_covered ? h('p', { class: 'muted' }, 'Not covered: ' + r.not_covered) : null,
+        (r.flags || []).length ? h('p', { class: 'muted' }, 'Flagged: ' + r.flags.map((f) => (f.id ? f.id + ': ' : '') + f.what + (f.effect ? ' (' + f.effect + ')' : '')).join(' · ')) : null, r.keeper_error ? h('p', { class: 'muted' }, 'Keeper unavailable, fallback used: ' + r.keeper_error) : null);
     } catch (e) { out.replaceChildren(h('div', { class: 'muted' }, e.message)); }
   };
   return h('div', {},
@@ -68,6 +69,7 @@ function asksLines(a) {
   (a.needs_asked || []).forEach((n) => out.push(h('div', {}, `asked for ${n.kind}${n.question ? ': ' + n.question : ''}${n.fulfilled ? ' (fetched)' : ' (NOT available' + (n.reason ? ': ' + n.reason : '') + ')'}`)));
   (a.needs_unmet || []).filter((n) => n.kind === 'more').forEach((n) => out.push(h('div', {}, 'still wanted: ' + n.why)));
   if (a.not_covered) out.push(h('div', {}, 'not covered by the library: ' + a.not_covered));
+  (a.flags || []).forEach((f) => out.push(h('div', {}, `flagged ${f.id || 'the library'}: ${f.what}${f.effect ? ' (' + f.effect + ')' : ''}`)));
   if (a.not_read && a.not_read.length) out.push(h('div', {}, 'judged from your words only (no reading of the picture yet): ' + a.not_read.join(', ')));
   (a.held_back_why || []).forEach((x) => out.push(h('div', { class: 'muted' }, `held back ${x.id}: ${x.reason}`)));
   if (a.none_reason) out.push(h('div', { class: 'muted' }, 'no hint: ' + a.none_reason));
@@ -78,12 +80,13 @@ function asksLines(a) {
 // The open gaps across the recent consultations: what the keeper could not get and what the library does not cover. The admin closes a gap by adding a
 // sample (Generation misses) or by answering in a report's words; nothing here changes the library.
 function gapsCard(cons) {
-  const rows = cons.filter((c) => c.asks && ((c.asks.needs_unmet || []).length || c.asks.not_covered));
+  const rows = cons.filter((c) => c.asks && ((c.asks.needs_unmet || []).length || c.asks.not_covered || (c.asks.flags || []).length));
   return h('div', { class: 'card', style: 'margin-top:14px' }, h('h2', {}, 'What the keeper is missing'),
-    h('p', { class: 'muted small' }, 'From the last 50 consultations: what the keeper asked for and could not get, and what it said the library does not cover. A new sample in Generation misses is how a gap gets closed.'),
+    h('p', { class: 'muted small' }, 'From the last 50 consultations: what the keeper asked for and could not get, what it flagged as missing or ambiguous in a sample’s record, and what it said the library does not cover. A new or corrected sample in Generation misses is how a gap gets closed.'),
     rows.length ? rows.map((c) => h('div', { class: 'card', style: 'margin-top:6px' }, h('div', { class: 'muted small' }, `${fmtDate(c.ts)} · ${c.purpose === 'plan' ? 'planning' : c.purpose === 'template' ? 'prompt template' : 'QC'} · ${c.run || ''} ${c.video || ''}`),
       (c.asks.needs_unmet || []).map((n) => h('div', {}, `could not get ${n.kind}${n.question ? ': ' + n.question : ''}${n.reason ? ' (' + n.reason + ')' : ''}`)),
-      c.asks.not_covered ? h('div', {}, 'not covered: ' + c.asks.not_covered) : null)) : h('div', { class: 'empty' }, 'Nothing missing in the recent consultations.'));
+      c.asks.not_covered ? h('div', {}, 'not covered: ' + c.asks.not_covered) : null,
+      (c.asks.flags || []).map((f) => h('div', {}, `flagged ${f.id || 'the library'}: ${f.what}${f.effect ? ' (' + f.effect + ')' : ''}`)))) : h('div', { class: 'empty' }, 'Nothing missing in the recent consultations.'));
 }
 
 // What a data collector saw in each sample's picture: collected once by a session that opened it (no verdict, never the prompts), kept as one JSON file per

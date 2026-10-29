@@ -53,7 +53,8 @@ TITLE_MAX = 2000       # the title is often a whole paragraph and is burned into
 # nothing here compares or diffs them (the keeper and the agents read both whole, on request, and judge what changed).  Every listing carries only the marker
 # `prompts` (pair | wrong | fixed | empty) and the note; the pair itself is served by prompts_of() to the single-sample route and the keeper's sample_origin fetch.
 PROMPT_COLS = ("wrong_prompt", "fixed_prompt", "prompt_note")
-PROMPT_MAX = 12000     # per prompt: a storage bound, far above any video model's prompt length
+# Video generation prompts are never cut (the user, 2026-10-29: "make sure to not trim the video generation prompts at all without any exception because
+# we need them fully"): a prompt box and every generation's prompt are stored, read and sent whole, however long.
 SAMPLE_FILES_MAX = 4   # images the admin may tick for the product sample (the bottom band splits its half between them)
 # A take made of several generations (clips joined) keeps the prompt of each generation with the seconds of that take it made (wrong_segments,
 # fixed_segments: [{src, clip, attempt, request, t_from, t_to, prompt}]; src is the video the take is: "wrong" Video A, "fixed" Video B).  One prompt
@@ -63,7 +64,6 @@ SAMPLE_FILES_MAX = 4   # images the admin may tick for the product sample (the b
 # which generations that sample's frames come from.  A prompt typed by hand replaces them.
 SEGMENT_COLS = ("wrong_segments", "fixed_segments")
 SEGMENTS_MAX = 12
-FIELD_MAX = PROMPT_MAX * SEGMENTS_MAX + 8000      # a prompt box as saved: it can hold the prompt of every generation of a take, each under its line (an Examples sample's one box holds all of them)
 ROLE_WORD = {"wrong": "WRONG", "right": "RIGHT", "example": "EXAMPLE"}
 SIDE_ROLE = {"wrong": "wrong", "fixed": "right"}      # the frames each side's prompts are for
 VIDEO_NAME = {"wrong": "Video A", "fixed": "Video B"}
@@ -267,12 +267,14 @@ def _chosen_files(v, run: str, video: str, wrong_hint: str, wrong_path: str) -> 
 
 
 def _prompt_text(v) -> str:
-    return str(v or "").replace("\r\n", "\n").strip()[:PROMPT_MAX]
+    """A generation's prompt (or a short text), whole: a video generation prompt is never cut."""
+    return str(v or "").replace("\r\n", "\n").strip()
 
 
 def _field_text(v) -> str:
-    """A prompt box as saved (wrong_prompt, fixed_prompt): one generation's prompt, or the prompt of each generation of a joined take under its line."""
-    return str(v or "").replace("\r\n", "\n").strip()[:FIELD_MAX]
+    """A prompt box as saved (wrong_prompt, fixed_prompt): one generation's prompt, or the prompt of each generation of a joined take under its line;
+    whole, never cut."""
+    return str(v or "").replace("\r\n", "\n").strip()
 
 
 def prompts_kind(miss: dict) -> str:
@@ -773,6 +775,15 @@ def moment_view(r, miss: dict) -> dict:
     kinds = [k for k in (r["kinds"] or "").split(",") if k] or miss.get("kinds", [])
     d = sample_dir(mid)
     frames = frames_of(r, miss)
+    if any("gen" not in f for f in frames):       # an older sample keeps the generation of each frame only in the meta its image was built with
+        try:
+            meta = json.loads((d / "meta.json").read_text(encoding="utf-8")).get("frames") or []
+        except (OSError, ValueError, AttributeError):
+            meta = []
+        for f, mf in zip(frames, meta):
+            if ("gen" not in f and isinstance(mf, dict) and mf.get("role") == f["role"] and isinstance(mf.get("generation"), dict)
+                    and abs(float(mf.get("t") or 0) - float(f["t"])) < 1e-3):
+                f["gen"] = mf["generation"]
     has_wrong, has_right = any(f["role"] == "wrong" for f in frames), any(f["role"] == "right" for f in frames)
     return {"moment_id": mid, "frames": [dict(f, desc=f.get("desc") or FRAME_DESC[f["src"]], video=f.get("video") or VIDEO_LETTER[f["src"]]) for f in frames],
             "n_frames": len(frames), "has_right_version": miss.get("fixed_path") or "",
