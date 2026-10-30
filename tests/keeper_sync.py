@@ -167,10 +167,10 @@ def live():
     if not st.get("session_id"):
         print("  no keeper session has been started yet: the first question will boot it with the whole library")
     else:
-        sync = st.get("library_sig") == sig
+        sync = st.get("library_sig") == sig and st.get("header") == qc.HEADER_SIG
         print(f"  session {st['session_id'][:8]}…, {st.get('turns', 0)} turn(s), model {st.get('model')}, last used {st.get('last_used', '-')}")
         print("  " + ("IN SYNC: the keeper holds the library exactly as it is now." if sync else
-                      "OUT OF DATE: the library changed since the keeper's last digest; the server's watcher (or the next run start) sends it the whole library; a question that arrives first resends it itself (nothing is lost)."))
+                      "OUT OF DATE: the library, or the header that says how to read it, changed since the keeper's last digest; the server's watcher (or the next run start) sends it the whole library; a question that arrives first resends it itself (nothing is lost)."))
         check("the keeper's remembered version is a version this library has had (not a different library)", bool(re.match(r"^\d+:[0-9a-f]{16}$", st.get("library_sig", ""))))
     finish()
 
@@ -391,6 +391,14 @@ check("a worn-out keeper session shows as not current", not qc.keeper_status()["
 n = len(calls)
 r = qc.sync_keeper("test")
 check("sync replaces a worn-out session with a fresh one holding the whole library", r["state"] == "booted" and len(calls) == n + 1 and qc._digest() in calls[-1] and qc.keeper_status()["in_sync"], str(r))
+# the library header (how a record is read) reaches a session only when it boots: a session told another header is replaced, as a model change is
+core.setting_set("keeper", {**(core.setting_get("keeper", {}) or {}), "header": "an-older-header"})
+check("a session told another library header shows as not current (a delta never sends the header again)", not qc.keeper_status()["in_sync"])
+n = len(calls)
+r = qc.sync_keeper("test")
+check("sync replaces it with a fresh session told the current header and the whole library",
+      r["state"] == "booted" and len(calls) == n + 1 and qc.LIB_HEADER in calls[-1] and qc._digest() in calls[-1] and qc.keeper_status()["in_sync"]
+      and core.setting_get("keeper", {}).get("header") == qc.HEADER_SIG, str(r))
 core.setting_set("keeper", {})
 qc._run_claude = lambda *a, **k: (_ for _ in ()).throw(RuntimeError("the claude CLI was not found on PATH"))
 r = qc.sync_keeper("test")
@@ -482,14 +490,14 @@ check("the boot message explains every part of a record and that an empty kinds 
       and "empty kinds field" in qc.LIB_HEADER and "WHERE S.. CAME FROM" in qc.LIB_HEADER and "FRAMES OF S.." in qc.LIB_HEADER and "PROMPTS OF S.." in qc.LIB_HEADER)
 qc._run_claude = fake_claude
 
-print("\n[the prompts of the two takes: in the record, read whole by the keeper on request, never in its digest, never diffed]")
+print("\n[the prompts of the two boxes: in the record, read whole by the keeper on request, never in its digest, never diffed]")
 qc._run_claude = fake_claude
 pm_id, pm_mo = mk_miss("the can is set down and shrinks", video="08")
 qc.keeper_reset("test")                # the hang test above booted a session through another recorder: start from one this block saw whole
 ask()                                  # the new sample reaches the keeper; what follows must come from the prompts alone
 misses.update(pm_id, {"wrong_prompt": "WRONGPROMPT-MARK the can on the desk.", "fixed_prompt": "FIXEDPROMPT-MARK the can on the desk, as tall as the mug.", "prompt_note": "NOTE-ON-PROMPT the height was stated"}, "test")
 fresh, current, text = ask()
-check("saving the prompts of both takes re-syncs the keeper (the library version counts them)", fresh and current)
+check("saving the prompts of both boxes re-syncs the keeper (the library version counts them)", fresh and current)
 line = line_of(pm_mo)
 check("its digest line says which prompts are saved, named by what they are, and carries the admin's note, never the prompts",
       "PROMPTS SAVED: FLAWED + CORRECT; sample_origin reads them" in line
@@ -625,7 +633,7 @@ ud = core.DATA / "keeper" / "understood"
 ud.mkdir(parents=True, exist_ok=True)
 long = "a detail of the frames that is long enough to matter. " * 30
 (ud / f"{s_any['id']}.json").write_text(json.dumps({"id": s_any["id"], "source_sig": qc._source_sig(s_any), "read_at": core.now(), "model": "m", "images_read": True,
-    "reading": {"marked": long, "right_version": long, "product_and_scene": long, "admin_words": "WORDS-MARK " + long, "prompts_saved": "both takes",
+    "reading": {"marked": long, "right_version": long, "product_and_scene": long, "admin_words": "WORDS-MARK " + long, "prompts_saved": "the flawed version's and the correct version's",
                 "unclear": "OPEN-MARK", "frames_seen": [{"frame": "WRONG 0:01.00", "seen": "FRAME-MARK " + long}]}}), encoding="utf-8")
 line = line_of(int(s_any["id"][1:]))
 check("the digest carries only the short collection (three fields, each cut) and the path of the full one; the frames, the admin's words and what was unclear stay in the file",

@@ -702,7 +702,7 @@ def main(with_keeper=False):
           and d["miss"]["prompt_roles"] == {"wrong": "example", "fixed": "example"}, f"{db_roles()} {d['miss'].get('prompt_roles')}")
     s, d, _ = req("GET", f"/api/qc/samples/{ex1.get('id')}?prompts=1", key=kq)
     et = (d.get("sample") or {}).get("prompts_text", "")
-    check("the judge reads the Examples sample's one box as an example take, never as the wrong or the corrected take, and never Video B's prompt",
+    check("the judge reads the Examples sample's one box as an example prompt, never as the flawed or the correct version's, and never Video B's box",
           s == 200 and (d.get("sample") or {}).get("prompt_roles") == {"wrong": "example", "fixed": "example"} and "this sample's frames are all Examples" in et
           and (d.get("sample") or {}).get("prompt_sides") == ["wrong"] and "takes all its frames from one video, here Video A" in et
           and "the example prompt box of Video A" in et and "example prompt box of Video B" not in et and "EX-PROMPT-A" in et and "EX-PROMPT-B" not in et
@@ -713,20 +713,20 @@ def main(with_keeper=False):
     s2, d2, _ = req("POST", f"/api/misses/{em}/moments", {"frames": [{"src": "wrong", "role": "example", "t": 1.0}, {"src": "wrong", "role": "right", "t": 1.5}]})
     s2b, d2b, _ = req("PATCH", f"/api/moments/{ex1['moment_id']}", {"frames": [{"src": "wrong", "role": "example", "t": 1.0}, {"src": "fixed", "role": "wrong", "t": 0.5}]})
     check("a sample that mixes an Example with a Wrong or Right frame is refused, saved or updated, with the rule in the answer",
-          s2 == 400 and "either a miss with its correct take" in str(d2.get("error", "")) and "neither a bad generation nor a correct one" in str(d2.get("error", ""))
+          s2 == 400 and "either a miss with its correct version" in str(d2.get("error", "")) and "neither a bad generation nor a correct one" in str(d2.get("error", ""))
           and s2b == 400, f"{s2} {d2} {s2b}")
     ex3 = emoment([{"src": "wrong", "role": "wrong", "t": 1.0}, {"src": "fixed", "role": "right", "t": 0.5}])
-    check("a sample of a Wrong and a Right frame: Video A's prompt generated the flawed version, Video B's is the correct take",
+    check("a sample of a Wrong and a Right frame: the flawed version's box and the correct version's box",
           ex3.get("prompt_roles") == {"wrong": "flawed", "fixed": "correct"}, str(ex3.get("prompt_roles")))
     dlines = _qcs_records()
-    check("the keeper's digest names the Examples sample's one box as an example take, and a pair as before",
+    check("the keeper's digest names the Examples sample's one box as an example prompt, and a pair as the flawed and the correct version's boxes",
           "PROMPTS SAVED: EXAMPLE (Video A), this Examples sample's one box; sample_origin reads it" in dlines.get(ex1.get("id"), "")
           and "FLAWED" not in dlines.get(ex1.get("id"), "") and "neither a bad generation nor a correct one" in _qcs.LIB_HEADER
           and "EXAMPLE (Video A or B: an Examples sample's one box)" in _qcs.LIB_HEADER
           and "PROMPTS SAVED: FLAWED + CORRECT; sample_origin reads them" in dlines.get(ex3.get("id"), ""), dlines.get(ex1.get("id"), "")[-300:])
     m_ex = json.loads((core.DATA / "samples" / str(ex1["moment_id"]) / "meta.json").read_text(encoding="utf-8"))
     check("an Example sample's frames are tagged EXAMPLE in its record", [f["role"] for f in m_ex["frames"]] == ["example", "example"], str(m_ex["frames"])[:200])
-    check("with a sample whose frames are Wrong and Right, the database keeps Video A's prompt as the one that generated the flawed version and Video B's as the correct take's",
+    check("with a sample whose frames are Wrong and Right, the database keeps the flawed version's box as 'flawed' and the correct version's as 'correct'",
           db_roles() == ("flawed", "correct"), str(db_roles()))
     s3, d3, _ = req("GET", f"/api/qc/samples/{ex3.get('id')}?prompts=1", key=kq)
     t3 = (d3.get("sample") or {}).get("prompts_text", "")
@@ -764,6 +764,20 @@ def main(with_keeper=False):
     bt = _qce.brief({"model": "wan3_0_prime"}, 50)
     check("the QC brief hands its samples as the same records", ex3["id"] in _qce.records_of(bt.get("text", "")) and "one record per sample" in bt.get("text", ""),
           bt.get("text", "")[:300])
+    # the user, 2026-10-29/30: nothing out of sync. Every text an agent reads names a prompt by what its box holds (the flawed version's, the correct
+    # version's, an example), never by the words of before (the two takes, the correct take, Video A's prompt ...)
+    OLD_WORDS = ("two takes", "both takes", "correct take", "flawed take", "example take", "corrected take", "wrong take", "the corrected prompt",
+                 "Video A's prompt", "Video B's prompt", "Prompt of Video A", "Prompt of Video B", "TWO TAKES", "BOTH TAKES", "CORRECT TAKE",
+                 "FLAWED TAKE", "EXAMPLE TAKE", "PROMPTS OF BOTH")
+    agent_texts = {"the judge's role": _qce.ROLE, "the library header": _qce.LIB_HEADER, "the collector's role": _qce.EXTRACT_ROLE,
+                   "the brief's prompt words": " ".join(_qce.PROMPTS_SAVED.values()) + " " + _qce.EXAMPLE_PROMPT, "the digest": "\n\n".join(recs.values()),
+                   "a full record": full3, "the judge's text of an Examples sample": et, "the judge's text of a pair": t3,
+                   "the records handed together": "\n\n".join(both.values()), "the QC brief": bt.get("text", ""), "the brief's lines": bl,
+                   "the refusal of a mixed sample": str(d2.get("error", ""))}
+    stale = [f"{name}: {w}" for name, txt in agent_texts.items() for w in OLD_WORDS if w in (txt or "")]
+    check("no text an agent reads names a prompt by the old words (the two takes, the correct take, Video A's prompt ...)", not stale, "; ".join(stale)[:600])
+    src_stale = [f"{f.name}: {w}" for f in sorted((Path(__file__).resolve().parent.parent / "loupe_app").glob("*.py")) for w in OLD_WORDS if w in f.read_text(encoding="utf-8")]
+    check("and no code, docstring or comment of Loupe does either", not src_stale, "; ".join(src_stale)[:600])
     req("DELETE", f"/api/moments/{ex3['moment_id']}")
     check("deleting the other samples makes the report's prompts examples again in the database", db_roles() == ("example", "example"), str(db_roles()))
     # the one box of an Examples sample gives the prompt of each generation its Example frames come from, and no other (the user, 2026-10-29: "if two or
@@ -889,6 +903,12 @@ def main(with_keeper=False):
           and f"no flawed version's prompt: none of the frames of {jr.get('id')} is called WRONG" in rec and "the correct version's prompt box: the prompts of the generations the frames called RIGHT come from" in rec
           and "J-C1-A2" in rec and "J-C2" not in rec and f"made by {jr.get('id')}-P1 (the correct version's prompt box)" in rec
           and "this sample keeps no flawed version's prompt" in js_.get("prompts_text", ""), rec[:1600])
+    from loupe_app import qc as _qck
+    lib_k = {x["id"]: x for x in _qck.library()}
+    ek = _qck._extract_prompt(lib_k[jr["id"]]) if jr.get("id") in lib_k else ""
+    check("the collector is told such a sample is the correct version only, as its record says (its sample_kind stays scenario for the older pipelines)",
+          lib_k.get(jr.get("id"), {}).get("sample_kind") == "scenario" and ek.startswith(f"SAMPLE {jr.get('id')} (the correct version only: its frames are all called RIGHT)"),
+          ek[:200] or "not in the library")
     meta8 = json.loads((core.DATA / "samples" / str(jr.get("moment_id")) / "meta.json").read_text(encoding="utf-8")) if jr else {}
     check("each frame's tag names the generation that made it with every span of it", [(f.get("generation") or {}).get("spans") for f in meta8.get("frames", [])] == [[[0.0, 1.0], [2.5, 4.5]]] * 2,
           str(meta8.get("frames"))[:300])

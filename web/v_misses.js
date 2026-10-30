@@ -5,12 +5,13 @@ const head = (title, sub, ...actions) => h('div', { class: 'head' }, h('div', {}
 const FPS = 30;
 
 // ------------------------------------------------------------------------------------------ list of reports
-// what a report keeps of its takes' prompts, as the database keeps it (prompt_roles): Video A's generated the flawed version, Video B's is the correct take,
+// what a report keeps in its prompt boxes, as the database keeps it (prompt_roles): the flawed version's box (the generations the frames called Wrong come
+// from), the correct version's (those the frames called Right come from, from either video),
 // and a side whose prompt is an Example's in every sample of the report is a suggestion, neither bad nor correct
 const promptsKept = (m) => {
     const ex = (k) => ((m.prompt_roles || {})[k] === 'example');
-    const name = (k) => (ex(k) ? `the example take of Video ${k === 'wrong' ? 'A' : 'B'} (a suggestion)` : (k === 'wrong' ? 'the flawed take (Video A)' : 'the correct take (Video B)'));
-    if (m.prompts === 'pair') return ex('wrong') && ex('fixed') ? ' · prompts of both example takes kept (suggestions)' : ` · prompts of ${name('wrong')} and ${name('fixed')} kept`;
+    const name = (k) => (ex(k) ? `the example prompt of Video ${k === 'wrong' ? 'A' : 'B'} (a suggestion)` : (k === 'wrong' ? 'the flawed version' : 'the correct version'));
+    if (m.prompts === 'pair') return ex('wrong') && ex('fixed') ? ' · example prompts of both videos kept (suggestions)' : ` · prompts of ${name('wrong')} and ${name('fixed')} kept`;
     return m.prompts === 'wrong' || m.prompts === 'fixed' ? ` · prompt of ${name(m.prompts)} kept` : '';
 };
 export async function reports() {
@@ -180,11 +181,11 @@ export async function work(qs) {
     toast(n ? `Added ${n} take(s) of ${gr} to both pickers` : `Nothing new to add from ${gr}`);
   });
 
-  // ---- the prompts of the two takes: kept in the record and read whole by the keeper and the prompt writers on request; never burned into the image, never
-  // compared by the app (the agents judge what changed). Each can be filled from the run's request file of the version picked above, or pasted.
+  // ---- the prompts of the two boxes (the flawed version's, the correct version's, or an Examples sample's one box): kept in the record and read whole by the keeper and the prompt writers on request; never burned into the image, never
+  // compared by the app (the agents judge what changed). Each is filled from the run's request files of the generations its frames come from (POST /api/misses/prompt-boxes), or pasted.
   const mono = 'min-height:110px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px';
-  const wrongPrompt = h('textarea', { placeholder: 'The prompt that produced Video A (as generated: the flawed version). Optional.', style: mono, value: miss ? miss.wrong_prompt || '' : '' });
-  const fixedPrompt = h('textarea', { placeholder: 'The prompt of Video B (the correct take). Optional.', style: mono, value: miss ? miss.fixed_prompt || '' : '' });
+  const wrongPrompt = h('textarea', { placeholder: 'The flawed version’s prompt, or Video A’s example prompt (filled from the generations its frames come from). Optional.', style: mono, value: miss ? miss.wrong_prompt || '' : '' });
+  const fixedPrompt = h('textarea', { placeholder: 'The correct version’s prompt, or Video B’s example prompt (filled from the generations its frames come from). Optional.', style: mono, value: miss ? miss.fixed_prompt || '' : '' });
   const promptNote = h('input', { value: miss ? miss.prompt_note || '' : '', placeholder: 'What in the prompt made the difference, in your words (optional, one line)', style: 'width:100%' });
   // The prompt boxes (the user, 2026-10-29): the flawed version's box holds the prompt of each generation the frames called Wrong come from, the correct
   // version's box the prompt of each generation the frames called Right come from (from whichever video), and an Examples sample's one box the prompt of
@@ -218,7 +219,7 @@ export async function work(qs) {
     const roles = [...new Set(all.filter((f) => columnOf(f) === key).map((f) => ({ wrong: 'flawed', right: 'correct', example: 'example' })[f.role]))];
     return roles.length ? roles.join('+') : 'unused';
   };
-  const LABEL = { wrong: 'Prompt of Video A (no frame yet: the prompt that generated the flawed version)', fixed: 'Prompt of Video B (no frame yet: the prompt of the correct version)' };
+  const LABEL = { wrong: 'The flawed version’s prompt (no frame yet: the prompt of each generation the frames called Wrong come from; in an Examples sample of Video A, its example prompt)', fixed: 'The correct version’s prompt (no frame yet: the prompt of each generation the frames called Right come from, from either video; in an Examples sample of Video B, its example prompt)' };
   const ROLE_LABEL = {
     flawed: 'The flawed version’s prompt (the prompt of each generation the frames called Wrong come from: they generated the flawed version)',
     correct: 'The correct version’s prompt (the prompt of each generation the frames called Right come from, from either video: they generated the correct version)',
@@ -276,7 +277,7 @@ export async function work(qs) {
   for (const key of ['wrong', 'fixed']) PROMPT_FIELD[key].addEventListener('input', () => { typed[key] = true; });
   const genWords = (s) => `${s.clip || VNAME[s.src]}${s.attempt ? ' a' + s.attempt : ''} (generation ${s.gen || 1} of ${s.of || 1}, ${(s.spans && s.spans.length ? s.spans : [[s.t_from, s.t_to]]).map(([a, b]) => `${secs(a)}–${secs(b)} s`).join(' and ')} of ${VNAME[s.src] || 'its video'})`;
   const fillPrompt = (key) => h('button', { class: 'btn sm', type: 'button', title: `writes the prompt of each generation the frames feeding this box come from (the flawed version’s box: the frames called Wrong; the correct version’s box: the frames called Right, from either video; an Examples sample’s one box: its Example frames), read from the request files in the run and from how the take was joined, every sample of the report counted, and no other generation; a box no frame feeds stays empty; the original video has no prompt. The field then follows the frames again until you type in it.`, onclick: async () => {
-    if (!state.wrong && !state.fixed) { toast('Pick Video A first', true); return; }
+    if (!state.wrong && !state.fixed) { toast('Pick a video first (Video A or Video B): each box is filled from the generations its frames come from', true); return; }
     const d = await readBoxes(true);
     if (!d || d.error) { toast((d && d.error) || 'The run could not be read: paste the prompt', true); return; }
     const b = d[key] || {};
@@ -594,7 +595,7 @@ export async function work(qs) {
   const leaveEdit = () => { ws.editing = null; saveBtn.textContent = 'Mark this moment'; cancelEdit.style.display = 'none'; };
   async function saveMoment() {
     pauseAll();
-    if (mixed()) { toast('A sample is either a miss with its correct take, or Examples only: call every frame Example, or none', true); syncMix(); return; }
+    if (mixed()) { toast('A sample is either a miss with its correct version, or Examples only: call every frame Example, or none', true); syncMix(); return; }
     if (twoVideoExamples()) { toast('An Examples sample takes all its frames from one video, so it has one prompt box: take every frame from Video A (or every one from Video B)', true); syncMix(); return; }
     const text = details.value.trim();
     // never blocks: with no title it is cut from the explanation, and with neither it is named by the video and the second
@@ -633,7 +634,8 @@ export async function work(qs) {
     saveBtn.textContent = 'Update moment'; cancelEdit.style.display = ''; window.scrollTo({ top: 0, behavior: 'smooth' });
   };
   const framesText = (m) => (m.frames.length ? m.frames.map((f) => `${f.role} @ ${fmtT(f.t)}`).join(' · ') : 'words only')
-    + (m.sample_kind === 'miss-only' ? ' · miss example, no right frame' : m.sample_kind === 'scenario' ? ' · scenario' : '');
+    + (m.sample_kind === 'miss-only' ? ' · miss example, no right frame' : m.sample_kind === 'scenario'
+      ? (m.frames.length && m.frames.every((f) => f.role === 'right') ? ' · the correct version only' : ' · scenario') : '');
   const drawMoments = () => {
     moments.replaceChildren(miss && miss.moments.length ? h('div', { class: 'grid g3' }, miss.moments.map((m) => h('div', { class: 'card' },
       h('img', { src: m.image_url + '&v=' + encodeURIComponent(m.updated), style: 'width:100%;height:240px;object-fit:cover;object-position:top;border-radius:8px;cursor:zoom-in', onclick: () => lightbox(m.image_url + '&v=' + encodeURIComponent(m.updated)) }),
@@ -646,10 +648,10 @@ export async function work(qs) {
   const addBtn = h('button', { class: 'btn sm primary', title: 'adds a frame after the last one (0.2 s later, same video, same role); change any of that on the new frame', onclick: () => { const l = frames[frames.length - 1]; if (l) addFrame(l.src, l.role, l.t + 0.2); else if (state.wrong) addFrame('wrong', 'wrong', 0); else addFrame('fixed', 'example', 0); } }, '+ Add a frame');
   const sameBtn = h('button', { class: 'btn sm', title: 'puts every frame on the time of Frame 1', onclick: sameTime }, 'Same time on all frames');
   const correctLbl = h('label', { class: 'f' }, 'What the right frame shows (optional)');
-  // the user, 2026-10-28: a sample is a miss with its correct take, or Examples only; never both (the server refuses a mix too)
+  // the user, 2026-10-28: a sample is a miss with its correct version, or Examples only; never both (the server refuses a mix too)
   const mixed = () => frames.some((f) => f.role === 'example') && frames.some((f) => f.role !== 'example');
-  const mixNote = h('div', { class: 'small', style: 'display:none;margin-top:6px;color:#b45309;font-weight:600' }, 'This sample mixes Example frames with Wrong or Right frames: A sample is either a miss with its correct take (frames called Wrong and Right) or Examples only, never both: call every frame Example, or none (an Example is a suggestion of what could have changed or how it could have been done another way, neither a bad generation nor a correct one).');
-  const oneVideoNote = h('div', { class: 'small', style: 'display:none;margin-top:6px;color:#b45309;font-weight:600' }, 'This sample takes its Example frames from Video A and Video B: an Examples sample takes all its frames from one video and has one prompt box, that video’s (the prompt of every generation of it, each under the seconds it made). Take every frame from one video; only a miss with its correct take uses two videos, Video A for the frames called Wrong and Video B for those called Right.');
+  const mixNote = h('div', { class: 'small', style: 'display:none;margin-top:6px;color:#b45309;font-weight:600' }, 'This sample mixes Example frames with Wrong or Right frames: A sample is either a miss with its correct version (frames called Wrong and Right) or Examples only, never both: call every frame Example, or none (an Example is a suggestion of what could have changed or how it could have been done another way, neither a bad generation nor a correct one).');
+  const oneVideoNote = h('div', { class: 'small', style: 'display:none;margin-top:6px;color:#b45309;font-weight:600' }, 'This sample takes its Example frames from Video A and Video B: an Examples sample takes all its frames from one video and has one prompt box, that video’s (the prompt of each generation of it its Example frames come from, each under the seconds it made). Take every frame from one video; only a sample of frames called Wrong and Right may take them from both videos: each frame’s generation feeds the flawed or the correct version’s box by what the frame is called.');
   const syncMix = () => { mixNote.style.display = mixed() ? '' : 'none'; oneVideoNote.style.display = twoVideoExamples() ? '' : 'none'; };
   const noRightTitle = h('b', {}), noRightText = h('div', { style: 'margin-top:6px;color:#aab;font-size:13px;max-width:320px' });
   const noRightBox = h('div', { class: 'player', style: 'display:none;align-items:center;justify-content:center;text-align:center;min-height:220px' }, h('div', {}, noRightTitle, noRightText));
@@ -679,7 +681,7 @@ export async function work(qs) {
     h('div', { class: 'card' },
       h('div', { class: 'grid g2' },
         h('div', {}, h('label', { class: 'f', style: 'margin-top:0' }, 'Video A: the version as generated (optional; or the original video, or another generation)'), wrongSel, mkAdd('wrong')),
-        h('div', {}, h('label', { class: 'f', style: 'margin-top:0' }, 'Video B: the right version (optional: the correct take, a QC fix, your feedback, the client’s update, the original video, or another generation)'), fixedSel, mkAdd('fixed'))),
+        h('div', {}, h('label', { class: 'f', style: 'margin-top:0' }, 'Video B: the right version (optional: a regeneration that came out right, a QC fix, your feedback, the client’s update, the original video, or another generation)'), fixedSel, mkAdd('fixed'))),
       hasGenerated ? h('div', { class: 'muted small', style: 'margin-top:6px' }, h('label', {}, allBox, ' Also list the other files of this video and of the run’s other videos (conformed, trimmed, copies, previews, deliverables). Normally only the video each attempt generated at Higgsfield is listed: its clean video and preview are made from it, and the prompt below is filled from that attempt’s request.')) : null,
       h('div', { class: 'row', style: 'margin-top:6px' }, otherBtn, h('span', { class: 'muted small' }, 'Either side can be any video: the pickers also list the original video the generation was made from (as the run recorded it) and the generated takes of the run’s other videos; another run’s takes are one choice away. Each frame’s tag in the saved image says which it is.')),
       otherBox,

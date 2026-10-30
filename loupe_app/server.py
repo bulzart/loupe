@@ -691,7 +691,8 @@ def qc_sample(h, mid):
     if not s:
         raise LookupError("S" + mid)
     out = _qc_sample(s)
-    if h.q.get("prompts") in ("1", "true", "yes"):        # the prompts of the two takes, whole: one sample, on request only (never in a list, a brief or the keeper's digest)
+    # the prompts of the boxes this sample speaks through (prompt_sides), whole: one sample, on request only (never in a list, a brief or the digest)
+    if h.q.get("prompts") in ("1", "true", "yes"):
         pp = misses.prompts_of(int(mid)) or {}
         out.update({k: v for k, v in pp.items() if k in ("wrong_prompt", "fixed_prompt", "prompt_note", "wrong_segments", "fixed_segments", "prompt_roles", "examples_only", "prompt_sides")})
         out["prompts_text"] = pp.get("text", "")        # as the judge reads them: a take of several generations, each prompt with its seconds and this sample's frames

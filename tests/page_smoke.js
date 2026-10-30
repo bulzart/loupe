@@ -16,7 +16,7 @@ let noRight = false;
 let withOthers = false;      // the run also has video 04, and video 03 has an original
 let withSample = false;      // the video's request names a product
 let withSegs = false;        // the picked take was joined from two generations (clips)
-let withSavedSegs = false;   // the report was saved with Video A's field written from a take of two generations
+let withSavedSegs = false;   // the report was saved with the flawed version's box written from a take of two generations
 const savedMoment = { moment_id: 5, id: 'S5', image_url: '/x?a=5', updated: 'u', details: 'the pack is right early', correct_note: 'c', has_right: true,
   frames: [{ src: 'wrong', role: 'right', t: 0.5, desc: 'as generated' }, { src: 'wrong', role: 'wrong', t: 3.0, desc: 'as generated' }, { src: 'fixed', role: 'right', t: 3.25, desc: 'correct version' }],
   shapes: [{ type: 'rect', frame: 1, x1: 0.1, y1: 0.1, x2: 0.4, y2: 0.4 }] };
@@ -255,7 +255,7 @@ const ok = (name, cond, info = '') => { console.log((cond ? '  ok   ' : '  FAIL 
   const root10 = await work({ run: 'R', video: '03', miss: '1' });
   await settle();
   const field = (start) => walk(root10, (e) => e.tag === 'textarea' && (e.attrs.placeholder || '').startsWith(start))[0];
-  const fieldA = () => field('The prompt that produced Video A'), fieldB = () => field('The prompt of Video B');
+  const fieldA = () => field('The flawed version’s prompt, or'), fieldB = () => field('The correct version’s prompt, or');
   const boxCalls = () => sent.filter((x) => x.method === 'POST' && x.url === '/api/misses/prompt-boxes');
   ok('one prompt field per side, none per generation', walk(root10, (e) => e.tag === 'textarea' && /prompt/i.test(e.attrs.placeholder || '')).length === 2 && !walk(root10, (e) => !!(e.attrs && e.attrs['data-seg'])).length);
   ok('the form asks Loupe for the boxes with the frames on screen, the report and both videos', boxCalls().length > 0 && boxCalls().slice(-1)[0].body.miss_id === 1
@@ -315,7 +315,7 @@ const ok = (name, cond, info = '') => { console.log((cond ? '  ok   ' : '  FAIL 
   withSavedSegs = true; withSegs = true; sent.length = 0;
   const root11 = await work({ run: 'R', video: '03', miss: '1' });
   await settle();
-  const fA11 = walk(root11, (e) => e.tag === 'textarea' && (e.attrs.placeholder || '').startsWith('The prompt that produced Video A'))[0];
+  const fA11 = walk(root11, (e) => e.tag === 'textarea' && (e.attrs.placeholder || '').startsWith('The flawed version’s prompt, or'))[0];
   ok('a saved field of a joined take is written again for the frames on screen', fA11.value.includes('P-C1') && !fA11.value.includes('SAVED-C2') && fA11.value.includes('made Frame 1 of this sample'), fA11.value);
   withSavedSegs = false; withSegs = false;
   // Example frames: an Examples sample takes all its frames from one video and has one prompt box, that video's, with the prompt of each generation its
@@ -335,30 +335,30 @@ const ok = (name, cond, info = '') => { console.log((cond ? '  ok   ' : '  FAIL 
   ok('Example frames from Video A and Video B: the form says an Examples sample takes one video, and does not call it a mix', twoShown() && !mixShown());
   ok('while they stand, each box names the Example frame of its own video (an older two-video sample reads the same way)',
     !!lab('The example prompt of Video A') && !!lab('The example prompt of Video B')
-    && f12('The prompt that produced Video A').value.startsWith('This is an example prompt: it generated second 0 to second 6.1 of Video A')
-    && f12('The prompt of Video B').value.startsWith('This is an example prompt: it generated second 0 to second 6.1 of Video B'),
-    f12('The prompt that produced Video A').value.slice(0, 160) + ' / ' + f12('The prompt of Video B').value.slice(0, 160));
+    && f12('The flawed version’s prompt, or').value.startsWith('This is an example prompt: it generated second 0 to second 6.1 of Video A')
+    && f12('The correct version’s prompt, or').value.startsWith('This is an example prompt: it generated second 0 to second 6.1 of Video B'),
+    f12('The flawed version’s prompt, or').value.slice(0, 160) + ' / ' + f12('The correct version’s prompt, or').value.slice(0, 160));
   sent.length = 0;
   await markMoment();
   ok('and an Examples sample from two videos is never saved', !sent.some((x) => x.method === 'POST' && x.url.endsWith('/moments')), JSON.stringify(sent.map((x) => x.method + ' ' + x.url)));
   click(walk(fr12()[0], (e) => e.tag === 'button' && e.text === 'Wrong')[0]);
   await settle();
-  ok('a Wrong frame beside an Example: the form warns that a sample is a miss with its correct take, or Examples only', mixShown() && !twoShown());
+  ok('a Wrong frame beside an Example: the form warns that a sample is a miss with its correct version, or Examples only', mixShown() && !twoShown());
   sent.length = 0;
   await markMoment();
   ok('and a mixed sample is never saved', !sent.some((x) => x.method === 'POST' && x.url.endsWith('/moments')), JSON.stringify(sent.map((x) => x.method + ' ' + x.url)));
   ok('a frame called Wrong makes Video A’s box the flawed version’s, while Video B’s, behind an Example of its own video, stays an example',
-    !!lab('The flawed version’s prompt (the prompt of each generation the frames called Wrong come from') && !!lab('The example prompt of Video B') && f12('The prompt that produced Video A').value.includes('made Frame 1'),
+    !!lab('The flawed version’s prompt (the prompt of each generation the frames called Wrong come from') && !!lab('The example prompt of Video B') && f12('The flawed version’s prompt, or').value.includes('made Frame 1'),
     walk(root12, (e) => e.tag === 'label').map((e) => e.textContent).join(' | '));
   click(walk(fr12()[0], (e) => e.tag === 'button' && e.text === 'Example')[0]);
   const src12 = walk(fr12()[1], (e) => e.tag === 'select')[0]; src12.value = 'wrong'; (src12.listeners.change || []).forEach((f) => f());
   await settle();
-  const cellB = () => { const ta = f12('The prompt of Video B'); return walk(root12, (e) => e.tag === 'div' && (e.children || []).includes(ta))[0]; };
+  const cellB = () => { const ta = f12('The correct version’s prompt, or'); return walk(root12, (e) => e.tag === 'div' && (e.children || []).includes(ta))[0]; };
   const labA = () => (walk(root12, (e) => e.tag === 'label' && (e.textContent || '').startsWith('The example prompt of Video A'))[0] || {}).textContent || '';
   ok('every frame an Example from Video A: no warning, and one prompt box, Video A’s example box; Video B’s is neither filled nor shown',
-    !twoShown() && !mixShown() && !!cellB() && cellB().style.display === 'none' && f12('The prompt of Video B').value === ''
+    !twoShown() && !mixShown() && !!cellB() && cellB().style.display === 'none' && f12('The correct version’s prompt, or').value === ''
     && labA().includes('an Examples sample has this one box'), labA() + ' / ' + (cellB() ? cellB().style.display : 'no cell'));
-  const a12 = f12('The prompt that produced Video A').value;
+  const a12 = f12('The flawed version’s prompt, or').value;
   ok('the one box holds the prompt of the generation the Example frames come from, and not the one no frame comes from',
     a12.startsWith('This is an example prompt: it generated second 0 to second 6.1 of Video A (generation 1 of 2 · clip c1), and made Frame 1 and Frame 2 of this sample.\nP-C1')
     && !a12.includes('P-C2'), a12);
@@ -370,6 +370,12 @@ const ok = (name, cond, info = '') => { console.log((cond ? '  ok   ' : '  FAIL 
     !!rep12 && !!mo12 && rep12.body.fixed_prompt === '' && rep12.body.fixed_segments.length === 0 && rep12.body.wrong_segments.length === 1 && rep12.body.wrong_prompt.includes('P-C1')
     && !rep12.body.wrong_prompt.includes('P-C2') && mo12.body.frames.every((f) => f.src === 'wrong' && f.role === 'example'), JSON.stringify(rep12 && rep12.body).slice(0, 300));
   withSegs = false;
+  // the user, 2026-10-30: nothing out of sync. No label, placeholder, button, tooltip, note or comment of the pages names a prompt by the words of
+  // before (the two takes, the correct take, Video A's prompt ...): a box is the flawed version's, the correct version's or an example
+  const OLD_WORDS = ['two takes', 'both takes', 'correct take', 'flawed take', 'example take', 'corrected take', 'wrong take', 'the corrected prompt',
+    'Video A\'s prompt', 'Video B\'s prompt', 'Video A’s prompt', 'Video B’s prompt', 'Prompt of Video A', 'Prompt of Video B', 'PROMPTS OF BOTH'];
+  const staleWeb = fs.readdirSync(web).filter((f) => f.endsWith('.js')).flatMap((f) => OLD_WORDS.filter((w) => read(f).includes(w)).map((w) => `${f}: ${w}`));
+  ok('no page names a prompt by the old words (the two takes, the correct take, Video A’s prompt ...)', !staleWeb.length, staleWeb.join('; '));
   console.log(fails ? `${fails} failed` : 'all passed');
   process.exit(fails ? 1 : 0);
 })().catch((e) => { console.log('FAIL the page threw: ' + (e && e.stack || e)); process.exit(1); });
