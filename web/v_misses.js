@@ -32,20 +32,30 @@ export async function reports() {
 }
 
 // ------------------------------------------------------------------------------------------ run -> video picker
-export async function pick() {
+// The run picked stays in the page's address (#/misses/new?run=…), so going back from one of its videos returns to its video list instead of an
+// empty picker (the admin, 2026-10-30); "New report" opens on the run picked last on this browser.
+const LAST_RUN = 'loupe-misses-last-run';
+export async function pick(params = {}) {
   const d = await api('GET', '/api/runs');
   const real = d.runs.filter((r) => r.kind === 'run');
   const out = h('div');
   const sel = h('select', { style: 'min-width:360px' }, h('option', { value: '' }, 'Select a run…'),
     real.map((r) => h('option', { value: r.run }, `${r.lib ? r.lib.toUpperCase() + ' · ' : ''}${r.run} · ${r.mode || ''}${r.submode ? '/' + r.submode : ''} · ${r.model || ''} · ${r.videos} videos`)));
-  sel.addEventListener('change', async () => {
+  const showRun = async () => {
+    try { history.replaceState(null, '', sel.value ? '#/misses/new?run=' + encodeURIComponent(sel.value) : '#/misses/new'); } catch (_) { /* no history */ }
+    try { if (sel.value) localStorage.setItem(LAST_RUN, sel.value); } catch (_) { /* private mode */ }
     if (!sel.value) { out.replaceChildren(); return; }
     const r = await api('GET', '/api/runs/' + encodeURIComponent(sel.value));
     out.replaceChildren(h('div', { class: 'grid g4' }, r.videos.map((v) => h('a', { class: 'card', style: 'color:inherit;text-decoration:none', href: `#/misses/work?run=${encodeURIComponent(r.run)}&video=${v.video}` },
       h('b', {}, 'Video ' + v.video), ' ', v.status ? status(v.status) : null,
       h('div', { class: 'muted small' }, `${v.versions.some((x) => x.role === 'generated') ? v.versions.filter((x) => x.role === 'generated').length + ' generated take(s)' : v.versions.filter((x) => x.role !== 'original').length + ' version(s)'}` + (v.capcut_project ? ` · ${v.capcut_project}` : '') + (v.credits ? ` · ${v.credits} cr` : '')),
       v.qc ? h('div', { class: 'small', style: 'margin-top:4px' }, v.qc.slice(0, 120)) : null))));
-  });
+  };
+  sel.addEventListener('change', showRun);
+  let last = '';
+  try { last = localStorage.getItem(LAST_RUN) || ''; } catch (_) { /* private mode */ }
+  const start = [params.run, last].find((x) => x && real.some((r) => r.run === x));
+  if (start) { sel.value = start; showRun(); }
   return h('div', {}, head('New report', 'Choose the run that was executed by the pipeline, then the video the report is about. A report can also be in words only: the idea, what could have been better, what the AI agents missed.',
       h('a', { class: 'btn', href: '#/misses/work?run=&video=' }, 'Report without a video'), h('a', { class: 'btn', href: '#/misses' }, '← Reports')),
     h('div', { class: 'card' }, sel), h('div', { style: 'margin-top:14px' }, out));
@@ -677,7 +687,8 @@ export async function work(qs) {
   const root = h('div', {},
     h('div', { class: 'head' }, h('div', {}, h('h1', {}, miss ? `Report: ${miss.title}` : 'New report'),
       h('div', { class: 'muted' }, `${qs.run || ''} · video ${qs.video || ''}${runInfo ? ` · ${runInfo.model || ''} · ${runInfo.mode || ''}${runInfo.submode ? '/' + runInfo.submode : ''}` : ''}`)),
-      h('a', { class: 'btn', href: '#/misses' }, '← Reports')),
+      h('div', { class: 'row' }, qs.run ? h('a', { class: 'btn', href: '#/misses/new?run=' + encodeURIComponent(qs.run) }, '← Videos of this run') : null,
+        h('a', { class: 'btn', href: '#/misses' }, '← Reports'))),
     h('div', { class: 'card' },
       h('div', { class: 'grid g2' },
         h('div', {}, h('label', { class: 'f', style: 'margin-top:0' }, 'Video A: the version as generated (optional; or the original video, or another generation)'), wrongSel, mkAdd('wrong')),

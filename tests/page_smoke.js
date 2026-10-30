@@ -77,10 +77,10 @@ const api = async (method, url, body) => {
     { path: 'H.png', name: 'h.png', label: 'Image 1 · C04 head', source: 'as the uploads record names it', asset_id: '', request: 'video-03-request.json', suggested: false, image_url: '/h.png' }] : [] };
   return {};
 };
-const code = read('v_misses.js').replace(/^import .*$/gm, '').replace(/^export (async )?function/gm, '$1function') + '\nreturn { work };';
+const code = read('v_misses.js').replace(/^import .*$/gm, '').replace(/^export (async )?function/gm, '$1function') + '\nreturn { work, pick };';
 const toastStub = (m, err) => { if (err) console.log('  (toast) ' + m); };
 const uiNoToast = uiSrc.replace(/function toast[\s\S]*?\n}\n/, '');
-const { work } = new Function('api', 'upload', 'videoUrl', 'frameUrl', 'toastStub', uiNoToast + '\nconst toast = toastStub;\n' + code)(api, async () => ({}), (p) => '/video?p=' + p, (p, t) => '/frame?p=' + p + '&t=' + t, toastStub);
+const { work, pick } = new Function('api', 'upload', 'videoUrl', 'frameUrl', 'toastStub', uiNoToast + '\nconst toast = toastStub;\n' + code)(api, async () => ({}), (p) => '/video?p=' + p, (p, t) => '/frame?p=' + p + '&t=' + t, toastStub);
 
 let fails = 0;
 const ok = (name, cond, info = '') => { console.log((cond ? '  ok   ' : '  FAIL ') + name + (cond ? '' : '  ' + info)); if (!cond) fails++; };
@@ -370,6 +370,17 @@ const ok = (name, cond, info = '') => { console.log((cond ? '  ok   ' : '  FAIL 
     !!rep12 && !!mo12 && rep12.body.fixed_prompt === '' && rep12.body.fixed_segments.length === 0 && rep12.body.wrong_segments.length === 1 && rep12.body.wrong_prompt.includes('P-C1')
     && !rep12.body.wrong_prompt.includes('P-C2') && mo12.body.frames.every((f) => f.src === 'wrong' && f.role === 'example'), JSON.stringify(rep12 && rep12.body).slice(0, 300));
   withSegs = false;
+  // the admin, 2026-10-30: the run picked stays in the address, so going back from one of its videos returns to its videos; the video page links back
+  const replaced = [];
+  global.history = { replaceState: (_a, _b, u) => replaced.push(u) };
+  const pk = await pick({ run: 'R2' });
+  await settle();
+  const pkSel = walk(pk, (e) => e.tag === 'select')[0];
+  const pkCards = walk(pk, (e) => e.tag === 'a' && (e.attrs.href || '').startsWith('#/misses/work?run=R2&video='));
+  ok('the picker opened on a run from its address shows that run picked and its videos, and keeps the run in the address',
+    !!pkSel && pkSel.value === 'R2' && pkCards.length === 1 && replaced.includes('#/misses/new?run=R2'), (pkSel && pkSel.value) + ' ' + pkCards.length + ' ' + replaced.join(','));
+  global.history = { replaceState() {} };
+  ok('a video page links back to the videos of its run', walk(root, (e) => e.tag === 'a' && e.attrs.href === '#/misses/new?run=R' && e.text === '← Videos of this run').length === 1);
   // the user, 2026-10-30: nothing out of sync. No label, placeholder, button, tooltip, note or comment of the pages names a prompt by the words of
   // before (the two takes, the correct take, Video A's prompt ...): a box is the flawed version's, the correct version's or an example
   const OLD_WORDS = ['two takes', 'both takes', 'correct take', 'flawed take', 'example take', 'corrected take', 'wrong take', 'the corrected prompt',
