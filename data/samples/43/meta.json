@@ -49,16 +49,80 @@
   }
  ],
  "product_sample_chosen": false,
- "product_samples": [
+ "images_sent": [
+  {
+   "asset": "A51",
+   "label": "Image 1 · A51 · 53017485-bf47-40e4-b893-c18397357dde.png",
+   "file": "image1-character-C-NG-05-head.jpg",
+   "image": "Image 1",
+   "kind": "character",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\53017485-bf47-40e4-b893-c18397357dde.png",
+   "original_name": "53017485-bf47-40e4-b893-c18397357dde.png",
+   "prepared": "C-NG-05 (A51) head-and-neck crop on grey RGB 128: face and hair only (the hero)",
+   "recorded": "named",
+   "job": "c6c7b2d9-0ced-4659-9cf4-d6565685e6eb"
+  },
+  {
+   "asset": "A61",
+   "label": "Image 2 · A61 · c1ef12498932ed12f5c4415955db560f.jpg",
+   "file": "image2-character-C-NG-11-head.jpg",
+   "image": "Image 2",
+   "kind": "character",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\c1ef12498932ed12f5c4415955db560f.jpg",
+   "original_name": "c1ef12498932ed12f5c4415955db560f.jpg",
+   "prepared": "C-NG-11 (A61) head-and-neck crop on grey RGB 128: face and hair only (the friend)",
+   "recorded": "named",
+   "job": "c6c7b2d9-0ced-4659-9cf4-d6565685e6eb"
+  },
   {
    "asset": "A172",
    "label": "Image 3 · A172 · NG_XE_SM01_Front.png",
-   "file": "NG_XE_SM01_Front.png",
+   "file": "image3-product-P-NG-XS9-SM-front-padded.png",
    "image": "Image 3",
+   "kind": "product",
    "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\product_samples_and_designs\\Gum - Extra Strength\\Carton 9 pieces - Spearmint\\NG_XE_SM01_Front.png",
    "original_name": "NG_XE_SM01_Front.png",
    "prepared": "XS 9-piece Spearmint front render (A172) padded small on 1440x1440 RGB 236 (carton 28-30 % of the width): exact printed front",
-   "recorded": "named"
+   "recorded": "named",
+   "job": "c6c7b2d9-0ced-4659-9cf4-d6565685e6eb"
+  }
+ ],
+ "product_samples": [
+  {
+   "asset": "A51",
+   "label": "Image 1 · A51 · 53017485-bf47-40e4-b893-c18397357dde.png",
+   "file": "image1-character-C-NG-05-head.jpg",
+   "image": "Image 1",
+   "kind": "character",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\53017485-bf47-40e4-b893-c18397357dde.png",
+   "original_name": "53017485-bf47-40e4-b893-c18397357dde.png",
+   "prepared": "C-NG-05 (A51) head-and-neck crop on grey RGB 128: face and hair only (the hero)",
+   "recorded": "named",
+   "job": "c6c7b2d9-0ced-4659-9cf4-d6565685e6eb"
+  },
+  {
+   "asset": "A61",
+   "label": "Image 2 · A61 · c1ef12498932ed12f5c4415955db560f.jpg",
+   "file": "image2-character-C-NG-11-head.jpg",
+   "image": "Image 2",
+   "kind": "character",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\c1ef12498932ed12f5c4415955db560f.jpg",
+   "original_name": "c1ef12498932ed12f5c4415955db560f.jpg",
+   "prepared": "C-NG-11 (A61) head-and-neck crop on grey RGB 128: face and hair only (the friend)",
+   "recorded": "named",
+   "job": "c6c7b2d9-0ced-4659-9cf4-d6565685e6eb"
+  },
+  {
+   "asset": "A172",
+   "label": "Image 3 · A172 · NG_XE_SM01_Front.png",
+   "file": "image3-product-P-NG-XS9-SM-front-padded.png",
+   "image": "Image 3",
+   "kind": "product",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\product_samples_and_designs\\Gum - Extra Strength\\Carton 9 pieces - Spearmint\\NG_XE_SM01_Front.png",
+   "original_name": "NG_XE_SM01_Front.png",
+   "prepared": "XS 9-piece Spearmint front render (A172) padded small on 1440x1440 RGB 236 (carton 28-30 % of the width): exact printed front",
+   "recorded": "named",
+   "job": "c6c7b2d9-0ced-4659-9cf4-d6565685e6eb"
   }
  ],
  "shapes": []
