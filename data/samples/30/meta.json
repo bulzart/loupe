@@ -28,8 +28,13 @@
  "product_samples": [
   {
    "asset": "A14",
-   "label": "the sealed CELSIUS Cherry Cola can",
-   "file": "cherry cola front - cans usa.png"
+   "label": "Image 2 · A14 · cherry cola front - cans usa.png",
+   "file": "cherry cola front - cans usa.png",
+   "image": "Image 2",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\cherry cola front - cans usa.png",
+   "original_name": "cherry cola front - cans usa.png",
+   "prepared": "Image 2 (unchanged from a1, same media id): the sealed Cherry Cola can, A14 front, padded: structure, proportions, colours, printed label",
+   "recorded": "named"
   }
  ],
  "shapes": [

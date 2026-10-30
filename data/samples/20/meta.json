@@ -21,8 +21,13 @@
  "product_samples": [
   {
    "asset": "A15",
-   "label": "P1 Cherry Cola canonical front",
-   "file": "cherry cola front - cans usa.png"
+   "label": "Image 2 · A15 · cherry cola front - cans usa.png",
+   "file": "cherry cola front - cans usa.png",
+   "image": "Image 2",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\cherry cola front - cans usa.png",
+   "original_name": "cherry cola front - cans usa.png",
+   "prepared": "P1 Cherry Cola canonical front (A15), padded (30-assets/product/P1-cherry-cola-ref.png), shape, colours and label only",
+   "recorded": "named"
   }
  ],
  "shapes": [

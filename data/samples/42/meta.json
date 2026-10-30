@@ -21,8 +21,13 @@
  "product_samples": [
   {
    "asset": "A44",
-   "label": "Image 4 · the real front render of the E&F 6-piece Spearmint carton",
-   "file": "EF_Gum_6 piece_Spearmint_Single-Front.png"
+   "label": "Image 4 · A44 · EF_Gum_6 piece_Spearmint_Single-Front.png",
+   "file": "EF_Gum_6 piece_Spearmint_Single-Front.png",
+   "image": "Image 4",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\product_samples_and_designs\\Gum - Energy & Focus\\Carton 6 pieces - Spearmint\\EF_Gum_6 piece_Spearmint_Single-Front.png",
+   "original_name": "EF_Gum_6 piece_Spearmint_Single-Front.png",
+   "prepared": "Image 4, the real front render of the E&F 6-piece Spearmint carton (A44), padded on light grey: shape, proportions, colours and printed label only (shared upload)",
+   "recorded": "named"
   }
  ],
  "shapes": [

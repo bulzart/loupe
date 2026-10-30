@@ -28,8 +28,13 @@
  "product_samples": [
   {
    "asset": "A40",
-   "label": "CELSIUS Peach Vibe can, sealed",
-   "file": "peach vibe front - cans usa.png"
+   "label": "Image 2 · A40 · peach vibe front - cans usa.png",
+   "file": "peach vibe front - cans usa.png",
+   "image": "Image 2",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\peach vibe front - cans usa.png",
+   "original_name": "peach vibe front - cans usa.png",
+   "prepared": "CELSIUS Peach Vibe can, sealed: A40",
+   "recorded": "named"
   }
  ],
  "shapes": [

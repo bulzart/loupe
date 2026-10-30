@@ -21,8 +21,13 @@
  "product_samples": [
   {
    "asset": "A41",
-   "label": "P2 Peach Vibe canonical front",
-   "file": "peach vibe front - cans usa.png"
+   "label": "Image 2 · A41 · peach vibe front - cans usa.png",
+   "file": "peach vibe front - cans usa.png",
+   "image": "Image 2",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\peach vibe front - cans usa.png",
+   "original_name": "peach vibe front - cans usa.png",
+   "prepared": "P2 Peach Vibe canonical front (A41), padded, shape, colours and label only",
+   "recorded": "named"
   }
  ],
  "shapes": [

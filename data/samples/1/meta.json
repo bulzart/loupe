@@ -21,8 +21,13 @@
  "product_samples": [
   {
    "asset": "A140",
-   "label": "Extra Strength 90-piece pouch, Spearmint",
-   "file": "NG_XE_SMB90 front ver2.png"
+   "label": "A140 · NG_XE_SMB90 front ver2.png",
+   "file": "NG_XE_SMB90 front ver2.png",
+   "image": "",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\product_samples_and_designs\\Gum - Extra Strength\\Pouch 90 pieces - Spearmint\\NG_XE_SMB90 front ver2.png",
+   "original_name": "NG_XE_SMB90 front ver2.png",
+   "prepared": "",
+   "recorded": "the client's file"
   }
  ],
  "shapes": [

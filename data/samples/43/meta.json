@@ -52,8 +52,13 @@
  "product_samples": [
   {
    "asset": "A172",
-   "label": "XS 9-piece Spearmint front render",
-   "file": "NG_XE_SM01_Front.png"
+   "label": "Image 3 · A172 · NG_XE_SM01_Front.png",
+   "file": "NG_XE_SM01_Front.png",
+   "image": "Image 3",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\product_samples_and_designs\\Gum - Extra Strength\\Carton 9 pieces - Spearmint\\NG_XE_SM01_Front.png",
+   "original_name": "NG_XE_SM01_Front.png",
+   "prepared": "XS 9-piece Spearmint front render (A172) padded small on 1440x1440 RGB 236 (carton 28-30 % of the width): exact printed front",
+   "recorded": "named"
   }
  ],
  "shapes": []
