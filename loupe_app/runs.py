@@ -1055,12 +1055,13 @@ def sent_images(run: str, video: str, wrong: str = "", path: str = "") -> list[d
                 rel = str(p.resolve().relative_to(rd.resolve()))
             except ValueError:
                 rel = p.name
-            look = " ".join(str(x or "") for x in (m.get("label"), rel, filed))
-            named = PRODUCT_FILE.search(look) or any(re.search(r"(?<![A-Za-z0-9])" + re.escape(c) + r"(?![A-Za-z0-9])", look, re.I) for c in codes)
+            own = " ".join(str(x or "") for x in (m.get("label"), p.name, filed))      # its own names: never a folder (a pass folder p1 is not the product P1)
+            look = f"{own} {rel}"                     # with its folders, for the pipelines' folder words (identity/, product/)
+            named = PRODUCT_FILE.search(look) or any(re.search(r"(?<![A-Za-z0-9])" + re.escape(c) + r"(?![A-Za-z0-9])", own, re.I) for c in codes)
             person = (aid in cids or CHARACTER_FILE.search(look) or CHARACTER_SAID.search(said)
-                      or any(re.search(r"(?<![A-Za-z0-9])" + re.escape(c) + r"(?![A-Za-z0-9])", f"{look} {said}") for c in chars))
+                      or any(re.search(r"(?<![A-Za-z0-9])" + re.escape(c) + r"(?![A-Za-z0-9])", f"{own} {said}") for c in chars))
             kind = src.get("kind") or ("product" if (aid in pids or named
-                                                     or any(c in prods for c in P_CODE.findall(" ".join((said, str(m.get("meaning") or ""), look)))))
+                                                     or any(c in prods for c in P_CODE.findall(" ".join((said, str(m.get("meaning") or ""), own)))))
                                        else "character" if person else "")
             x = {"path": p, "name": p.name, "role": role, "media_id": mid, "asset_id": aid, "kind": kind,
                  "original": src.get("original", ""), "original_name": src.get("name", ""), "prepared": src.get("prepared", ""),

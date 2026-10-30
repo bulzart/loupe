@@ -1483,6 +1483,16 @@ def main(with_keeper=False):
           "file gives that attempt's",
           runs.sent_images(r8.name, "04", "render.mp4", str(other4)) == []
           and [x["name"] for x in runs.sent_images(r8.name, "04", "a2 · raw.mp4", str(r8 / "60-outputs" / "video-04" / "a2" / "raw.mp4"))] == ["A23-padded.jpg"])
+    pass5 = png8(r8 / "55-references" / "video-05" / "a3" / "p2" / "image1-C13-head.jpg", (160, 120, 90))      # an attempt kept in pass folders (a3/p2)
+    st5 = json.loads((r8 / "state.json").read_text(encoding="utf-8"))
+    st5["assets"]["uploads"]["a3p2 Image 1"] = {"media_id": "u51", "file": str(pass5)}
+    (r8 / "state.json").write_text(json.dumps(st5))
+    req8("video-05-request.json", [im8("u51")], "job-851")
+    take05 = r8 / "60-outputs" / "video-05" / "a1" / "raw.mp4"
+    mkvideo(take05, "0x203040", "red")
+    s05 = runs.sent_images(r8.name, "05", "a1 · raw.mp4", str(take05))
+    check("a product's code is read in an input's own names, never in its folders (a pass folder p2 is not the product P2), as the toolkit reads it",
+          [(x["name"], x["kind"]) for x in s05] == [("image1-C13-head.jpg", "character")], str([(x["name"], x["kind"]) for x in s05]))
     s, d, _ = req("POST", "/api/misses", {"run": r8.name, "video": "03", "title": "A joined take of an older run", "model": "wan3_0_prime", "wrong_path": str(joined3)})
     m8 = d["miss"]["id"] if s == 200 else 0
     s, d, _ = req("POST", f"/api/misses/{m8}/moments", {"frames": [{"src": "wrong", "role": "wrong", "t": 1.0}], "details": "The product is too big."})
