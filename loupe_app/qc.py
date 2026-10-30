@@ -53,6 +53,10 @@ class _TimedLock:
 
 _keeper_lock = _TimedLock()
 ROT_TURNS = 30           # a keeper session this long is replaced by a fresh one rebuilt from the library (nothing is lost: the library is the memory)
+# The admin, 2026-10-30: "make it up to 10 instead of 6, and raise 150second judge call timeout to 240, and raise the 150k characters to 250k".
+KEEPER_CALL_TIMEOUT = 240     # seconds one keeper (judge) call may run before its process tree is ended; the collector keeps its own 300 s
+TEMPLATE_READ = 10      # samples whose saved prompts a template request reads whole
+PROMPTS_READ = TEMPLATE_READ      # cited samples whose saved prompts the final prompts round of an answer sends whole, in the order cited
 DEFAULT_MODEL = "claude-opus-5-5"     # the keeper is the judge: Opus 5.5 (the user, 2026-10-28); the Haiku collector below only collects
 EFFORTS = ("high", "xhigh", "max")   # the reasoning effort every keeper and collector call is started with; never low or medium
 EFFORT_DEFAULT = "high"
@@ -806,7 +810,7 @@ def _sig() -> str:
 # changed, a large change starts a fresh session instead, and a session is replaced by a fresh one after ROT_TURNS turns or once ROT_CHARS characters of
 # prompts, answers, Reads and thinking have gone through it, whichever comes first; a session told another library header (HEADER_SIG) or run on
 # another model is replaced too.  The library is the memory: nothing is lost by starting fresh.
-ROT_CHARS = 150_000
+ROT_CHARS = 250_000      # the admin, 2026-10-30 (150 000 before)
 READ_CHARS = 6000        # what one Read (a sample's picture, its reading, a fetched frame or file) adds to the session, counted toward ROT_CHARS
 THINK_CHARS = 4          # characters counted per thinking token: a resumed session keeps its earlier thinking, and a higher effort thinks longer
 DELTA = "The library changed since your last digest"
@@ -892,7 +896,7 @@ ROLE = ("You are the Loupe keeper of a video-generation pipeline. You hold a lib
         "prompts: those prompts made frames the admin keeps as examples, suggestions of what could have changed or been done another way, neither a bad "
         "generation nor a correct one; read them as suggestions, never as the flawed or the correct prompt. "
         "They are not in your digest. In a TEMPLATE request you name the samples whose prompts you need and Loupe sends them whole; before a QC or planning answer "
-        "of yours is final, Loupe sends the prompts of the samples it cites that you have not read in that consult (up to six, in the order you cite them: cite first the samples your answer rests on most); at any other time ask for them with "
+        f"of yours is final, Loupe sends the prompts of the samples it cites that you have not read in that consult (up to {PROMPTS_READ}, in the order you cite them: cite first the samples your answer rests on most); at any other time ask for them with "
         "sample_origin (they come whole, as evidence for that one answer) when the question is about how the video was or "
         "should be prompted, when a hint of yours would rest on that sample, or when a QC question asks what was fixed by prompting; then read them yourself and judge what the "
         "correct version's prompt did differently from the flawed version's at the frames each made (S12-P1 made the frames its line names) and whether that difference "
@@ -940,7 +944,7 @@ ROLE = ("You are the Loupe keeper of a video-generation pipeline. You hold a lib
         "lines the prompt must carry word for word, and the locked model's request structure from its model guide). You write the FINAL prompt this video is "
         "generated from, so it starts from what already worked and what failed in earlier generations: the pipeline puts your prompt in the request word for "
         "word and does not rewrite it. Step 1: answer ONE JSON object "
-        '{"read":["S12"],"needs":[<optional>]} naming the samples (at most 6, best first) whose saved prompts you need: those whose record says PROMPTS ... SAVED '
+        '{"read":["S12"],"needs":[<optional>]} naming the samples (at most ' + str(TEMPLATE_READ) + ', best first) whose saved prompts you need: those whose record says PROMPTS ... SAVED '
         "and whose product detail and scene mechanism match a part of this brief; an empty list when none does. Loupe sends the prompts of each, whole. Step 2: read the prompts of each "
         "yourself, judge what the correct version's prompt (the generations the frames called RIGHT come from) did that worked and what the flawed version's prompt "
         "(the generations the frames called WRONG come from, which generated the flawed version) did that failed; a sample with one of them only gives that one "
@@ -1015,7 +1019,7 @@ def _claude_cmd(exe: str, model: str, sid: str, resume: bool, role: str | None =
     return cmd + (["--resume", sid] if resume else ["--session-id", sid])
 
 
-def _run_claude(prompt: str, sid: str, resume: bool, model: str, timeout: int = 150, role: str | None = None, cwd: Path | None = None,
+def _run_claude(prompt: str, sid: str, resume: bool, model: str, timeout: int = KEEPER_CALL_TIMEOUT, role: str | None = None, cwd: Path | None = None,
                 max_turns: int = 6) -> dict:
     """One headless claude call.  The prompt goes in on stdin, not on the command line: a digest that carries the collector's descriptions of the pictures is longer
     than a Windows command line may be (32767 characters)."""
@@ -1333,8 +1337,6 @@ def _ask_loop(parsed, st: dict, ctx: dict, plan: bool):
     return parsed, asked, cost, turns
 
 
-TEMPLATE_READ = 6        # samples whose saved prompts a template request reads whole
-PROMPTS_READ = TEMPLATE_READ      # cited samples whose saved prompts the final prompts round of an answer sends whole, in the order cited
 # The judge's template, its template_fix, and the prompt used, the template given and the brief a question carries are video generation prompts or hold
 # them: each goes whole, never cut (the user, 2026-10-29).
 

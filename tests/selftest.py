@@ -1091,7 +1091,12 @@ def main(with_keeper=False):
         pj, pu = _qc._prompts_seen({"relevant": [{"id": sid0}, {"id": "S99999"}]}, "relevant", [], [], [])
         check("a cited sample whose prompts the judge was not given is named unread (prompts_unread), one it was given judged; the final round reads up to six",
               pj == [] and pu == [sid0] and _qc._prompts_seen({"relevant": [{"id": sid0}]}, "relevant", [], [], [sid0]) == ([sid0], [])
-              and _qc.PROMPTS_READ == _qc.TEMPLATE_READ == 6 and "up to six, in the order you cite them" in _qc.ROLE, f"{pj} {pu}")
+              and _qc.PROMPTS_READ == _qc.TEMPLATE_READ == 10 and "up to 10, in the order you cite them" in _qc.ROLE
+              and "naming the samples (at most 10, best first)" in _qc.ROLE, f"{pj} {pu}")
+        qc_src = (Path(__file__).resolve().parent.parent / "loupe_app" / "qc.py").read_text(encoding="utf-8")
+        check("the admin's limits (2026-10-30): a keeper call may run 240 s, a session is replaced after 250 000 characters, every keeper call takes "
+              "that timeout", _qc.KEEPER_CALL_TIMEOUT == 240 and _qc.ROT_CHARS == 250_000 and "timeout: int = KEEPER_CALL_TIMEOUT" in qc_src
+              and "timeout=150" not in qc_src, str((_qc.KEEPER_CALL_TIMEOUT, _qc.ROT_CHARS)))
         req("PATCH", f"/api/misses/{mid0}", {k: before_pp.get(k) or "" for k in ("wrong_prompt", "fixed_prompt", "prompt_note")})
         _qc._run_claude = fake_keeper
         req("PATCH", f"/api/moments/{sid0[1:]}", {"details": "Edited again, so its reading is stale."})
