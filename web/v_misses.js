@@ -350,7 +350,7 @@ export async function work(qs) {
       const ticked = (a) => (anyChosen ? isChosen(a) : a.suggested);
       if (!miss && !productTyped) { const w = [...new Set(d.assets.filter((a) => a.kind === 'product' && a.words).map((a) => a.words))]; if (w.length) product.value = w.join(' + '); }
       assetBoxes = [];
-      if (!d.assets.length) { sampleBox.replaceChildren(h('span', { class: 'muted' }, 'No image sent with this generation is recorded in its run (its request is not in the ledger or changed since it was submitted, or its uploads name no file), so the description takes the full width of the bottom band.')); return; }
+      if (!d.assets.length) { sampleBox.replaceChildren(h('span', { class: 'muted' }, 'No image sent with this generation is recorded in its run (its request is not in the ledger or changed since it was submitted, its uploads name no file, or which attempt this version is cannot be told), so the description takes the full width of the bottom band.')); return; }
       const cells = d.assets.map((a) => {
         const cb = h('input', { type: 'checkbox', checked: ticked(a), 'data-asset': a.path });
         assetBoxes.push({ cb, path: a.path });
