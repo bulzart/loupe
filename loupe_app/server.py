@@ -449,6 +449,7 @@ def generation_assets(h):
     h.send_json({"ok": True, "assets": [{"path": str(a["path"]), "name": a["name"], "label": a["label"], "source": a["source"], "asset_id": a["asset_id"],
                                           "original_name": a.get("original_name", ""), "prepared": a.get("prepared", ""), "kind": a.get("kind", ""),
                                           "words": a.get("words", ""), "image": a.get("image", ""), "original": str(a.get("original") or ""), "job": a.get("job", ""),
+                                          "jobs": a.get("jobs") or [], "paths": [str(p) for p in a.get("paths") or []],
                                           "request": a["request"], "suggested": a["suggested"], "image_url": f"/api/generation-assets/image?{qs}&i={i}"}
                                          for i, a in enumerate(runs.generation_assets(run, video, wrong, path=wrong))]})
 

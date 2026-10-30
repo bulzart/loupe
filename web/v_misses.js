@@ -344,7 +344,7 @@ export async function work(qs) {
     try {
       const d = await api('GET', `/api/generation-assets?run=${encodeURIComponent(qs.run)}&video=${encodeURIComponent(qs.video)}&wrong=${encodeURIComponent(wl)}`, undefined, true);
       const chosen = new Set(((miss && miss.sample_files) || []).map((x) => x.path));
-      const isChosen = (a) => chosen.has(a.path) || (!!a.original && chosen.has(a.original));
+      const isChosen = (a) => chosen.has(a.path) || (!!a.original && chosen.has(a.original)) || (a.paths || []).some((p) => chosen.has(p));
       const anyChosen = d.assets.some(isChosen);
       if (chosen.size && !anyChosen) assetsTouched = true;      // ticked for another take: this take's automatic pick stands until you tick
       const ticked = (a) => (anyChosen ? isChosen(a) : a.suggested);

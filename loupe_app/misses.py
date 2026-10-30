@@ -341,7 +341,7 @@ def _chosen_files(v, run: str, video: str, wrong_hint: str, wrong_path: str) -> 
     if not items:
         return ""
     offered = runs.generation_assets(run, video, wrong_hint, path=wrong_path)
-    allowed = {runs._file_key(a["path"]): a for a in offered}
+    allowed = {runs._file_key(p): a for a in offered for p in [a["path"], *(a.get("paths") or [])]}      # a picture several clips sent: any of its copies
     for a in offered:
         if a.get("original"):
             allowed.setdefault(runs._file_key(a["original"]), a)
@@ -965,7 +965,7 @@ def _image_entry(x: dict) -> dict:
     client's original (its full path, for the record) and that file's name, how it was prepared, how the record was read and the job."""
     return {"asset": x.get("asset_id", ""), "label": x.get("label", ""), "file": x.get("name", ""), "image": x.get("image", ""), "kind": x.get("kind", ""),
             "original": x.get("original", ""), "original_name": x.get("original_name", ""), "prepared": x.get("prepared", ""),
-            "recorded": x.get("recorded", ""), "job": x.get("job", "")}
+            "recorded": x.get("recorded", ""), "job": x.get("job", ""), **({"jobs": x["jobs"]} if len(x.get("jobs") or []) > 1 else {})}
 
 
 def regenerate(mid: int):
@@ -1002,7 +1002,7 @@ def regenerate(mid: int):
             # the images sent with the generation of Video A's take, verified from the run's records (the admin, 2026-10-30: only those, and every one
             # by default; the admin's ticks choose among them, a tick on a client's original standing for the file sent from it)
             sent = runs.sent_images(miss["run"], miss["video"], miss["wrong_label"] or miss["wrong_path"], path=miss["wrong_path"] or "")
-            by_file = {runs._file_key(x["path"]): x for x in sent}
+            by_file = {runs._file_key(p): x for x in sent for p in [x["path"], *(x.get("paths") or [])]}
             by_orig = {runs._file_key(x["original"]): x for x in sent if x.get("original")}
             ticked = _sample_files(miss["sample_files"] if "sample_files" in miss.keys() else "")
             chosen = []

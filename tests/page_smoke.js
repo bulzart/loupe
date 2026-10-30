@@ -15,6 +15,7 @@ let withMoment = false;
 let noRight = false;
 let withOthers = false;      // the run also has video 04, and video 03 has an original
 let withSample = false;      // the video's request names a product
+let tickOnCopy = false;      // the report's tick was saved on another copy of the product picture (both clips sent it, as two files)
 let withSegs = false;        // the picked take was joined from two generations (clips)
 let withSavedSegs = false;   // the report was saved with the flawed version's box written from a take of two generations
 const savedMoment = { moment_id: 5, id: 'S5', image_url: '/x?a=5', updated: 'u', details: 'the pack is right early', correct_note: 'c', has_right: true,
@@ -64,6 +65,7 @@ const api = async (method, url, body) => {
       { path: 'D4o.mp4', label: 'original · y.mp4 (V09, the source clip as given)', kind: 'original', role: 'original' }] }] : [])] };
   if (url === '/api/settings') return { kinds: [] };
   if (url.startsWith('/api/misses/1') && method === 'GET') return { miss: { id: 1, title: 'T', explanation: '', kinds: [], model: 'm', mode: 'x', product: '', wrong_path: 'A.mp4', fixed_path: noRight ? '' : 'B.mp4', moments: [], product_sample: true,
+    ...(tickOnCopy ? { sample_files: [{ path: 'P-copy.png', label: 'c2 copy' }] } : {}),
     ...(withSavedSegs ? { wrong_prompt: 'the text as saved', wrong_segments: [{ src: 'wrong', clip: 'c1', attempt: 1, request: 'video-03-c1-request.json', t_from: 0, t_to: 6.1, prompt: 'SAVED-C1' },
       { src: 'wrong', clip: 'c2', attempt: 1, request: 'video-03-c2-request.json', t_from: 6.1, t_to: 12.433, prompt: 'SAVED-C2' }] } : {}) } };
   if (url.startsWith('/api/misses/1') && method === 'PATCH') return { miss: { id: 1, title: 'T', explanation: '', kinds: [], wrong_path: 'A.mp4', fixed_path: noRight ? '' : 'B.mp4', moments: [], product_sample: true } };
@@ -73,7 +75,7 @@ const api = async (method, url, body) => {
     segments: [{ clip: 'c1', attempt: 1, request: 'video-03-c1-request.json', file: 'c1/a1/trimmed.mp4', t_from: 0, t_to: 6.1, prompt: 'P-C1 the first generation' },
       { clip: 'c2', attempt: 1, request: 'video-03-c2-request.json', file: 'c2/a1/trimmed.mp4', t_from: 6.1, t_to: 12.433, prompt: 'P-C2 the second generation' }] } : { prompt: 'P-ONE', request: 'video-03-request.json', attempt: 1 };
   if (url.startsWith('/api/generation-assets')) return { assets: withSample ? [
-    { path: 'P.png', name: 'x.png', label: 'Image 2 · the sealed test can', source: 'sent with job job-1', kind: 'product', words: 'the sealed test can', original: 'C:/client/P-front.png', asset_id: 'A14', request: 'video-03-request.json', suggested: true, image_url: '/x.png' },
+    { path: 'P.png', paths: ['P.png', 'P-copy.png'], name: 'x.png', label: 'Image 2 · the sealed test can', source: 'sent with job job-1', kind: 'product', words: 'the sealed test can', original: 'C:/client/P-front.png', asset_id: 'A14', request: 'video-03-request.json', suggested: true, image_url: '/x.png' },
     { path: 'H.png', name: 'h.png', label: 'Image 1 · C04 head', source: 'sent with job job-1', kind: 'character', words: 'the man', asset_id: '', request: 'video-03-request.json', suggested: true, image_url: '/h.png' }] : [] };
   return {};
 };
@@ -237,6 +239,13 @@ const ok = (name, cond, info = '') => { console.log((cond ? '  ok   ' : '  FAIL 
   const rep8 = sent.find((x) => (x.method === 'POST' || x.method === 'PATCH') && /^\/api\/misses(\/1)?$/.test(x.url));
   ok('“Save report changes” saves the report with the ticked image and marks no moment', rep8 && JSON.stringify(rep8.body.sample_files) === '["H.png"]' && !sent.some((x) => x.url.endsWith('/moments')), JSON.stringify(sent.map((x) => x.method + ' ' + x.url)));
   withSample = false;
+  // a tick saved on another copy of a picture several clips sent (one tile, its copies in `paths`) keeps that tile ticked, and only it
+  withSample = true; tickOnCopy = true;
+  const root8b = await work({ run: 'R', video: '03', miss: '1' });
+  await new Promise((r) => setTimeout(r, 0));
+  const boxes8b = walk(root8b, (e) => e.tag === 'input' && e.attrs['data-asset']);
+  ok('a tick saved on another copy of a picture several clips sent keeps its one tile ticked, and only it', boxes8b.length === 2 && boxes8b[0].checked === true && !boxes8b[1].checked, boxes8b.map((b) => b.attrs['data-asset'] + ':' + b.checked).join(' '));
+  withSample = false; tickOnCopy = false;
   // a sample opened from the list (&moment=) comes back as it stands, with nothing to click
   withMoment = true; noRight = false; sent.length = 0;
   const root9 = await work({ run: 'R', video: '03', miss: '1', moment: '5' });

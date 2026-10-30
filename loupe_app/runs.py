@@ -257,7 +257,7 @@ def video_versions(run: str, nn: str) -> list[dict]:
             for sub in sorted(x for x in ad.iterdir() if x.is_dir()):
                 for p in sorted(sub.glob("*.mp4")):
                     out.append(_version(p, f"{ad.name} · {sub.name}/{p.name}", "attempt", attempt=n, role="processed"))
-        for cd in sorted(x for x in vd.iterdir() if x.is_dir() and re.match(r"^c\d+$", x.name)):
+        for cd in sorted((x for x in vd.iterdir() if x.is_dir() and CLIP_NAME.fullmatch(x.name)), key=lambda x: _clip_key(x.name)):
             for p in sorted(cd.rglob("*.mp4")):
                 out.append(_version(p, f"{cd.name}/{p.relative_to(cd).as_posix()}", "clip", role="generated" if p.name == "raw.mp4" else "processed"))
     dd = d / "deliverables"
@@ -530,6 +530,16 @@ def _registry_products(st: dict) -> dict:
         if not name and v.get("flavour"):
             name = " · ".join(x for x in (str(parent.get("name") or "").strip() if isinstance(parent, dict) else "", str(v["flavour"]).strip()) if x)
         res[str(key)] = {"name": name or str(v.get("role") or "").strip(), "canonical": (ids_of(v.get("canonical"), v.get("label")) or ids[:1] or [""])[0], "ids": ids}
+    for key, grp in flat.items():          # products listed in groups ({in_rotation: [{id: P1, name, canonical, files}], optional: [...]}); an excluded group is not used
+        if not isinstance(grp, list) or str(key).lower() in ("excluded", "unused"):
+            continue
+        for v in grp:
+            if not isinstance(v, dict) or not v.get("id") or v.get("unused"):
+                continue
+            ids = ids_of(v.get("canonical"), v.get("label"), v.get("files"), v.get("other_files"), v.get("views"), v.get("opened"))
+            if ids:
+                res.setdefault(str(v["id"]), {"name": str(v.get("name") or v.get("flavour") or "").strip(), "canonical": (ids_of(v.get("canonical")) or ids[:1])[0],
+                                              "ids": ids})
     for key, p in ((a.get("product") or {}) if isinstance(a.get("product"), dict) else {}).items():      # by product, each with its variants
         if not isinstance(p, dict) or p.get("unused"):
             continue
@@ -560,6 +570,12 @@ def _input_meanings(req: dict) -> dict:
         base = ROLE_LABEL.get(role)
         if base and m.get("meaning"):
             meaning.setdefault(f"{base} {counts[role]}", str(m["meaning"]))
+    for it in (req.get("media_map") or []) if isinstance(req.get("media_map"), list) else []:      # an older form: [{ref: '@Image1', asset: 'A17', meaning}]
+        mm = re.fullmatch(r"@?(image|video|audio)\s*(\d+)", str(it.get("ref") or "").strip(), re.I) if isinstance(it, dict) else None
+        if mm:
+            words = " ".join(x for x in (str(it.get("meaning") or "").strip(), f"({it['asset']})" if it.get("asset") else "") if x)
+            if words:
+                meaning.setdefault(f"{mm.group(1).capitalize()} {mm.group(2)}", words)
     return meaning
 
 
@@ -807,8 +823,9 @@ def _input_words(text: str) -> str:
 
 SENT_ROLES = {"image_references": "Image", "start_image": "Start frame", "end_image": "End frame", "mask": "Mask"}      # the images a request attaches
 NO_VIDEO = {"failed", "pending", "submitted", "unknown", "cancelled", "canceled", "refused", "error"}       # ledger states of a job that made no video
-PRODUCT_FILE = re.compile(r"(?:^|[\s=/\\_-])product(?:[\s._-]|$)", re.I)       # how the pipelines name a prepared product view: image2-product-...png
-CHARACTER_FILE = re.compile(r"(?:^|[\s=/\\_-])(?:character|identity)(?:[\s._-]|$)", re.I)      # and a person's: image1-character-...jpg, identity/C05-head.png
+PRODUCT_FILE = re.compile(r"(?:^|[\s=/\\_:-])product(?:[\s._:/\\\d-]|$)", re.I)      # how the pipelines name a prepared product view: image2-product-...png, product/P1-ref.png
+CHARACTER_FILE = re.compile(r"(?:^|[\s=/\\_:-])(?:character|identity)(?:[\s._:/\\\d-]|$)", re.I)      # and a person's: image1-character-...jpg, identity/C05-head.png, identity:CH-M06
+CHARACTER_SAID = re.compile(r"^\s*(?:[\w-]+\s+)?(?:character|identity)\b", re.I)      # what a request calls an input: 'identity C01 (A01 ...)', 'CH-M03 identity: A12 ...'
 
 
 def request_fingerprint(req: dict) -> str:
@@ -818,17 +835,25 @@ def request_fingerprint(req: dict) -> str:
     return hashlib.sha256(json.dumps(params, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")).hexdigest()[:20]
 
 
+UPLOAD_FILE_KEYS = ("file", "local", "path")      # the key an uploads record keeps the uploaded file under, in the forms runs wrote
+
+
+def _upload_file(v: dict) -> str:
+    return next((v[k].strip() for k in UPLOAD_FILE_KEYS if isinstance(v.get(k), str) and v[k].strip()), "")
+
+
 def _uploaded_files(rd: Path, nn: str) -> dict:
-    """media id -> (the local file the run uploaded under it, the words its record files it under): the video's uploads records
-    (video-NN*-uploads.json, of any shape: an entry with its media_id, or id, beside its file), then the run's uploads map (30-assets/uploads.json: the
-    file, else its name in the run's asset folders)."""
+    """media id -> (the local file the run uploaded under it, the words its record files it under), from the records the run wrote when it uploaded, in
+    every form runs wrote them: the video's uploads records (video-NN*-uploads.json, of any shape: an entry with its media_id, or id, beside its file
+    under `file`, `local` or `path`), the run's uploads record in state.json (assets.uploads, the same forms), then the run's uploads map (_uploads: the
+    file it names, else its name in the run's asset folders, else, for a name that is an asset id, the one copy of that asset the run made, _asset_copy)."""
     res: dict = {}
 
     def walk(v, key=""):
         if isinstance(v, dict):
-            mid = v.get("media_id") or v.get("id")
-            if isinstance(mid, str) and mid and isinstance(v.get("file"), str) and v["file"].strip():
-                res.setdefault(mid, (v["file"].strip(), " ".join(str(x) for x in (key, v.get("who") or "", v.get("role") or "") if x)))
+            mid, f = v.get("media_id") or v.get("id"), _upload_file(v)
+            if isinstance(mid, str) and mid and f:
+                res.setdefault(mid, (f, " ".join(str(x) for x in (key, v.get("who") or "", v.get("role") or "") if x)))
             for k, x in v.items():
                 walk(x, k if isinstance(x, (dict, list)) else key)
         elif isinstance(v, list):
@@ -837,12 +862,87 @@ def _uploaded_files(rd: Path, nn: str) -> dict:
     rq = rd / "50-requests"
     for f in (sorted(rq.glob(f"video-{nn}*uploads*.json")) if rq.is_dir() else []):
         walk(_json(f))
+    walk(_state_uploads(rd))
+    copies = None
     for mid, up in _uploads(rd).items():
         if mid not in res:
-            p = up.get("file") or _asset_path(rd, up.get("name") or "", {})
+            name = str(up.get("name") or "")
+            p = up.get("file") or _asset_path(rd, name, {})
+            if not p and A_ONE.fullmatch(name):
+                copies = _asset_copies(rd) if copies is None else copies
+                p = copies[name][0] if len(copies.get(name) or []) == 1 else None
             if p:
-                res[mid] = (str(p), str(up.get("name") or ""))
+                res[mid] = (str(p), name)
     return res
+
+
+A_ONE = re.compile(r"A\d{1,4}")      # a name that is an asset id and nothing else
+
+
+def _asset_copies(rd: Path) -> dict:
+    """asset id -> the image files the run made of it in its asset folders (30-assets/**, named A17-padded.jpg, A17_ref.png, A17.png): an uploads map that
+    names only the asset id uploaded the run's copy of it when the run made exactly one (the client's originals are not in the run's folders); with none,
+    or more than one, which file was sent is not known and nothing is taken."""
+    out: dict = {}
+    base = rd / "30-assets"
+    for f in (base.rglob("*") if base.is_dir() else []):
+        m = re.fullmatch(r"(A\d{1,4})(?:[-_. ].*)?", f.stem)
+        if m and f.suffix.lower() in IMAGE_EXT and "previews" not in f.relative_to(base).parts[:-1] and f.is_file():      # prep-assets' look previews are never sent
+            out.setdefault(m.group(1), []).append(f)
+    return out
+
+
+FILE_NAMED = re.compile(r"[\w.-]+\.(?:png|jpe?g|webp)", re.I)      # a file name written in a request's words for an input
+
+
+def _request_built(rd: Path, words: str, files: dict) -> Path | None:
+    """The file the run built for its requests (50-requests/**: a guide, a hand-off frame) that a request's own words for an input name ('size-and-place
+    guide (video-08-c2-a2-guide.png)'): only when the words name one file and exactly one file of 50-requests has that name.  `files` caches the
+    folder's listing (name -> paths) for one call."""
+    named = set(FILE_NAMED.findall(words or ""))
+    if len(named) != 1:
+        return None
+    if "" not in files:
+        rq = rd / "50-requests"
+        for f in (rq.rglob("*") if rq.is_dir() else []):
+            if f.is_file():
+                files.setdefault(f.name.lower(), []).append(f)
+        files[""] = []
+    hits = files.get(named.pop().lower()) or []
+    return hits[0] if len(hits) == 1 else None
+
+
+def _registry_characters(st: dict) -> dict:
+    """The run's character registry (state.json assets.characters, in the forms runs wrote: {C13: {file: A17}}, {CH-M03: [A12]}): code -> its asset ids;
+    {} when the run keeps none (a text note, or nothing)."""
+    a = st.get("assets") if isinstance(st.get("assets"), dict) else {}
+    ch = a.get("characters")
+    out = {}
+    for code, v in (ch.items() if isinstance(ch, dict) else []):
+        ids = list(dict.fromkeys(A_ID.findall(json.dumps(v, ensure_ascii=False))))
+        if ids and re.fullmatch(r"[A-Z][A-Za-z0-9_-]{0,15}", str(code)):
+            out[str(code)] = ids
+    return out
+
+
+def _sent_as(occ: list, many: bool) -> str:
+    """How one picture was sent: 'Image 2'; in a take joined from clips 'c1 · Image 1', 'c1, c2 · Image 1' when each clip sent it as the same input, else
+    'c1 Image 1, c2 Image 2'; a generation that attached it twice: 'Image 1, Image 3'."""
+    imgs = list(dict.fromkeys(i for _c, i in occ))
+    clips = list(dict.fromkeys(c for c, _i in occ if c))
+    if not many or not clips:
+        return ", ".join(imgs)
+    if len(imgs) == 1:
+        return f"{', '.join(clips)} · {imgs[0]}"
+    return ", ".join(f"{c} {i}" if c else i for c, i in dict.fromkeys(occ))
+
+
+def _state_uploads(rd: Path):
+    """The uploads record a run kept in state.json (assets.uploads): {name: {media_id or id, file or local, ...}} or a plain {name: media id}."""
+    st = _json(rd / "state.json") or {}
+    a = st.get("assets") if isinstance(st.get("assets"), dict) else {}
+    u = a.get("uploads")
+    return u if isinstance(u, (dict, list)) else {}
 
 
 def _registry_product_rows(rd: Path) -> list[tuple[str, list]]:
@@ -881,25 +981,35 @@ def sent_images(run: str, video: str, wrong: str = "", path: str = "") -> list[d
     upload that names no file): nothing is guessed."""
     loc = locate(path or wrong) if (path or wrong) else None
     if loc and loc[1] and (loc[0], loc[1]) != (run, core.nn(video)):
-        run, video, wrong = loc[0], loc[1], path or wrong
+        run, video = loc[0], loc[1]
     rd = run_dir(run)
     if not rd or not video:
         return []
     nn = core.nn(video)
+    hint = path or wrong                      # the take's own file tells its attempt and its join; the label is the fallback
     st = _json(rd / "state.json") or {}
     subs = [s for s in st.get("submissions") or [] if isinstance(s, dict) and s.get("request_file")]
-    attempt = attempt_for(rd, video, wrong)
-    files = _request_files(rd, video, attempt)
-    reqs = [f for f in files if attempt and _attempt_in_name(f.name) == attempt] or files[:1]
-    segs = prompt_segments(run, video, wrong).get("segments") or []
+    segs = prompt_segments(run, video, hint).get("segments") or []
     if segs:                                  # a take joined from clips: what each clip's generation was sent
-        reqs = [rd / "50-requests" / s["request"] for s in segs if s.get("request")] or reqs
+        reqs = [(rd / "50-requests" / s["request"], str(s.get("clip") or "")) for s in segs if s.get("request")]
+    else:
+        attempt = attempt_for(rd, video, hint) or (attempt_for(rd, video, wrong) if wrong and wrong != hint else 0)
+        files = _request_files(rd, video, attempt)
+        if attempt:
+            reqs = [(f, "") for f in files if _attempt_in_name(f.name) == attempt]
+        elif len({_request_tag(f.name, nn) for f in files}) == 1:       # the video's one generation (and copies of its request under other names)
+            reqs = [(f, "") for f in files]
+        else:
+            reqs = []                         # several generations and none known to be this take's: nothing is guessed
+    many = len({c for _f, c in reqs if c}) > 1
     uploaded = _uploaded_files(rd, nn)
     inv, names = _inventory(rd)
     prods, pids = _registry_products(st), _product_ids(rd, st)
     codes = [c for c, _ids in _registry_product_rows(rd)] + list(prods)
-    out, seen = [], set()
-    for rf in reqs:
+    chars = _registry_characters(st)
+    cids = {i for ids in chars.values() for i in ids}
+    out, by_pic, keys, built = [], {}, {}, {}
+    for rf, clip in reqs:
         req = _json(rf) or {}
         ent = [s for s in subs if _file_key(s["request_file"]) == _file_key(rf)]
         ent = [s for s in ent if s.get("job_id") and str(s.get("status") or "") not in NO_VIDEO]
@@ -908,7 +1018,7 @@ def sent_images(run: str, video: str, wrong: str = "", path: str = "") -> list[d
         job = str(ent[-1].get("job_id") or "")
         prm = req.get("params") if isinstance(req.get("params"), dict) else req
         meaning = _input_meanings(req)
-        tag = f"{_request_tag(rf.name, nn).split('-a')[0]} · " if len(reqs) > 1 else ""
+        files_said = req.get("media_files") if isinstance(req.get("media_files"), dict) else {}      # an older request's own record: {Image 1: its file}
         counts: dict = {}
         for m in (prm.get("medias") or []) if isinstance(prm, dict) else []:
             if not isinstance(m, dict):
@@ -916,16 +1026,28 @@ def sent_images(run: str, video: str, wrong: str = "", path: str = "") -> list[d
             role = str(m.get("role") or "")
             counts[role] = counts.get(role, 0) + 1
             mid = str(m.get("value") or "").strip()
-            if role not in SENT_ROLES or not mid or mid.startswith("<") or mid in seen:
+            if role not in SENT_ROLES or not mid or mid.startswith("<"):
                 continue
-            f, filed = uploaded.get(mid) or (str(m.get("file") or ""), "")
+            img = f"Image {counts[role]}" if role == "image_references" else SENT_ROLES[role]
+            f, filed = uploaded.get(mid) or (str(m.get("file") or "") or str(files_said.get(img) or "")
+                                             or str(_request_built(rd, str(meaning.get(img) or ""), built) or ""), "")
             p = Path(f) if f else None
             if p and not p.is_absolute():
                 p = rd / p
             if not (p and p.is_file() and p.suffix.lower() in IMAGE_EXT):
                 continue
-            seen.add(mid)
-            img = f"Image {counts[role]}" if role == "image_references" else SENT_ROLES[role]
+            pk = _file_key(p)
+            if pk not in keys:
+                try:
+                    keys[pk] = media.sha1_file(p)
+                except OSError:
+                    keys[pk] = pk
+            x = by_pic.get(keys[pk])
+            if x:                     # the same picture sent again (by another clip's generation, or as another input): one entry, every time it was sent
+                for k, v in (("_occ", (clip, img)), ("media_ids", mid), ("jobs", job), ("requests", rf.name), ("paths", p)):
+                    if v not in x[k]:
+                        x[k].append(v)
+                continue
             said = str(meaning.get(img) or "") or _input_words(filed)
             src = _source_of(m, said, st, inv, names)
             aid = src.get("asset_id", "")
@@ -935,14 +1057,21 @@ def sent_images(run: str, video: str, wrong: str = "", path: str = "") -> list[d
                 rel = p.name
             look = " ".join(str(x or "") for x in (m.get("label"), rel, filed))
             named = PRODUCT_FILE.search(look) or any(re.search(r"(?<![A-Za-z0-9])" + re.escape(c) + r"(?![A-Za-z0-9])", look, re.I) for c in codes)
+            person = (aid in cids or CHARACTER_FILE.search(look) or CHARACTER_SAID.search(said)
+                      or any(re.search(r"(?<![A-Za-z0-9])" + re.escape(c) + r"(?![A-Za-z0-9])", f"{look} {said}") for c in chars))
             kind = src.get("kind") or ("product" if (aid in pids or named
                                                      or any(c in prods for c in P_CODE.findall(" ".join((said, str(m.get("meaning") or ""), look)))))
-                                       else "character" if CHARACTER_FILE.search(look) else "")
-            label = tag + " · ".join(x for x in (img, aid, src.get("name") or p.name) if x) + ("" if src else " · its original file is not recorded")
-            out.append({"path": p, "name": p.name, "label": label, "image": tag + img, "role": role, "media_id": mid, "asset_id": aid, "kind": kind,
-                        "original": src.get("original", ""), "original_name": src.get("name", ""), "prepared": src.get("prepared", ""),
-                        "recorded": src.get("recorded", ""), "request": rf.name, "job": job,
-                        "words": _input_words(str(m.get("meaning") or meaning.get(img) or "")), "run": run, "video": nn})
+                                       else "character" if person else "")
+            x = {"path": p, "name": p.name, "role": role, "media_id": mid, "asset_id": aid, "kind": kind,
+                 "original": src.get("original", ""), "original_name": src.get("name", ""), "prepared": src.get("prepared", ""),
+                 "recorded": src.get("recorded", ""), "request": rf.name, "job": job,
+                 "words": _input_words(str(m.get("meaning") or meaning.get(img) or "")), "run": run, "video": nn,
+                 "_occ": [(clip, img)], "media_ids": [mid], "jobs": [job], "requests": [rf.name], "paths": [p], "_src": bool(src)}
+            by_pic[keys[pk]] = x
+            out.append(x)
+    for x in out:
+        x["image"] = _sent_as(x.pop("_occ"), many)
+        x["label"] = " · ".join(v for v in (x["image"], x["asset_id"], x["original_name"] or x["name"]) if v) + ("" if x.pop("_src") else " · its original file is not recorded")
     return out
 
 
@@ -951,15 +1080,23 @@ def generation_assets(run: str, video: str, wrong: str = "", path: str = "") -> 
     attached to that video generation thats all ... and then if i want to exclude some or add more i'll do it myself"): exactly the images sent with
     the generation of the take (sent_images), one per attached image, each ticked by default (`suggested`); neither a client's original nor any other
     file is offered.  [] when the run's records verify none."""
-    return [{**x, "source": "sent with job " + x["job"][:8] if x.get("job") else "sent with this generation", "suggested": True}
+    return [{**x, "source": ("sent with job" + ("s " if len(x.get("jobs") or []) > 1 else " ") + ", ".join(j[:8] for j in x.get("jobs") or [x["job"]])
+                             if x.get("job") else "sent with this generation"), "suggested": True}
             for x in sent_images(run, video, wrong, path)]
 
 
 CLIP_PART_FILES = ("trimmed.mp4", "conformed.mp4", "raw.mp4")     # the file whose length a clip has in the joined video: trimmed when it was trimmed
+CLIP_NAME = re.compile(r"c(?:\d+|[A-Z])")      # a clip's folder in a video's outputs: c1, c2 ..., or cA, cB ... as some older runs named them
+
+
+def _clip_key(name: str) -> tuple:
+    """Clip order: c1, c2 ... c10 by number, then cA, cB ... by letter."""
+    tail = name[1:]
+    return (0, int(tail), "") if tail.isdigit() else (1, 0, tail)
 
 
 def _clip_dirs(vd: Path) -> list[Path]:
-    return sorted((x for x in vd.iterdir() if x.is_dir() and re.fullmatch(r"c\d+", x.name)), key=lambda x: int(x.name[1:])) if vd.is_dir() else []
+    return sorted((x for x in vd.iterdir() if x.is_dir() and CLIP_NAME.fullmatch(x.name)), key=lambda x: _clip_key(x.name)) if vd.is_dir() else []
 
 
 def _copy_attempt(cd: Path, p: Path) -> int:
@@ -982,17 +1119,18 @@ def _copy_attempt(cd: Path, p: Path) -> int:
 
 def _clip_attempt(rd: Path, nn: str, cd: Path) -> tuple[int, str]:
     """The attempt of a clip that went into the video and how that is known, in order: the clip's own piece (c1/c1.mp4) is a byte-for-byte copy of an
-    attempt's file; the run's result says which attempt it shipped ('shipped': 'a1 ...'); the number of attempts the run made for it (each new attempt
-    replaced the one before); the highest attempt folder holding a file.  (0, '') when none tells."""
+    attempt's file; the run's result says which attempt it shipped ('shipped': 'a1 ...', or an older run's 'delivered_attempt': '1'); the number of
+    attempts the run made for it (each new attempt replaced the one before); the highest attempt folder holding a file.  (0, '') when none tells."""
     piece = cd / f"{cd.name}.mp4"
     if piece.is_file():
         n = _copy_attempt(cd, piece)
         if n:
             return n, f"{cd.name}/{piece.name} is a copy of a{n}'s file"
     res = _json(rd / "60-outputs" / f"video-{nn}" / "result.json") or {}
-    jobs = [j for j in (res.get("jobs") or []) if isinstance(j, dict) and str(j.get("clip") or "").lower() == cd.name]
+    jobs = [j for j in (res.get("jobs") or []) if isinstance(j, dict) and str(j.get("clip") or "").lower() == cd.name.lower()]
     for j in jobs:
-        m = re.match(r"\s*a(\d+)\b", str(j.get("shipped") or ""), re.I)
+        m = (re.match(r"\s*a(\d+)\b", str(j.get("shipped") or ""), re.I)
+             or re.fullmatch(r"\s*a?(\d+)\s*", str(j.get("delivered_attempt") or ""), re.I))
         if m and (cd / f"a{m.group(1)}").is_dir():
             return int(m.group(1)), f"the run's result says {cd.name} shipped a{m.group(1)}"
     for j in jobs:
@@ -1032,7 +1170,7 @@ def _where_in_video(vd: Path, p: Path) -> tuple[str, int]:
         parts = p.resolve().relative_to(vd.resolve()).parts[:-1]
     except (OSError, ValueError):
         return "", 0
-    clip = next((x for x in parts if re.fullmatch(r"c\d+", x)), "")
+    clip = next((x for x in parts if CLIP_NAME.fullmatch(x)), "")
     if not clip:
         return "", 0
     return clip, next((int(x[1:]) for x in parts[parts.index(clip) + 1:] if re.fullmatch(r"a\d+", x)), 0)
@@ -1266,7 +1404,7 @@ def _clip_request(rd: Path, nn: str, clip: str, attempt: int) -> Path | None:
     files = video_request_files(rd, nn)
     own = [f for f in files if re.fullmatch(rf"video-{re.escape(nn)}-{re.escape(clip)}(?:-a\d+)?-request", f.stem, re.I)]
     if not own:
-        own = [f for f in files if str((_json(f) or {}).get("clip") or "").lower() == clip]
+        own = [f for f in files if str((_json(f) or {}).get("clip") or "").lower() == clip.lower()]
     if not own:
         return None
     exact = [f for f in own if _attempt_in_name(f.name) == (attempt or 1)]
@@ -1322,7 +1460,7 @@ def prompt_segments(run: str, video: str, hint: str = "") -> dict:
     for x in sp["pieces"]:
         if x["clip"] and (x["clip"], x["attempt"]) not in keys:
             keys.append((x["clip"], x["attempt"]))
-    keys.sort(key=lambda k: (int(k[0][1:]), k[1]))
+    keys.sort(key=lambda k: (_clip_key(k[0]), k[1]))
     segs = []
     for k, (clip, att) in enumerate(keys, 1):
         mine = [x for x in sp["pieces"] if (x["clip"], x["attempt"]) == (clip, att)]
@@ -1380,14 +1518,17 @@ USAGE_INDEX_VERSION = 2      # bumped when the index reads the request files dif
 
 
 def _uploads(rd: Path) -> dict:
-    """media id -> {name, file}: the label an upload was given and the local file the pipeline recorded for it."""
+    """media id -> {name, file}: the label an upload was given and the local file the pipeline recorded for it, from the run's uploads maps
+    (30-assets/uploads.json, uploads-map.json) and the uploads record in its state.json (assets.uploads), each {name: media id} or {name: {media_id or
+    id, file or local or path}}; a key starting with '_' is a note, not an upload."""
     res = {}
-    for fn in ("uploads.json", "uploads-map.json"):
-        j = _json(rd / "30-assets" / fn)
+    for j in [_json(rd / "30-assets" / fn) for fn in ("uploads.json", "uploads-map.json")] + [_state_uploads(rd)]:
         for name, v in (j.items() if isinstance(j, dict) else []):
-            mid = v.get("media_id") if isinstance(v, dict) else v
-            if mid and mid not in res:
-                res[mid] = {"name": name, "file": (v.get("file") if isinstance(v, dict) else "") or ""}
+            if str(name).startswith("_"):
+                continue
+            mid = (v.get("media_id") or v.get("id")) if isinstance(v, dict) else v
+            if isinstance(mid, str) and mid.strip() and not re.search(r"\s", mid.strip()) and mid not in res:
+                res[mid] = {"name": name, "file": _upload_file(v) if isinstance(v, dict) else ""}
     return res
 
 

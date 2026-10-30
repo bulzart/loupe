@@ -685,9 +685,9 @@ def main(with_keeper=False):
     check("the keeper's digest names each prompt in a word with its generation of the take and the seconds it made, nothing explained twice",
           f"S{smo2}-P1 · FLAWED · generation 2 of 2 of Video A (2–5 s) · made Frames 1 and 2 of S{smo2}" in dg_lines and "holds generations of a take made of" not in dg_lines, dg_lines[-700:])
     s, d, _ = req("GET", "/api/generation-assets?run=20261001-000000-07&video=07&wrong=" + quote(clean7))
-    check("a take joined from two generations offers the images its generations were sent, each once (one both clips were sent shows under the first "
-          "clip, named with it)", s == 200 and [(a["request"], a["label"]) for a in d.get("assets", [])]
-          == [("video-07-c1-request.json", "c1 · Image 1 · pack.png · its original file is not recorded")], str(d)[:300])
+    check("a take joined from two generations offers each picture its generations were sent once, named with every clip that sent it (the first "
+          "clip's request kept with it)", s == 200 and [(a["request"], a["label"]) for a in d.get("assets", [])]
+          == [("video-07-c1-request.json", "c1, c2 · Image 1 · pack.png · its original file is not recorded")], str(d)[:300])
     s, d, _ = req("PATCH", f"/api/misses/{sm}", {"wrong_prompt": "One prompt typed by the admin."})
     check("a single prompt typed over the generations' prompts replaces them", s == 200 and d["miss"]["wrong_segments"] == [] and d["miss"]["wrong_prompt"] == "One prompt typed by the admin.", str(d)[:200])
     req("DELETE", f"/api/misses/{sm}")
@@ -1374,6 +1374,127 @@ def main(with_keeper=False):
     check("a registry's product rows are read in either form runs write (an id starting with P-, or a type cell that says product), never a character's",
           runs._registry_product_rows(reg_rd) == [("NG-EF6-SPE", ["A44", "A45"]), ("P-CAN", ["A14"])], str(runs._registry_product_rows(reg_rd)))
     req("DELETE", f"/api/misses/{pm9}")
+    print("\n[every sample: the images its generation was sent, read from what older runs recorded (the admin, 2026-10-30: let them all have their "
+          "verified used video generation assets)]")
+    regg = runs._registry_products({"assets": {"products": {"geometry": {"id": "P0", "files": ["A06"]}, "excluded": [{"id": "P5", "files": ["A38"]}],
+                                                            "in_rotation": [{"id": "P1", "name": "One", "canonical": "A09", "files": ["A09", "A10"]}]}}})
+    check("a product registry kept in groups is read (each listed product by its id); an excluded group is left out",
+          regg.get("P1") == {"name": "One", "canonical": "A09", "ids": ["A09", "A10"]} and "P5" not in regg, str(regg))
+    check("a character registry is read in the forms runs wrote ({C13: {file: A17}}, {CH-M03: [A12]}); a text note gives none",
+          runs._registry_characters({"assets": {"characters": {"C13": {"file": "A17", "uses": 1}, "CH-M03": ["A12"]}}}) == {"C13": ["A17"], "CH-M03": ["A12"]}
+          and runs._registry_characters({"assets": {"characters": "none supplied"}}) == {})
+    r8 = TMP / "atp" / "runs" / "20261001-000000-08"
+    from PIL import Image as _I8
+
+    def png8(p: Path, rgb, size=(200, 300)):
+        p.parent.mkdir(parents=True, exist_ok=True)
+        _I8.new("RGB", size, rgb).save(p)
+        return p
+    ref8 = TMP / "reference-folder-08"
+    for n_, rgb in (("person.png", (200, 150, 120)), ("front.png", (220, 30, 30)), ("square.png", (30, 220, 30))):
+        png8(ref8 / n_, rgb)
+    (r8 / "30-assets" / "project").mkdir(parents=True, exist_ok=True)
+    (r8 / "30-assets" / "project" / "asset-inventory.json").write_text(json.dumps({"items": [
+        {"id": "A17", "path": str(ref8 / "person.png"), "rel": "person.png"}, {"id": "A21", "path": str(ref8 / "front.png"), "rel": "front.png"},
+        {"id": "A23", "path": str(ref8 / "square.png"), "rel": "square.png"}]}))
+    head8 = png8(r8 / "30-assets" / "prepared" / "C13-head.jpg", (180, 140, 110))
+    front8 = png8(r8 / "30-assets" / "prepared" / "P2-front-p40.jpg", (210, 40, 40))
+    png8(r8 / "50-requests" / "video-01-guide.png", (90, 90, 90))
+    png8(r8 / "30-assets" / "refs" / "A21-padded.jpg", (225, 25, 25), (300, 500))
+    png8(r8 / "30-assets" / "refs" / "A23-padded.jpg", (25, 225, 25), (300, 500))
+    png8(r8 / "30-assets" / "project" / "previews" / "A21.jpg", (225, 25, 26), (100, 160))      # prep-assets' look previews: never sent
+    png8(r8 / "30-assets" / "project" / "previews" / "A23.jpg", (25, 225, 26), (100, 160))
+    png8(r8 / "30-assets" / "identity" / "id-A17.jpg", (170, 130, 100))
+    can8 = png8(r8 / "30-assets" / "product" / "P2-ref.png", (200, 20, 20))
+    shutil.copyfile(can8, r8 / "30-assets" / "product" / "P2-ref-copy.png")      # the same picture uploaded again for clip B, under another media id
+    (r8 / "30-assets" / "uploads.json").write_text(json.dumps({"A21": "u21", "A23": "u23", "_note": "padded copies in 30-assets/refs/"}))
+    (r8 / "state.json").write_text(json.dumps({"run_id": r8.name, "mode": "analyze", "model": "wan3_0_prime", "submissions": [], "assets": {
+        "characters": {"C13": {"file": "A17", "uses": 1}},
+        "products": {"in_rotation": [{"id": "P2", "name": "Test flavour", "canonical": "A21", "files": ["A21", "A23"]}], "excluded": [{"id": "P9", "files": ["A99"]}]},
+        "uploads": {"C13-head.jpg": {"media_id": "u1", "local": str(head8), "status": "uploaded"},
+                    "P2-front-p40.jpg": {"media_id": "u2", "local": str(front8), "status": "uploaded"},
+                    "identity:C13": {"media_id": "u31", "file": "30-assets/identity/id-A17.jpg", "confirmed": True},
+                    "P2_ref": {"id": "u32", "file": "30-assets/product/P2-ref.png", "role": "product reference"},
+                    "P2_ref_b": {"id": "u36", "file": "30-assets/product/P2-ref-copy.png", "role": "product reference"}}}}))
+
+    def req8(name: str, medias: list, job: str, ledger: bool = True, **extra):
+        body = {"params": {"model": "wan3_0_prime", "duration": 5, "prompt": f"Request {name}.", "medias": medias}, **extra}
+        (r8 / "50-requests").mkdir(parents=True, exist_ok=True)
+        (r8 / "50-requests" / name).write_text(json.dumps(body))
+        if ledger:
+            s_ = json.loads((r8 / "state.json").read_text(encoding="utf-8"))
+            s_["submissions"].append({"video": name.split("-")[1], "attempt": 1, "status": "completed", "job_id": job,
+                                      "request_file": str(r8 / "50-requests" / name), "fingerprint": runs.request_fingerprint(body)})
+            (r8 / "state.json").write_text(json.dumps(s_))
+
+    def im8(v):
+        return {"role": "image_references", "value": v}
+    v01 = [{"role": "video_references", "value": "v01"}, im8("u1"), im8("u2"), im8("u3")]
+    mean01 = {"Image 1": "C13-head.jpg", "Image 2": "P2-front-p40.jpg", "Image 3": "size-and-place guide (video-01-guide.png), spot and size only"}
+    req8("video-01-request.json", v01, "job-801", medias_meaning=mean01)
+    req8("video-01-a1-request.json", v01, "", ledger=False, medias_meaning=mean01)      # the same request kept under another name, never submitted
+    take01 = r8 / "60-outputs" / "video-01" / "a1" / "raw.mp4"
+    mkvideo(take01, "0x203040", "red")
+    s01 = runs.sent_images(r8.name, "01", "a1 · raw.mp4", str(take01))
+    check("an older run's uploads kept under `local` in its state.json, a character known by its registry code and a guide that only the request's own "
+          "words name are each shown once, from the request the ledger submitted",
+          [(x["label"], x["kind"], x["name"]) for x in s01] == [("Image 1 · C13-head.jpg · its original file is not recorded", "character", "C13-head.jpg"),
+                                                                ("Image 2 · P2-front-p40.jpg · its original file is not recorded", "product", "P2-front-p40.jpg"),
+                                                                ("Image 3 · video-01-guide.png · its original file is not recorded", "", "video-01-guide.png")]
+          and {x["job"] for x in s01} == {"job-801"}, str([(x["label"], x["kind"]) for x in s01]))
+    req8("video-02-request.json", [im8("u21"), im8("u23")], "job-802",
+         media_map=[{"ref": "@Image1", "asset": "A21", "meaning": "front (product sheet)"}, {"ref": "@Image2", "asset": "A23", "meaning": "front, square"}])
+    take02 = r8 / "60-outputs" / "video-02" / "a1" / "raw.mp4"
+    mkvideo(take02, "0x203040", "green")
+    s02 = runs.sent_images(r8.name, "02", "a1 · raw.mp4", str(take02))
+    extra21 = png8(r8 / "30-assets" / "stage" / "A21.png", (1, 2, 3))
+    s02b = runs.sent_images(r8.name, "02", "a1 · raw.mp4", str(take02))
+    extra21.unlink()
+    check("an uploads map that names only an asset id gives the one copy the run made of it (never its look preview); with two copies which one was sent "
+          "is not known and nothing is shown; the request's media_map names each input's asset and original file",
+          [(x["label"], x["kind"], x["name"]) for x in s02] == [("Image 1 · A21 · front.png", "product", "A21-padded.jpg"), ("Image 2 · A23 · square.png", "product", "A23-padded.jpg")]
+          and [x["name"] for x in s02b] == ["A23-padded.jpg"], str([(x["label"], x["kind"], x["name"]) for x in s02 + s02b]))
+    v3 = r8 / "60-outputs" / "video-03"
+    for c_, a_, col in (("cA", "a1", "red"), ("cA", "a2", "green"), ("cB", "a1", "blue"), ("cB", "a2", "white")):
+        mkvideo(v3 / c_ / a_ / "trimmed.mp4", "0x203040", col)
+    joined3 = v3 / "capcut-preview.mp4"
+    subprocess.run([media.find_tool("ffmpeg"), "-y", "-loglevel", "error", "-f", "lavfi", "-i", "color=c=0x203040:s=720x1280:r=30:d=6", "-pix_fmt", "yuv420p",
+                    str(joined3)], capture_output=True)
+    (v3 / "result.json").write_text(json.dumps({"video": "03", "jobs": [{"clip": "cA", "attempts": "2", "delivered_attempt": "1"},
+                                                                       {"clip": "cB", "attempts": "2", "delivered_attempt": "1"}]}))
+    req8("video-03-cA-request.json", [im8("u31"), im8("u32")], "job-8A1", medias_meaning={"Image 1": "identity C13 (A17 head crop)", "Image 2": "the product reference"})
+    req8("video-03-cA-a2-request.json", [im8("u33")], "job-8A2")
+    req8("video-03-cB-request.json", [im8("u31"), im8("u36")], "job-8B1")
+    req8("video-03-cB-a2-request.json", [im8("u34")], "job-8B2")
+    s03 = runs.sent_images(r8.name, "03", "capcut-preview.mp4", str(joined3))
+    check("a take joined from clips named by letter (cA, cB) is read from its file, each clip's shipped attempt from the run's result (delivered_attempt); a "
+          "picture both clips sent is one image named with both clips, with every job it was sent with",
+          [(x["label"], x["kind"]) for x in s03] == [("cA, cB · Image 1 · A17 · person.png", "character"),
+                                                     ("cA, cB · Image 2 · P2-ref.png · its original file is not recorded", "product")]
+          and [len(x["paths"]) for x in s03] == [1, 2] and [x["jobs"] for x in s03] == [["job-8A1", "job-8B1"]] * 2,
+          str([(x["label"], x["kind"], x.get("jobs")) for x in s03]))
+    for a_, col in (("a1", "white"), ("a2", "yellow")):
+        mkvideo(r8 / "60-outputs" / "video-04" / a_ / "raw.mp4", "0x203040", col)
+    req8("video-04-request.json", [im8("u21")], "job-841")
+    req8("video-04-a2-request.json", [im8("u23")], "job-842")
+    other4 = r8 / "60-outputs" / "video-04" / "render.mp4"
+    mkvideo(other4, "0x405060", "white")
+    check("a version whose attempt cannot be told, of a video made in several attempts, gives no image (never the latest attempt's); its attempt's own "
+          "file gives that attempt's",
+          runs.sent_images(r8.name, "04", "render.mp4", str(other4)) == []
+          and [x["name"] for x in runs.sent_images(r8.name, "04", "a2 · raw.mp4", str(r8 / "60-outputs" / "video-04" / "a2" / "raw.mp4"))] == ["A23-padded.jpg"])
+    s, d, _ = req("POST", "/api/misses", {"run": r8.name, "video": "03", "title": "A joined take of an older run", "model": "wan3_0_prime", "wrong_path": str(joined3)})
+    m8 = d["miss"]["id"] if s == 200 else 0
+    s, d, _ = req("POST", f"/api/misses/{m8}/moments", {"frames": [{"src": "wrong", "role": "wrong", "t": 1.0}], "details": "The product is too big."})
+    mo8 = d["moment"]["moment_id"] if s == 200 else 0
+    meta8 = json.loads((core.DATA / "samples" / str(mo8) / "meta.json").read_text(encoding="utf-8")) if mo8 else {}
+    s, d, _ = req("GET", f"/api/generation-assets?run={r8.name}&video=03&wrong=" + quote(str(joined3)))
+    check("the sample's band shows both pictures by default, its record keeps every job each was sent with, and the picker offers each once with its copies",
+          [x["label"] for x in meta8.get("images_sent") or []] == [x["label"] for x in s03] and len(meta8.get("product_samples") or []) == 2
+          and (meta8.get("images_sent") or [{}, {}])[1].get("jobs") == ["job-8A1", "job-8B1"]
+          and s == 200 and [len(a["paths"]) for a in d.get("assets", [])] == [1, 2] and d["assets"][1]["source"] == "sent with jobs job-8A1, job-8B1",
+          str(meta8.get("images_sent"))[:400] + " | " + str(d)[:300])
+    req("DELETE", f"/api/misses/{m8}")
     print("\n[cleanup]")
     httpd.shutdown()
     shutil.rmtree(TMP, ignore_errors=True)
