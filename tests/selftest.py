@@ -47,6 +47,7 @@ def build_fake_atp():
     ref.mkdir()
     from PIL import Image as _I
     _I.new("RGBA", (400, 1000), (0, 0, 255, 255)).save(ref / "product-front.png")
+    _I.new("RGBA", (400, 1000), (0, 0, 255, 255)).save(run / "30-assets" / "stage" / "pack.png")      # the file the request sent under m1
     (run / "30-assets" / "project").mkdir(parents=True)
     (run / "30-assets" / "project" / "asset-inventory.json").write_text(json.dumps({"items": [{"id": "A14", "path": str(ref / "product-front.png"), "rel": "product-front.png"},
                                                                                            {"id": "A28", "path": str(ref / "person.png"), "rel": "person.png"}]}))
@@ -58,7 +59,9 @@ def build_fake_atp():
         "videos": [{"video": "03", "status": "done", "qc": "regenerated once"}],
         "submissions": [{"video": "03", "lane": "03", "attempt": 1, "fingerprint": "fp1", "status": "failed", "flagged": True, "job_id": "job-111",
                          "request_file": str(run / "50-requests" / "video-03-request.json"),
-                         "history": [{"at": "2026-10-14T10:00:00+02:00", "to": "submitted"}, {"at": "2026-10-14T10:00:16+02:00", "to": "failed"}]}]}))
+                         "history": [{"at": "2026-10-14T10:00:00+02:00", "to": "submitted"}, {"at": "2026-10-14T10:00:16+02:00", "to": "failed"}]},
+                        {"video": "03", "lane": "03", "attempt": 1, "fingerprint": runs.request_fingerprint(req), "status": "completed", "job_id": "job-112",
+                         "request_file": str(run / "50-requests" / "video-03-request.json")}]}))      # sent again, and it made the take a1
     return run
 
 
@@ -541,6 +544,15 @@ def main(with_keeper=False):
     reg2 = runs._registry_products({"assets": {"products": {"P01": {"name": "Slim can", "geometry": ["A07"]}, "P01-WM": {"flavour": "Watermelon", "label": "A45", "views": ["A47"], "contents": ["A04"]}}}})
     check("a flat registry whose variants carry a label and views is read too, each variant named with its product (its contents images left out)",
           reg2.get("P01-WM") == {"name": "Slim can · Watermelon", "canonical": "A45", "ids": ["A45", "A47"]} and reg2.get("P01", {}).get("ids") == ["A07"], str(reg2))
+    def ledger_add(req_name: str, job: str):
+        """A completed submission of that request in the fake run's ledger, with the fingerprint the pipelines record."""
+        stp = atp_run / "state.json"
+        st_ = json.loads(stp.read_text(encoding="utf-8"))
+        rq_ = json.loads((atp_run / "50-requests" / req_name).read_text(encoding="utf-8"))
+        nn_ = req_name.split("-")[1]
+        st_.setdefault("submissions", []).append({"video": nn_, "lane": nn_, "attempt": 1, "status": "completed", "job_id": job,
+                                                  "request_file": str(atp_run / "50-requests" / req_name), "fingerprint": runs.request_fingerprint(rq_)})
+        stp.write_text(json.dumps(st_), encoding="utf-8")
     six_take = str(atp_run / "60-outputs" / "video-06" / "a1" / "raw.mp4")
     mkvideo(Path(six_take), "0x302050", "white")
     (atp_run / "50-requests" / "video-06-request.json").write_text(json.dumps({"params": {"model": "wan3_0_prime", "duration": 5, "prompt": "Video six.", "medias": [
@@ -548,6 +560,7 @@ def main(with_keeper=False):
     (atp_run / "50-requests" / "video-06-uploads.json").write_text(json.dumps({"video": "06", "schema": 1, "uploads": {
         "a1 Image 1: C04 head": {"media_id": "m8", "file": str(atp_run / "55-references" / "video-06" / "a1" / "image1-character-C04-head.jpg"), "role": "image_references"},
         "a1 Image 2: P1 front padded": {"media_id": "m1", "file": str(atp_run / "55-references" / "video-06" / "a1" / "image2-product-P1-front-padded.png"), "role": "image_references"}}}))
+    ledger_add("video-06-request.json", "job-606")
     s, d, _ = req("GET", "/api/product-sample?run=20261001-000000-07&video=06&wrong=" + quote(six_take))
     check("a request that describes none of its inputs still gives its product sample through the video's uploads record (the product code in its key and file)",
           s == 200 and [x["asset_id"] for x in d["samples"]] == ["A14"], str(d)[:300])
@@ -559,9 +572,12 @@ def main(with_keeper=False):
     s, d, _ = req("GET", "/api/generation-assets?run=20261001-000000-07&video=06&wrong=" + quote(six_take))
     ga = d.get("assets") or []
     names = {a["name"]: a for a in ga}
-    check("every image the generation used is offered: the client's original (the automatic pick, ticked) and each file the uploads record names, by its own words",
-          s == 200 and names.get("product-front.png", {}).get("suggested") is True and not names.get("image1-character-C04-head.jpg", {"suggested": True})["suggested"]
-          and "image2-product-P1-front-padded.png" in names and names["image1-character-C04-head.jpg"]["label"] == "Image 1 · C04 head", str(ga)[:500])
+    check("only the images sent with that generation are offered, each once and every one ticked: the files uploaded under the request's media ids "
+          "(never the client's original), each with what it is and the job it was sent with",
+          s == 200 and sorted(names) == ["image1-character-C04-head.jpg", "image2-product-P1-front-padded.png"] and all(a["suggested"] for a in ga)
+          and names["image1-character-C04-head.jpg"]["kind"] == "character" and names["image2-product-P1-front-padded.png"]["kind"] == "product"
+          and names["image1-character-C04-head.jpg"]["label"] == "Image 1 · image1-character-C04-head.jpg · its original file is not recorded"
+          and names["image2-product-P1-front-padded.png"]["source"] == "sent with job job-606", str(ga)[:600])
     s, b, _ = req("GET", names["image1-character-C04-head.jpg"]["image_url"], raw=True) if "image1-character-C04-head.jpg" in names else (0, b"", None)
     check("each is served as a PNG thumbnail", s == 200 and b[:4] == b"\x89PNG")
     head = names.get("image1-character-C04-head.jpg", {}).get("path", "")
@@ -577,8 +593,9 @@ def main(with_keeper=False):
     check("a file that is not one of the images that generation used is refused", s == 400 and "not one of the images" in str(d), f"{s} {str(d)[:200]}")
     s, d, _ = req("PATCH", f"/api/misses/{pm}", {"sample_files": [], "title": "The wrong product sample, edited where it stands"})
     pmeta = json.loads((core.DATA / "samples" / str(pmo) / "meta.json").read_text(encoding="utf-8")) if pmo else {}
-    check("untouched again ([]) the automatic pick is back, and a title changed where it stands rebuilds the image with it",
-          s == 200 and d["miss"]["sample_files"] == [] and [x["file"] for x in pmeta.get("product_samples", [])] == ["product-front.png"]
+    check("untouched again ([]) every image sent with the generation is back in the band, and a title changed where it stands rebuilds the image with it",
+          s == 200 and d["miss"]["sample_files"] == [] and [x["file"] for x in pmeta.get("product_samples", [])] == ["image1-character-C04-head.jpg", "image2-product-P1-front-padded.png"]
+          and len(pmeta.get("images_sent") or []) == 2 and pmeta.get("product_sample_chosen") is False
           and pmeta.get("title") == "The wrong product sample, edited where it stands", str(pmeta)[:300])
     req("DELETE", f"/api/misses/{pm}")
     print("\n[a take joined from several generations: the prompt of each generation a sample's frames come from, under the seconds it made]")
@@ -605,6 +622,8 @@ def main(with_keeper=False):
     for clip, text in (("c1", "PROMPT-C1 the can stands on the desk."), ("c2", "PROMPT-C2 the lights go off and the can stays.")):
         (atp_run / "50-requests" / f"video-07-{clip}-request.json").write_text(json.dumps({"video": "07", "clip": clip, "attempt": 1,
             "params": {"model": "wan3_0_prime", "duration": 3, "prompt": text, "medias": [{"role": "image_references", "value": "m1"}]}}), encoding="utf-8")
+    ledger_add("video-07-c1-request.json", "job-701")
+    ledger_add("video-07-c2-request.json", "job-702")
     clean7 = str(v7 / "clean.mp4")
     s, d, _ = req("GET", "/api/request-prompt?run=20261001-000000-07&video=07&path=" + quote(clean7))
     segs7 = d.get("segments") or []
@@ -666,8 +685,9 @@ def main(with_keeper=False):
     check("the keeper's digest names each prompt in a word with its generation of the take and the seconds it made, nothing explained twice",
           f"S{smo2}-P1 · FLAWED · generation 2 of 2 of Video A (2–5 s) · made Frames 1 and 2 of S{smo2}" in dg_lines and "holds generations of a take made of" not in dg_lines, dg_lines[-700:])
     s, d, _ = req("GET", "/api/generation-assets?run=20261001-000000-07&video=07&wrong=" + quote(clean7))
-    check("the product sample's images come from both generations' requests", s == 200 and {a["request"] for a in d.get("assets", [])} >= {"video-07-c1-request.json"}
-          or {a["request"] for a in d.get("assets", [])} >= {"video-07-c2-request.json"}, str(d)[:300])
+    check("a take joined from two generations offers the images its generations were sent, each once (one both clips were sent shows under the first "
+          "clip, named with it)", s == 200 and [(a["request"], a["label"]) for a in d.get("assets", [])]
+          == [("video-07-c1-request.json", "c1 · Image 1 · pack.png · its original file is not recorded")], str(d)[:300])
     s, d, _ = req("PATCH", f"/api/misses/{sm}", {"wrong_prompt": "One prompt typed by the admin."})
     check("a single prompt typed over the generations' prompts replaces them", s == 200 and d["miss"]["wrong_segments"] == [] and d["miss"]["wrong_prompt"] == "One prompt typed by the admin.", str(d)[:200])
     req("DELETE", f"/api/misses/{sm}")
@@ -1217,7 +1237,7 @@ def main(with_keeper=False):
                                                                                                 (_Im.new("RGB", (400, 500)), "Image 3 · = b-name"), (_Im.new("RGB", (300, 300)), _long)])
     check("the band of three product images with a long name grows to hold every name whole", _three.height >= _one.height, f"{_one.size} {_three.size}")
     print("\n[the product images by the client's original files; the judge decides which and how many (the admin, 2026-10-30)]")
-    from loupe_app import misses as _pm, qc as _pq
+    from loupe_app import compose as _cmp_band, misses as _pm, qc as _pq
     from PIL import Image as _PI
     ref9 = TMP / "reference-folder"
     v9 = atp_run / "55-references" / "video-09" / "a1"
@@ -1234,6 +1254,7 @@ def main(with_keeper=False):
     (atp_run / "50-requests" / "video-09-uploads.json").write_text(json.dumps({"video": "09", "schema": 1, "uploads": {
         "a1 Image 1: person": {"media_id": "m91", "file": str(v9 / "image1-character-person.png"), "role": "image_references"},
         "a1 Image 2: P1 front padded": {"media_id": "m92", "file": str(v9 / "image2-product-P1-front-padded.png"), "role": "image_references"}}}))
+    ledger_add("video-09-request.json", "job-909")
     srcs9 = runs.input_sources(atp_run, "09")
     r92, r91 = srcs9.get("m92") or {}, srcs9.get("m91") or {}
     check("each input's source is read from the request (a source record, else a build note) and found by its media id and by the file the uploads record names",
@@ -1256,10 +1277,12 @@ def main(with_keeper=False):
     s, d, _ = req("GET", "/api/generation-assets?run=20261001-000000-07&video=09&wrong=" + quote(str(take9)))
     ga9 = {a["name"]: a for a in d.get("assets") or []}
     gp9 = ga9.get("image2-product-P1-front-padded.png") or {}
-    check("the images offered for a product sample are named by the request input, the asset id and the client's original file name, with how each was prepared",
-          s == 200 and (ga9.get("product-front.png") or {}).get("label") == "Image 2 · A14 · product-front.png"
-          and (gp9.get("label"), gp9.get("original_name"), gp9.get("prepared")) == ("Image 2 · A14 · product-front.png", "product-front.png", "padded to 9:16 on white")
-          and (ga9.get("person.png") or {}).get("label") == "Image 1 · A28 · person.png", str(list(ga9.values()))[:800])
+    gc9 = ga9.get("image1-character-person.png") or {}
+    check("the images offered are the two sent with the generation, each named by its request input, its asset id and the client's original file name, "
+          "with what it is and how it was prepared; the client's originals themselves are not offered",
+          s == 200 and sorted(ga9) == ["image1-character-person.png", "image2-product-P1-front-padded.png"]
+          and (gp9.get("label"), gp9.get("original_name"), gp9.get("prepared"), gp9.get("kind")) == ("Image 2 · A14 · product-front.png", "product-front.png", "padded to 9:16 on white", "product")
+          and (gc9.get("label"), gc9.get("kind"), gc9.get("job")) == ("Image 1 · A28 · person.png", "character", "job-909"), str(list(ga9.values()))[:800])
     s, d, _ = req("POST", "/api/misses", {"run": "20261001-000000-07", "video": "09", "title": "The product images of a sample", "model": "wan3_0_prime",
                                           "wrong_path": str(take9), "wrong_label": "a1 · raw.mp4"})
     pm9 = d["miss"]["id"] if s == 200 else 0
@@ -1267,16 +1290,21 @@ def main(with_keeper=False):
     mo9 = d["moment"]["moment_id"] if s == 200 else 0
     meta9 = json.loads((core.DATA / "samples" / str(mo9) / "meta.json").read_text(encoding="utf-8")) if mo9 else {}
     ps9 = meta9.get("product_samples") or []
-    check("a sample keeps each product image with its request input, asset id, the client's original (by name for every reader) and how it was prepared",
-          [(x.get("image"), x.get("asset"), x.get("original_name"), x.get("prepared"), x.get("label"), x.get("recorded")) for x in ps9]
-          == [("Image 2", "A14", "product-front.png", "padded to 9:16 on white", "Image 2 · A14 · product-front.png", "build")], str(ps9)[:500])
+    check("by default the band shows every image the generation was sent, each kept with its input, asset id, what it is, the client's original (by "
+          "name for every reader) and how it was prepared; the sample also keeps what was sent",
+          [(x.get("image"), x.get("asset"), x.get("kind"), x.get("original_name"), x.get("prepared"), x.get("label"), x.get("recorded")) for x in ps9]
+          == [("Image 1", "A28", "character", "person.png", "cropped above the collar", "Image 1 · A28 · person.png", "source"),
+              ("Image 2", "A14", "product", "product-front.png", "padded to 9:16 on white", "Image 2 · A14 · product-front.png", "build")]
+          and [x.get("file") for x in meta9.get("images_sent") or []] == ["image1-character-person.png", "image2-product-P1-front-padded.png"]
+          and meta9.get("product_sample_chosen") is False, str(meta9)[:600])
     s, d, _ = req("GET", f"/api/qc/samples/S{mo9}?prompts=1", key=kq)
     smp9 = d.get("sample") or {}
     rec9 = smp9.get("record", "")
     dig9 = _pq.records_of(_pq._digest()).get(f"S{mo9}", "")
     check("the judge reads which product images a sample's generation was given and how many, each by the client's original file: one line in the "
           "digest, one line per image with its preparation in the full record, and the same in the sample's answer",
-          f"PRODUCT IMAGES OF S{mo9} (1): Image 2 · A14 · product-front.png" in dig9
+          f"PRODUCT IMAGES OF S{mo9} (1): Image 2 · A14 · product-front.png" in dig9 and f"OTHER IMAGES OF S{mo9} (1): Image 1 · A28 · person.png (character)" in dig9
+          and f"  S{mo9} · Image 1 · A28 · person.png, prepared: cropped above the collar (character)" in rec9
           and f"  S{mo9} · Image 2 · A14 · product-front.png, prepared: padded to 9:16 on white" in rec9
           and smp9.get("product_images") == [{"image": "Image 2", "asset": "A14", "file": "product-front.png", "prepared": "padded to 9:16 on white", "recorded": True}]
           and str(ref9) not in dig9 and str(ref9) not in rec9, dig9[:500] + " || " + rec9[:500])
@@ -1306,6 +1334,45 @@ def main(with_keeper=False):
           "PRODUCT IMAGES (the admin, 2026-10-30)" in _pq.ROLE and "ride last among the image inputs" in _pq.ROLE and "<the original file's name>" in _pq.ROLE
           and '"product_images":[<see PRODUCT IMAGES; [] keeps the draft\'s>]' in _pq.ROLE
           and '"product_images":[<optional, see PRODUCT IMAGES: for the regeneration>]' in _pq.ROLE and "PRODUCT IMAGES OF S.." in _pq.LIB_HEADER)
+    s, d, _ = req("PATCH", f"/api/misses/{pm9}", {"sample_files": [str(ref9 / "product-front.png")]})
+    meta9b = json.loads((core.DATA / "samples" / str(mo9) / "meta.json").read_text(encoding="utf-8")) if mo9 else {}
+    check("a tick on the client's original stands for the file sent from it: the report keeps the sent file, the band shows it alone",
+          s == 200 and [Path(x["path"]).name for x in d["miss"]["sample_files"]] == ["image2-product-P1-front-padded.png"]
+          and [x.get("file") for x in meta9b.get("product_samples") or []] == ["image2-product-P1-front-padded.png"] and len(meta9b.get("images_sent") or []) == 2
+          and meta9b.get("product_sample_chosen") is True, str(meta9b)[:400])
+    rq9p = atp_run / "50-requests" / "video-09-request.json"
+    rq9_text = rq9p.read_text(encoding="utf-8")
+    rq9p.write_text(rq9_text.replace("Video nine:", "Video nine, edited after it was sent:"), encoding="utf-8")
+    changed9 = runs.sent_images("20261001-000000-07", "09", str(take9), str(take9))
+    rq9p.write_text(rq9_text, encoding="utf-8")
+    rq10p = atp_run / "50-requests" / "video-10-request.json"
+    rq10p.write_text(json.dumps({"params": {"model": "wan3_0_prime", "prompt": "Video ten.", "medias": [
+        {"role": "image_references", "value": "m10", "file": str(v9 / "image1-character-person.png")}]}}), encoding="utf-8")
+    never10 = runs.sent_images("20261001-000000-07", "10")
+
+    def ledger10(status: str):
+        st10 = json.loads((atp_run / "state.json").read_text(encoding="utf-8"))
+        st10["submissions"] = [x for x in st10["submissions"] if x.get("video") != "10"] + [
+            {"video": "10", "lane": "10", "attempt": 1, "status": status, "job_id": "job-1010", "request_file": str(rq10p),
+             "fingerprint": runs.request_fingerprint(json.loads(rq10p.read_text(encoding="utf-8")))}]
+        (atp_run / "state.json").write_text(json.dumps(st10), encoding="utf-8")
+        return runs.sent_images("20261001-000000-07", "10")
+    failed10, rejected10 = ledger10("failed"), ledger10("rejected")
+    check("nothing unverified is offered: a request changed since the ledger recorded it, one the ledger never submitted and one whose job failed (it "
+          "made no video) give no image; a job QC rejected did make its video, so what it was sent is shown",
+          changed9 == [] and never10 == [] and failed10 == [] and [x["name"] for x in rejected10] == ["image1-character-person.png"]
+          and len(runs.sent_images("20261001-000000-07", "09", str(take9), str(take9))) == 2, f"{changed9} {never10} {failed10} {rejected10}"[:400])
+    check("the band takes up to four images in a row and more in two rows; its heading says how many of the images sent with the generation it shows",
+          _cmp_band.band_rows(4) == [4] and _cmp_band.band_rows(5) == [3, 2] and _cmp_band.band_rows(7) == [4, 3] and _cmp_band.band_rows(0) == []
+          and _cmp_band.band_heading(3, {"images_sent": [{}, {}, {}]}) == "3 IMAGES SENT WITH THIS GENERATION"
+          and _cmp_band.band_heading(2, {"images_sent": [{}, {}, {}]}) == "2 OF THE 3 IMAGES SENT WITH THIS GENERATION"
+          and _cmp_band.band_heading(1, {}) == "PRODUCT SAMPLE · 1 IMAGE USED IN THIS VIDEO" and _pm.SAMPLE_FILES_MAX == 9)
+    reg_rd = TMP / "registry-forms"
+    (reg_rd / "30-assets").mkdir(parents=True, exist_ok=True)
+    (reg_rd / "30-assets" / "registry.md").write_text("| id | type | role | files |\n|---|---|---|---|\n| NG-EF6-SPE | product | the carton | A44, A45 front-angled |\n"
+                                                      "| CH12 | character | the employee | A16 |\n| P-CAN | the can | A14 |\n", encoding="utf-8")
+    check("a registry's product rows are read in either form runs write (an id starting with P-, or a type cell that says product), never a character's",
+          runs._registry_product_rows(reg_rd) == [("NG-EF6-SPE", ["A44", "A45"]), ("P-CAN", ["A14"])], str(runs._registry_product_rows(reg_rd)))
     req("DELETE", f"/api/misses/{pm9}")
     print("\n[cleanup]")
     httpd.shutdown()

@@ -316,15 +316,23 @@ def sample_record(s: dict, mode: str = "digest", lib=None, more=None) -> str:
     out.append(f"WHAT {sid} IS: " + what)
     out.append(f"WHERE {sid} CAME FROM: model {s.get('model') or 'any'} · " + (_origin(s) or "no run recorded").replace(" | ", " · ")
                + " · kinds: " + (", ".join(s.get("kinds") or []) or ("-" if compact else "not tagged (judge from the words and the image)")))
-    pim = product_images(s)
+    pim, oth = product_images(s), other_images(s)
     if pim:          # how many product images its generation was given, and which (the admin, 2026-10-30)
         head = f"PRODUCT IMAGES OF {sid} ({len(pim)}" + ("" if compact else f": the product reference image{'s' if len(pim) > 1 else ''} its generation was "
-                                                       "given, as its picture shows them, each by the client's original file") + "):"
+                                                       "given, each by the client's original file") + "):"
         if compact:
             out.append(head + " " + "; ".join(_pim_words(x, False) for x in pim))
         else:
             out.append(head)
             out += [f"  {sid} · " + _pim_words(x, True) for x in pim]
+    if oth:          # the other images it was sent (a character, a frame), so the picture's band reads whole
+        head = f"OTHER IMAGES OF {sid} ({len(oth)}" + ("" if compact else ": the other images its generation was sent, not product images, what each is in brackets") + "):"
+        words = [_pim_words(x, not compact) + (f" ({x['kind']})" if x.get("kind") else "") for x in oth]
+        if compact:
+            out.append(head + " " + "; ".join(words))
+        else:
+            out.append(head)
+            out += [f"  {sid} · " + w for w in words]
     out.append(f"THE GENERATION MISS R{mid} OF {sid}" + ("" if compact else " (the admin's report it belongs to)") + f": {s.get('title', '')}"
                + (f" — {cap(s['explanation'], 600)}" if s.get("explanation") else ""))
     words = []
@@ -476,7 +484,7 @@ LIB_HEADER = ("One record per sample, each from its line '=== SAMPLE S.. · gene
               "its frames are all called RIGHT, how it looks when it is right, with the correct version's prompt alone; SCENARIO OF EXAMPLES ONLY: "
               "its frames are all Examples, taken from one video, each a suggestion of what could have changed or how it could have been done another way, "
               "neither a bad generation nor a correct one); WHERE S.. CAME FROM (model, run, video, time, mode, the product when the admin named it, the "
-              "kinds; an empty kinds field, '-', means the admin did not tag the sample: judge from the words and the image); PRODUCT IMAGES OF S.. (how many product reference images its generation was given and which, as its picture shows them: each by the request input it was sent as, the client's asset id and the original file's name, and in a full record how it was prepared; 'its original file is not recorded' when the run kept no record of it); THE GENERATION MISS R.. OF S.. "
+              "kinds; an empty kinds field, '-', means the admin did not tag the sample: judge from the words and the image); PRODUCT IMAGES OF S.. (how many product reference images its generation was given and which, as the run's records show them sent with its job (an older sample: as its picture shows them): each by the request input it was sent as, the client's asset id and the original file's name, and in a full record how it was prepared; 'its original file is not recorded' when the run kept no record of it); OTHER IMAGES OF S.. (the other images its generation was sent, such as the character, what each is in brackets); THE GENERATION MISS R.. OF S.. "
               "(the report's title and explanation, the admin's own words); THE ADMIN'S WORDS FOR S.. (each tied to the frames it speaks of: what is wrong at "
               "the marked place of the frames called WRONG, what the frames called RIGHT show, the idea, what could have been better, what the AI agents "
               "missed, the admin's one-line note on the prompt); FRAMES OF S.. (one line per frame as its image tags it: its number, WRONG, RIGHT or EXAMPLE, "
@@ -510,24 +518,40 @@ HEADER_SIG = hashlib.sha1(LIB_HEADER.encode("utf-8")).hexdigest()[:12]
 _PIM_CACHE: dict = {}
 
 
-def product_images(s: dict) -> list[dict]:
-    """The product images a sample's picture shows, as its meta.json product_samples keeps them: [{image, asset, original_name, prepared, label, ...}]."""
+def _generation_images(s: dict) -> tuple[list, list]:
+    """(the product images, the other images) a sample's generation was sent, from its meta.json: images_sent when the run's records verified what
+    was sent (by each image's kind), else the images its picture shows (product_samples: an older sample, or a run whose records verify nothing)."""
     try:
         mp = Path(s["composite_path"]).parent / "meta.json"
         sm = mp.stat()
         mt = (sm.st_mtime_ns, sm.st_size)          # its time and size: a rewrite inside one clock tick is still seen
     except (OSError, KeyError, TypeError):
-        return []
+        return [], []
     hit = _PIM_CACHE.get(str(mp))
     if hit and hit[0] == mt:
         return hit[1]
     try:
-        ps = json.loads(mp.read_text(encoding="utf-8")).get("product_samples") or []
-    except (OSError, ValueError, AttributeError):
-        ps = []
-    out = [x for x in ps if isinstance(x, dict)]
-    _PIM_CACHE[str(mp)] = (mt, out)
-    return out
+        meta = json.loads(mp.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        meta = {}
+    meta = meta if isinstance(meta, dict) else {}
+    sent = [x for x in meta.get("images_sent") or [] if isinstance(x, dict)]
+    shown = [x for x in meta.get("product_samples") or [] if isinstance(x, dict)]
+    base = sent or shown
+    res = ([x for x in base if x.get("kind", "") in (("product",) if sent else ("", "product"))],
+           [x for x in base if x.get("kind", "") not in (("product",) if sent else ("", "product"))])
+    _PIM_CACHE[str(mp)] = (mt, res)
+    return res
+
+
+def product_images(s: dict) -> list[dict]:
+    """The product images a sample's generation was given, as its meta.json keeps them: [{image, asset, original_name, prepared, label, kind, ...}]."""
+    return _generation_images(s)[0]
+
+
+def other_images(s: dict) -> list[dict]:
+    """The other images a sample's generation was sent (a character, a start frame ...), each with its kind when the run's records tell it."""
+    return _generation_images(s)[1]
 
 
 def _pim_words(x: dict, long: bool) -> str:

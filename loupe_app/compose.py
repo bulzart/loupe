@@ -179,6 +179,27 @@ def _wrap(d, text: str, f, width: int) -> list[str]:
     return lines
 
 
+def band_rows(n: int) -> list[int]:
+    """How many pictures each row of the band holds: up to four in one row, more in two rows, the longer first."""
+    if n <= 0:
+        return []
+    if n <= 4:
+        return [n]
+    top = -(-n // 2)
+    return [top, n - top]
+
+
+def band_heading(n: int, meta: dict | None) -> str:
+    """The band's heading: how many of the images sent with this generation it shows (meta images_sent, verified from the run's records), else how
+    many product samples it shows (an older sample, or a run whose records verify nothing it sent)."""
+    sent = len((meta or {}).get("images_sent") or []) if isinstance(meta, dict) else 0
+    if sent and n == sent:
+        return f"{sent} IMAGE{'S' if sent > 1 else ''} SENT WITH THIS GENERATION"
+    if sent:
+        return f"{n} OF THE {sent} IMAGES SENT WITH THIS GENERATION"
+    return f"PRODUCT SAMPLE{'S' if n > 1 else ''} · {n} IMAGE{'S' if n > 1 else ''} USED IN THIS VIDEO"
+
+
 def _wrap_hard(d, text: str, f, width: int) -> list[str]:
     """_wrap, and a word longer than the width (a file name) broken at its last '-', '_' or space that fits (a '.' only when none fits past the
     first third, so 'Front.png' stays whole), else where it must: nothing is cut."""
@@ -387,17 +408,21 @@ def build(frames: list[dict], meta: dict, details: str, correct_note: str, inclu
         cap.insert(0, (f_leg, (170, 174, 184), _wrap(scratch, t, f_leg, cap_w)))
     text_h = 36 + sum(len(ls) * (f.size + 9) + 12 for f, _c, ls in cap) if cap else 0
     cap_h = max(text_h, 300) if ps else text_h        # the product needs some height to be recognised
-    # the product sample band (the admin, 2026-10-30): how many images it shows, all used by this video's generation, and each one's full name under
-    # its own picture, wrapped, never cut; the band grows when the names need the room
+    # the band (the admin, 2026-10-30): how many of the images sent with this generation it shows, and each one's full name under its own picture,
+    # wrapped, never cut; up to four in a row, more in two rows; the band grows when the names need the room
     f_ps, f_ps_head = font(15, True), font(16, True)
     ps_box_w = (W - M) - (W // 2 + M) - 24
-    ps_cell = ps_box_w // max(1, len(ps))
+    ps_rows = band_rows(len(ps))
+    ps_cell = ps_box_w // max(ps_rows or [1])
     ps_names = [_wrap_hard(scratch, str(lab or ""), f_ps, ps_cell - 12) for _im, lab in ps]
-    ps_head = _wrap_hard(scratch, (f"PRODUCT SAMPLE{'S' if len(ps) > 1 else ''} · {len(ps)} IMAGE{'S' if len(ps) > 1 else ''} USED IN "
-                                   "THIS VIDEO"), f_ps_head, ps_box_w) if ps else []
-    ps_text_h = (10 + len(ps_head) * (f_ps_head.size + 6) + 6 + max((len(x) for x in ps_names), default=0) * (f_ps.size + 5) + 18) if ps else 0
+    ps_head = _wrap_hard(scratch, band_heading(len(ps), meta), f_ps_head, ps_box_w) if ps else []
+    row_names_h, k = [], 0
+    for n_row in ps_rows:
+        row_names_h.append(max(len(x) for x in ps_names[k:k + n_row]) * (f_ps.size + 5))
+        k += n_row
+    ps_text_h = (10 + len(ps_head) * (f_ps_head.size + 6) + 6 + sum(h_ + 14 for h_ in row_names_h) + 4) if ps else 0
     if ps:
-        cap_h = max(cap_h, 232 + ps_text_h)          # about 200 px left for the pictures
+        cap_h = max(cap_h, 32 + (200 if len(ps_rows) == 1 else 140 * len(ps_rows)) + ps_text_h)      # about 200 px for the pictures of one row
 
     head_h, tag_room = ((104 if two else 74) if n else 40), (70 if two else 40)
     row_h = [max(pics[i].height for i in row) for row in rows]
@@ -489,17 +514,28 @@ def build(frames: list[dict], meta: dict, details: str, correct_note: str, inclu
             for ln in ps_head:
                 d.text((x0 + 12, hy), ln, font=f_ps_head, fill=(40, 42, 50))
                 hy += f_ps_head.size + 6
-            names_h = max(len(x) for x in ps_names) * (f_ps.size + 5)
-            iy0 = hy + 6
-            ih_all = max(40, y1 - 18 - names_h - iy0)
-            cell = (x1 - x0 - 24) // len(ps)
-            for i, ((pim, _lab), names) in enumerate(zip(ps, ps_names)):
-                sc = min((cell - 12) / pim.width, ih_all / pim.height)
-                nw, nh = max(1, round(pim.width * sc)), max(1, round(pim.height * sc))
-                cx = x0 + 12 + i * cell
-                img.paste(pim.resize((nw, nh), Image.LANCZOS), (cx + (cell - nw) // 2, iy0 + (ih_all - nh) // 2))
-                ny = iy0 + ih_all + 8
-                for ln in names:          # its whole name, centred under its own picture
-                    d.text((cx + (cell - d.textlength(ln, font=f_ps)) / 2, ny), ln, font=f_ps, fill=(40, 42, 50))
-                    ny += f_ps.size + 5
+            iy = hy + 6
+            cell = (x1 - x0 - 24) // max(ps_rows)
+            avail = y1 - 4 - iy
+            ih_max = max(40, (avail - sum(h_ + 14 for h_ in row_names_h)) // len(ps_rows))
+            row_ih, k = [], 0
+            for n_row in ps_rows:          # a row as tall as its tallest picture at the cell's width, at most its share of the band
+                row_ih.append(max(40, min(ih_max, max(round(ps[k + j][0].height * (cell - 12) / max(1, ps[k + j][0].width)) for j in range(n_row)))))
+                k += n_row
+            iy += max(0, (avail - sum(r_ + h_ + 14 for r_, h_ in zip(row_ih, row_names_h))) // 2)      # the pictures and their names centred together
+            k = 0
+            for n_row, names_h, ih_row in zip(ps_rows, row_names_h, row_ih):
+                rx = x0 + 12 + ((x1 - x0 - 24) - n_row * cell) // 2          # a shorter row is centred
+                for j in range(n_row):
+                    (pim, _lab), names = ps[k + j], ps_names[k + j]
+                    sc = min((cell - 12) / pim.width, ih_row / pim.height)
+                    nw, nh = max(1, round(pim.width * sc)), max(1, round(pim.height * sc))
+                    cx = rx + j * cell
+                    img.paste(pim.resize((nw, nh), Image.LANCZOS), (cx + (cell - nw) // 2, iy + (ih_row - nh) // 2))
+                    ny = iy + ih_row + 8
+                    for ln in names:          # its whole name, centred under its own picture
+                        d.text((cx + (cell - d.textlength(ln, font=f_ps)) / 2, ny), ln, font=f_ps, fill=(40, 42, 50))
+                        ny += f_ps.size + 5
+                iy += ih_row + names_h + 14
+                k += n_row
     return img, zoom, annotated

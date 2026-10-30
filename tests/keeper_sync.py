@@ -662,6 +662,17 @@ fresh, current, text = ask()
 check("a second product image re-syncs it again, the count with it", fresh and current
       and f"PRODUCT IMAGES OF S{pi_mo} (2): Image 2 · A82 · Carton-Front.png; Image 3 · A83 · Carton-Back.png" in line_of(pi_mo), line_of(pi_mo)[:400])
 check("the boot message explains the PRODUCT IMAGES section of a record", "PRODUCT IMAGES OF S.." in qc.LIB_HEADER)
+pi_meta["images_sent"] = [{"asset": "A47", "label": "Image 1 · A47 · face.jpg", "file": "image1-character-face.jpg", "image": "Image 1", "kind": "character",
+                           "original": "C:/client/people/face.jpg", "original_name": "face.jpg", "prepared": "a head crop", "recorded": "source"},
+                          {"asset": "A82", "label": "Image 2 · A82 · Carton-Front.png", "file": "image2-product-front.png", "image": "Image 2", "kind": "product",
+                           "original": "C:/client/carton/Carton-Front.png", "original_name": "Carton-Front.png", "prepared": "padded", "recorded": "source"}]
+pi_meta_p.write_text(json.dumps(pi_meta), encoding="utf-8")
+fresh, current, text = ask()
+line = line_of(pi_mo)
+check("what the generation was sent re-syncs the keeper: the product image under PRODUCT IMAGES, the character under OTHER IMAGES, never as a product",
+      fresh and current and f"PRODUCT IMAGES OF S{pi_mo} (1): Image 2 · A82 · Carton-Front.png" in line
+      and f"OTHER IMAGES OF S{pi_mo} (1): Image 1 · A47 · face.jpg (character)" in line and "Image 3 · A83" not in line, line[:500])
+check("the boot message explains the OTHER IMAGES section too", "OTHER IMAGES OF S.." in qc.LIB_HEADER)
 misses.delete(pi_id, "test") if hasattr(misses, "delete") else None
 ask()
 

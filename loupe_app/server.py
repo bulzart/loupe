@@ -442,12 +442,13 @@ def product_sample_image(h):
 
 @route("GET", "/api/generation-assets", scope="runs:read")
 def generation_assets(h):
-    """Every image a take's generation used (the client's original, the file sent, the uploads record's file), the automatic pick marked: the admin ticks
-    the product sample from them (the user, 2026-10-28)."""
+    """The images a take's generation was sent, verified from the run's records, each ticked by default: the admin chooses which the sample's band shows
+    (the user, 2026-10-28; the admin, 2026-10-30: only the images sent with that generation)."""
     run, video, wrong = h.q.get("run", ""), h.q.get("video", ""), h.q.get("wrong", "")
     qs = "run=%s&video=%s&wrong=%s" % (quote(run), quote(video), quote(wrong))
     h.send_json({"ok": True, "assets": [{"path": str(a["path"]), "name": a["name"], "label": a["label"], "source": a["source"], "asset_id": a["asset_id"],
-                                          "original_name": a.get("original_name", ""), "prepared": a.get("prepared", ""),
+                                          "original_name": a.get("original_name", ""), "prepared": a.get("prepared", ""), "kind": a.get("kind", ""),
+                                          "words": a.get("words", ""), "image": a.get("image", ""), "original": str(a.get("original") or ""), "job": a.get("job", ""),
                                           "request": a["request"], "suggested": a["suggested"], "image_url": f"/api/generation-assets/image?{qs}&i={i}"}
                                          for i, a in enumerate(runs.generation_assets(run, video, wrong, path=wrong))]})
 

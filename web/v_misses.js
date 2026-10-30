@@ -332,8 +332,9 @@ export async function work(qs) {
 
   const useSample = h('input', { type: 'checkbox', checked: miss ? miss.product_sample !== false : true });
   const sampleBox = h('div', { class: 'small', style: 'margin-top:12px' });
-  // the product sample: every image the generation of Video A's take used (the client's original, the file sent to the model, the file the uploads record
-  // names), the automatic pick ticked; what the admin ticks is kept with the report (sample_files) and goes into its images
+  // the band's images (the admin, 2026-10-30): exactly the images sent with the generation of Video A's take, verified from the run's records, every
+  // one ticked by default; what the admin ticks is kept with the report (sample_files) and goes into its images (a tick kept on a client's original
+  // stands for the file sent from it)
   let assetsTouched = false;
   let assetBoxes = [];      // {cb, path} of every image offered
   const pickedAssets = () => assetBoxes.filter((x) => x.cb.checked).map((x) => x.path);
@@ -343,28 +344,29 @@ export async function work(qs) {
     try {
       const d = await api('GET', `/api/generation-assets?run=${encodeURIComponent(qs.run)}&video=${encodeURIComponent(qs.video)}&wrong=${encodeURIComponent(wl)}`, undefined, true);
       const chosen = new Set(((miss && miss.sample_files) || []).map((x) => x.path));
-      const anyChosen = d.assets.some((a) => chosen.has(a.path));
+      const isChosen = (a) => chosen.has(a.path) || (!!a.original && chosen.has(a.original));
+      const anyChosen = d.assets.some(isChosen);
       if (chosen.size && !anyChosen) assetsTouched = true;      // ticked for another take: this take's automatic pick stands until you tick
-      const ticked = (a) => (anyChosen ? chosen.has(a.path) : a.suggested);
-      if (!miss && !productTyped) { const s = d.assets.filter((a) => a.suggested); if (s.length) product.value = [...new Set(s.map((x) => x.label.replace(/^Image \d+ · /, '')))].join(' + '); }
+      const ticked = (a) => (anyChosen ? isChosen(a) : a.suggested);
+      if (!miss && !productTyped) { const w = [...new Set(d.assets.filter((a) => a.kind === 'product' && a.words).map((a) => a.words))]; if (w.length) product.value = w.join(' + '); }
       assetBoxes = [];
-      if (!d.assets.length) { sampleBox.replaceChildren(h('span', { class: 'muted' }, 'No image input of this generation was found in its run, so the description takes the full width of the bottom band.')); return; }
+      if (!d.assets.length) { sampleBox.replaceChildren(h('span', { class: 'muted' }, 'No image sent with this generation is recorded in its run (its request is not in the ledger or changed since it was submitted, or its uploads name no file), so the description takes the full width of the bottom band.')); return; }
       const cells = d.assets.map((a) => {
         const cb = h('input', { type: 'checkbox', checked: ticked(a), 'data-asset': a.path });
         assetBoxes.push({ cb, path: a.path });
         cb.addEventListener('change', () => {
           assetsTouched = true;
-          if (pickedAssets().length > 4) { cb.checked = false; toast('At most four images in the product sample', true); }
+          if (pickedAssets().length > 9) { cb.checked = false; toast('At most nine images in the band', true); }
           useSample.checked = pickedAssets().length > 0;
         });
-        return h('label', { class: 'card', style: 'padding:6px;width:150px;margin:0;cursor:pointer', title: `${a.source} · ${a.name}${a.original_name && a.original_name !== a.name ? ' · made from ' + a.original_name : ''}${a.prepared ? ' · prepared: ' + a.prepared : ''}${a.request ? ' · ' + a.request : ''}` },
+        return h('label', { class: 'card', style: 'padding:6px;width:150px;margin:0;cursor:pointer', title: `${a.kind ? a.kind + ' · ' : ''}${a.source} · the file sent: ${a.name}${a.original_name ? ' · made from ' + a.original_name : ' · its original file is not recorded'}${a.prepared ? ' · prepared: ' + a.prepared : ''}${a.request ? ' · ' + a.request : ''}` },
           h('img', { src: a.image_url, alt: a.label, style: 'width:100%;height:110px;object-fit:contain;border-radius:6px;background:#cdd0d6' }),
           h('div', { class: 'row', style: 'gap:4px;margin-top:4px;align-items:flex-start;flex-wrap:nowrap' }, cb, h('span', { class: 'small' }, a.label)),
-          h('div', { class: 'muted small' }, a.source + (a.suggested ? ' · picked automatically' : '')));
+          h('div', { class: 'muted small' }, (a.kind ? a.kind + ' · ' : '') + a.source));
       });
       sampleBox.replaceChildren(h('div', {},
-        h('label', { class: 'small' }, useSample, ' Show the product sample in the saved image (right half of the bottom band)'),
-        h('div', { class: 'muted small', style: 'margin:4px 0 6px' }, 'Every image this generation used: the client’s original, the file sent to the model and the file the uploads record names. Tick the right one(s), up to four: they go into the saved image. Untouched, the automatic pick is used.'),
+        h('label', { class: 'small' }, useSample, ' Show the images sent with this generation in the saved image (right half of the bottom band)'),
+        h('div', { class: 'muted small', style: 'margin:4px 0 6px' }, 'The images this generation was sent with its job, as the run recorded them (the request the ledger submitted, unchanged since, and the file uploaded under each media id); nothing else is offered. All are ticked: untick one to leave it out of the saved image, tick it again to bring it back.'),
         h('div', { class: 'row', style: 'gap:10px;flex-wrap:wrap;align-items:stretch' }, cells)));
     } catch (_) { sampleBox.replaceChildren(); }
   };

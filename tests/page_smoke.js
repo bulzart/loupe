@@ -73,8 +73,8 @@ const api = async (method, url, body) => {
     segments: [{ clip: 'c1', attempt: 1, request: 'video-03-c1-request.json', file: 'c1/a1/trimmed.mp4', t_from: 0, t_to: 6.1, prompt: 'P-C1 the first generation' },
       { clip: 'c2', attempt: 1, request: 'video-03-c2-request.json', file: 'c2/a1/trimmed.mp4', t_from: 6.1, t_to: 12.433, prompt: 'P-C2 the second generation' }] } : { prompt: 'P-ONE', request: 'video-03-request.json', attempt: 1 };
   if (url.startsWith('/api/generation-assets')) return { assets: withSample ? [
-    { path: 'P.png', name: 'x.png', label: 'Image 2 · the sealed test can', source: "the client's original", asset_id: 'A14', request: 'video-03-request.json', suggested: true, image_url: '/x.png' },
-    { path: 'H.png', name: 'h.png', label: 'Image 1 · C04 head', source: 'as the uploads record names it', asset_id: '', request: 'video-03-request.json', suggested: false, image_url: '/h.png' }] : [] };
+    { path: 'P.png', name: 'x.png', label: 'Image 2 · the sealed test can', source: 'sent with job job-1', kind: 'product', words: 'the sealed test can', original: 'C:/client/P-front.png', asset_id: 'A14', request: 'video-03-request.json', suggested: true, image_url: '/x.png' },
+    { path: 'H.png', name: 'h.png', label: 'Image 1 · C04 head', source: 'sent with job job-1', kind: 'character', words: 'the man', asset_id: '', request: 'video-03-request.json', suggested: true, image_url: '/h.png' }] : [] };
   return {};
 };
 const code = read('v_misses.js').replace(/^import .*$/gm, '').replace(/^export (async )?function/gm, '$1function') + '\nreturn { work, pick };';
@@ -225,11 +225,11 @@ const ok = (name, cond, info = '') => { console.log((cond ? '  ok   ' : '  FAIL 
   const root8 = await work({ run: 'R', video: '03' });
   await new Promise((r) => setTimeout(r, 0));
   const prodIn = walk(root8, (e) => e.tag === 'input' && (e.attrs.placeholder || '').startsWith('the product and its details'))[0];
-  ok('a new report takes the product its request used, in the request\'s own words', prodIn && prodIn.value === 'the sealed test can', prodIn && prodIn.value);
+  ok('a new report takes the product its request used, in the request\'s own words (the product images\' words, never the character\'s)', prodIn && prodIn.value === 'the sealed test can', prodIn && prodIn.value);
   ok('and shows its picture beside the words', walk(root8, (e) => e.tag === 'img' && e.attrs.alt === 'Image 2 · the sealed test can').length === 1);
   // the product sample is ticked from every image the generation used; the report's own fields are saved where they stand, with no new moment
   const boxes8 = walk(root8, (e) => e.tag === 'input' && e.attrs['data-asset']);
-  ok('every image the generation used is offered, the automatic pick ticked', boxes8.length === 2 && boxes8[0].checked === true && !boxes8[1].checked, boxes8.map((b) => b.attrs['data-asset'] + ':' + b.checked).join(' '));
+  ok('the images sent with the generation are offered, every one ticked', boxes8.length === 2 && boxes8[0].checked === true && boxes8[1].checked === true, boxes8.map((b) => b.attrs['data-asset'] + ':' + b.checked).join(' '));
   boxes8[0].checked = false; (boxes8[0].listeners.change || []).forEach((f) => f());
   boxes8[1].checked = true; (boxes8[1].listeners.change || []).forEach((f) => f());
   sent.length = 0;

@@ -57,7 +57,7 @@ TITLE_MAX = 2000       # the title is often a whole paragraph and is burned into
 PROMPT_COLS = ("wrong_prompt", "fixed_prompt", "prompt_note")
 # Video generation prompts are never cut (the user, 2026-10-29: "make sure to not trim the video generation prompts at all without any exception because
 # we need them fully"): a prompt box and every generation's prompt are stored, read and sent whole, however long.
-SAMPLE_FILES_MAX = 4   # images the admin may tick for the product sample (the bottom band splits its half between them)
+SAMPLE_FILES_MAX = 9   # images the admin may tick for the band: every image a generation is sent fits (the most a request attaches is 7)
 # A take made of several generations (clips joined) keeps the prompt of each generation with the seconds of that take it made (wrong_segments,
 # fixed_segments: [{src, clip, attempt, request, t_from, t_to, spans, gen, of, prompt}]; src is the video whose seconds that generation made: "wrong"
 # Video A, "fixed" Video B).  One prompt box per kind of frame (the user, 2026-10-28 and 2026-10-29): the flawed version's (column wrong) holds the
@@ -334,18 +334,24 @@ def _sample_files(raw) -> list[dict]:
 
 
 def _chosen_files(v, run: str, video: str, wrong_hint: str, wrong_path: str) -> str:
-    """The product sample's files the admin ticked (the user, 2026-10-28), held to the images that take's generation used (runs.generation_assets): JSON
-    [{path, label, asset_id}], or '' for the automatic pick.  A file that is not one of them is refused."""
+    """The images the admin ticked for the sample's band (the user, 2026-10-28; the admin, 2026-10-30: only images sent with that take's generation,
+    runs.generation_assets): JSON [{path, label, asset_id}], or '' for the default, every image sent.  A tick on a client's original stands for the
+    file sent from it; any other file is refused."""
     items = [str(x.get("path") if isinstance(x, dict) else x) for x in (v if isinstance(v, list) else []) if x]
     if not items:
         return ""
-    allowed = {runs._file_key(a["path"]): a for a in runs.generation_assets(run, video, wrong_hint, path=wrong_path)}
+    offered = runs.generation_assets(run, video, wrong_hint, path=wrong_path)
+    allowed = {runs._file_key(a["path"]): a for a in offered}
+    for a in offered:
+        if a.get("original"):
+            allowed.setdefault(runs._file_key(a["original"]), a)
     out = []
     for p in items[:SAMPLE_FILES_MAX]:
         a = allowed.get(runs._file_key(p))
         if not a:
-            raise ValueError(f"{Path(p).name} is not one of the images this generation used")
-        out.append({"path": str(a["path"]), "label": a["label"], "asset_id": a.get("asset_id", "")})
+            raise ValueError(f"{Path(p).name} is not one of the images this generation was sent")
+        if all(x["path"] != str(a["path"]) for x in out):
+            out.append({"path": str(a["path"]), "label": a["label"], "asset_id": a.get("asset_id", "")})
     return json.dumps(out, ensure_ascii=False)
 
 
@@ -954,6 +960,14 @@ def product_label(ps: dict, run: str, video: str = "") -> tuple[str, dict]:
     return f"{pick} · its original file is not recorded", {}
 
 
+def _image_entry(x: dict) -> dict:
+    """One image of a sample's band, or of what its generation was sent, as meta.json keeps it: its input, asset id, the file sent, what it is, the
+    client's original (its full path, for the record) and that file's name, how it was prepared, how the record was read and the job."""
+    return {"asset": x.get("asset_id", ""), "label": x.get("label", ""), "file": x.get("name", ""), "image": x.get("image", ""), "kind": x.get("kind", ""),
+            "original": x.get("original", ""), "original_name": x.get("original_name", ""), "prepared": x.get("prepared", ""),
+            "recorded": x.get("recorded", ""), "job": x.get("job", "")}
+
+
 def regenerate(mid: int):
     """Cut every frame of the moment, draw the admin's marks on each, build the composite and the zoom, and store them.  Every frame is numbered as the saved
     prompts number it (FRAME n), names its video (VIDEO A or B) and, for a take made of several generations, the generation that made it (the user,
@@ -984,18 +998,33 @@ def regenerate(mid: int):
                        for it in items]}
     samples = []
     if miss["sample_on"] != 0:
-        try:       # the files the admin ticked, else the product image(s) the video used, straight from the client's reference folder; never a reason to fail the save
-            chosen = [x for x in _sample_files(miss["sample_files"] if "sample_files" in miss.keys() else "") if Path(x["path"]).is_file()]
-            picks = ([{"path": Path(x["path"]), "label": x.get("label") or Path(x["path"]).name, "asset_id": x.get("asset_id") or "", "name": Path(x["path"]).name} for x in chosen]
-                     or runs.product_samples(miss["run"], miss["video"], miss["wrong_label"] or miss["wrong_path"], path=miss["wrong_path"] or ""))
+        try:       # never a reason to fail the save
+            # the images sent with the generation of Video A's take, verified from the run's records (the admin, 2026-10-30: only those, and every one
+            # by default; the admin's ticks choose among them, a tick on a client's original standing for the file sent from it)
+            sent = runs.sent_images(miss["run"], miss["video"], miss["wrong_label"] or miss["wrong_path"], path=miss["wrong_path"] or "")
+            by_file = {runs._file_key(x["path"]): x for x in sent}
+            by_orig = {runs._file_key(x["original"]): x for x in sent if x.get("original")}
+            ticked = _sample_files(miss["sample_files"] if "sample_files" in miss.keys() else "")
+            chosen = []
+            for t in ticked:
+                x = by_file.get(runs._file_key(t["path"])) or by_orig.get(runs._file_key(t["path"]))
+                if x and x not in chosen:
+                    chosen.append(x)
+            if ticked and not sent:      # a run whose records verify nothing it sent: the files the admin ticked stand, named as before
+                for t in ticked:
+                    if Path(t["path"]).is_file():
+                        ps = {"path": Path(t["path"]), "label": t.get("label") or Path(t["path"]).name, "asset_id": t.get("asset_id") or "", "name": Path(t["path"]).name}
+                        label, src = product_label(ps, miss["run"], miss["video"])
+                        chosen.append({"path": ps["path"], "name": ps["name"], "label": label, "image": src.get("image", ""), "kind": src.get("kind", ""),
+                                       "asset_id": ps["asset_id"] or src.get("asset_id", ""), "original": src.get("original", ""), "original_name": src.get("name", ""),
+                                       "prepared": src.get("prepared", ""), "recorded": src.get("recorded", ""), "job": ""})
+            picks = chosen or sent
             meta["product_sample_chosen"] = bool(chosen)
-            for ps in picks:          # each named by the client's original file the run recorded for it (the admin, 2026-10-30): its name, never its folder
-                label, src = product_label(ps, miss["run"], miss["video"])
-                samples.append((compose.load_product(ps["path"]), label))
-                meta.setdefault("product_samples", []).append({"asset": ps.get("asset_id") or src.get("asset_id", ""), "label": label, "file": ps["name"],
-                                                               "image": src.get("image", ""), "original": src.get("original", ""),
-                                                               "original_name": src.get("name", ""), "prepared": src.get("prepared", ""),
-                                                               "recorded": src.get("recorded", "")})
+            if sent:
+                meta["images_sent"] = [_image_entry(x) for x in sent]
+            for x in picks:
+                samples.append((compose.load_product(x["path"]), x["label"]))
+                meta.setdefault("product_samples", []).append(_image_entry(x))
         except Exception as e:  # noqa: BLE001
             core.audit("system", "product-sample.failed", f"miss {miss['id']}", str(e)[:300])
             samples = []

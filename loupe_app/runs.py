@@ -1,6 +1,7 @@
 """Loupe runs: browse the pipeline's runs and videos, and index which input assets were used in which request and what became of it."""
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -804,12 +805,80 @@ def _input_words(text: str) -> str:
     return re.sub(r"\s+(?:image|video|audio)_references\s*$", "", t).strip()[:80]
 
 
-def generation_assets(run: str, video: str, wrong: str = "", path: str = "") -> list[dict]:
-    """Every image the generation of a video's take used, for the admin to pick the product sample from (the user, 2026-10-28: the sample picked by itself
-    was sometimes wrong).  For each image input of that attempt's video request(s): the client's original (the asset the request names, from the run's
-    inventory), the file sent to the model (the upload the run recorded) and the file the video's uploads record names, each once, with what the request
-    calls it; `suggested` marks the automatic pick (product_samples), which is always offered.  A take of another video or of another run reads its own run.
-    Read from the run's records, nothing judged; [] when nothing is found."""
+SENT_ROLES = {"image_references": "Image", "start_image": "Start frame", "end_image": "End frame", "mask": "Mask"}      # the images a request attaches
+NO_VIDEO = {"failed", "pending", "submitted", "unknown", "cancelled", "canceled", "refused", "error"}       # ledger states of a job that made no video
+PRODUCT_FILE = re.compile(r"(?:^|[\s=/\\_-])product(?:[\s._-]|$)", re.I)       # how the pipelines name a prepared product view: image2-product-...png
+CHARACTER_FILE = re.compile(r"(?:^|[\s=/\\_-])(?:character|identity)(?:[\s._-]|$)", re.I)      # and a person's: image1-character-...jpg, identity/C05-head.png
+
+
+def request_fingerprint(req: dict) -> str:
+    """The fingerprint the pipelines' ledgers record for a request they submit (their _fingerprint): its parameters without get_cost, as sorted JSON."""
+    params = dict(req.get("params", req)) if isinstance(req, dict) else {}
+    params.pop("get_cost", None)
+    return hashlib.sha256(json.dumps(params, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")).hexdigest()[:20]
+
+
+def _uploaded_files(rd: Path, nn: str) -> dict:
+    """media id -> (the local file the run uploaded under it, the words its record files it under): the video's uploads records
+    (video-NN*-uploads.json, of any shape: an entry with its media_id, or id, beside its file), then the run's uploads map (30-assets/uploads.json: the
+    file, else its name in the run's asset folders)."""
+    res: dict = {}
+
+    def walk(v, key=""):
+        if isinstance(v, dict):
+            mid = v.get("media_id") or v.get("id")
+            if isinstance(mid, str) and mid and isinstance(v.get("file"), str) and v["file"].strip():
+                res.setdefault(mid, (v["file"].strip(), " ".join(str(x) for x in (key, v.get("who") or "", v.get("role") or "") if x)))
+            for k, x in v.items():
+                walk(x, k if isinstance(x, (dict, list)) else key)
+        elif isinstance(v, list):
+            for x in v:
+                walk(x, key)
+    rq = rd / "50-requests"
+    for f in (sorted(rq.glob(f"video-{nn}*uploads*.json")) if rq.is_dir() else []):
+        walk(_json(f))
+    for mid, up in _uploads(rd).items():
+        if mid not in res:
+            p = up.get("file") or _asset_path(rd, up.get("name") or "", {})
+            if p:
+                res[mid] = (str(p), str(up.get("name") or ""))
+    return res
+
+
+def _registry_product_rows(rd: Path) -> list[tuple[str, list]]:
+    """The product rows of the run's asset registry (30-assets/registry.md, in either form runs write: a table row whose id starts with P-, or whose
+    type cell says product): [(its id, its asset ids)].  The toolkit reads them the same way (awl.py _pi_registry_rows)."""
+    try:
+        text = (rd / "30-assets" / "registry.md").read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return []
+    rows = []
+    for ln in text.splitlines():
+        cells = [c.strip().strip("`").strip() for c in ln.strip().strip("|").split("|")] if ln.lstrip().startswith("|") else []
+        if not cells or not re.fullmatch(r"[A-Za-z][\w-]*", cells[0]) or cells[0].lower() == "id":
+            continue
+        if cells[0].startswith("P-") or any(c.lower() == "product" for c in cells[1:3]):
+            rows.append((cells[0], list(dict.fromkeys(A_ID.findall(ln)))))
+    return rows
+
+
+def _product_ids(rd: Path, st: dict) -> set:
+    """The asset ids the run's registry names as a product's: state.json's product registry and the product rows of 30-assets/registry.md."""
+    return {i for v in _registry_products(st).values() for i in v["ids"]} | {i for _c, ids in _registry_product_rows(rd) for i in ids}
+
+
+def sent_images(run: str, video: str, wrong: str = "", path: str = "") -> list[dict]:
+    """The images a take's generation was sent with its job, verified from the run's records (the admin, 2026-10-30: "only the verified assets that
+    were directly used to higgsfield for that specific generation ... even if they characters or other attachment ... if it isnt directly used as a
+    reference in that video generation then don't show it"): the request the ledger submitted for that attempt (each clip's, for a take joined from
+    clips) as a job that made a video (completed, accepted, rejected or superseded; never failed, pending or still in flight), whose parameters
+    still have the fingerprint the ledger recorded; each image it attached (SENT_ROLES) by its media id; the file the run
+    uploaded under that id (_uploaded_files, else the input's own file).  Each once, in the request's order, named by its input, its asset id and the
+    client's original file (_source_of), with what it is (`kind`: the source record's, else product by the registry, a product code or the pipeline's
+    file name or a registry product's id in its label, else character by its file name): {path, name, label, image, role, media_id, asset_id,
+    kind, original, original_name, prepared,
+    recorded, request, job, words, run, video}.  [] when the records verify nothing (a request not in the ledger or changed since it was submitted, an
+    upload that names no file): nothing is guessed."""
     loc = locate(path or wrong) if (path or wrong) else None
     if loc and loc[1] and (loc[0], loc[1]) != (run, core.nn(video)):
         run, video, wrong = loc[0], loc[1], path or wrong
@@ -818,74 +887,72 @@ def generation_assets(run: str, video: str, wrong: str = "", path: str = "") -> 
         return []
     nn = core.nn(video)
     st = _json(rd / "state.json") or {}
-    prods = _registry_products(st)
-    id_owner = {i: k for k, v in prods.items() for i in v["ids"]}
-    inv = {it["id"]: it for it in ((_json(rd / "30-assets" / "project" / "asset-inventory.json") or {}).get("items") or []) if isinstance(it, dict) and it.get("id")}
-    roots = [Path(x) for x in (st.get("assets_paths") or []) if isinstance(x, str)]
-    led = (_json(rd / "50-requests" / f"video-{nn}-uploads.json") or {}).get("uploads")
-    led = led if isinstance(led, dict) else {}
+    subs = [s for s in st.get("submissions") or [] if isinstance(s, dict) and s.get("request_file")]
     attempt = attempt_for(rd, video, wrong)
     files = _request_files(rd, video, attempt)
     reqs = [f for f in files if attempt and _attempt_in_name(f.name) == attempt] or files[:1]
     segs = prompt_segments(run, video, wrong).get("segments") or []
-    if segs:                                  # a video joined from clips: every clip's request (each generation's inputs), or the one clip picked
+    if segs:                                  # a take joined from clips: what each clip's generation was sent
         reqs = [rd / "50-requests" / s["request"] for s in segs if s.get("request")] or reqs
-    auto = product_samples(run, video, wrong)
-    suggested = {_file_key(p["path"]) for p in auto}
-    srcs = input_sources(rd, nn)          # where each input came from, as the run recorded it (the admin, 2026-10-30)
-
-    def file_of(aid: str):
-        it = inv.get(aid) or {}
-        p = Path(it["path"]) if it.get("path") else None
-        if not (p and p.is_file()) and it.get("rel"):
-            p = next((r / it["rel"] for r in roots if (r / it["rel"]).is_file()), None)
-        return p if (p and p.is_file()) else None
-
+    uploaded = _uploaded_files(rd, nn)
+    inv, names = _inventory(rd)
+    prods, pids = _registry_products(st), _product_ids(rd, st)
+    codes = [c for c, _ids in _registry_product_rows(rd)] + list(prods)
     out, seen = [], set()
-
-    def add(p, label: str, source: str, aid: str, req: str, src: dict | None = None):
-        if not p:
-            return
-        p = Path(p)
-        if not p.is_absolute():
-            p = rd / p
-        if not (p.is_file() and p.suffix.lower() in IMAGE_EXT):
-            return
-        k = _file_key(p)
-        if k in seen:
-            return
-        seen.add(k)
-        src = src or {}
-        out.append({"path": p, "name": p.name, "label": label[:160], "source": source, "asset_id": aid or src.get("asset_id") or "", "request": req,
-                    "suggested": k in suggested, "original": src.get("original", ""), "original_name": src.get("name", ""), "prepared": src.get("prepared", "")})
-
     for rf in reqs:
         req = _json(rf) or {}
+        ent = [s for s in subs if _file_key(s["request_file"]) == _file_key(rf)]
+        ent = [s for s in ent if s.get("job_id") and str(s.get("status") or "") not in NO_VIDEO]
+        if not ent or (ent[-1].get("fingerprint") and ent[-1]["fingerprint"] != request_fingerprint(req)):
+            continue          # not submitted, or changed since: what it attached is not known
+        job = str(ent[-1].get("job_id") or "")
+        prm = req.get("params") if isinstance(req.get("params"), dict) else req
         meaning = _input_meanings(req)
-        tag = _request_tag(rf.name, nn)
-        for inp in request_inputs(rd, req):
-            lab = inp["label"]
-            hit = _ledger_entry(led, lab, tag)
-            text = str(meaning.get(lab) or (hit[0] if hit else "") or inp.get("name") or "")
-            found = A_ID.findall(text)
-            aid = next((a for a in found if a in id_owner), None) or (found[-1] if found else "")
-            if not aid:
-                code = next((c for c in P_CODE.findall(text + " " + Path(str(inp.get("path") or (hit[1] if hit else "") or "")).name) if c in prods), None)
-                aid = (prods[code]["canonical"] or "") if code else ""
-            src = (srcs.get(_file_key(inp["path"])) if inp.get("path") else None) or srcs.get(str(inp.get("media_id") or "")) \
-                or (srcs.get(_file_key(hit[1])) if hit and hit[1] else None)
-            aid = aid or (src or {}).get("asset_id", "")
-            what = (_said(text, aid) if aid and aid in found else "") or ((prods.get(id_owner.get(aid, "")) or {}).get("name") if aid else "") or _input_words(text)
-            name = f"{lab} · {what}" if what else lab
-            if src:          # named by the client's original file the run recorded for it
-                name = f"{lab} · " + (f"{src['asset_id']} · " if src.get("asset_id") else "") + Path(src["original"]).name
-            add(Path(src["original"]) if src else (file_of(aid) if aid else None), name, "the client's original", aid, rf.name, src)
-            add(inp.get("path"), name, "as sent to the model", aid, rf.name, src)
-            if hit:
-                add(hit[1], name, "as the uploads record names it", aid, rf.name, src)
-    for p in auto:
-        add(p["path"], p["label"], "the client's original", p["asset_id"], p.get("request", ""))
+        tag = f"{_request_tag(rf.name, nn).split('-a')[0]} · " if len(reqs) > 1 else ""
+        counts: dict = {}
+        for m in (prm.get("medias") or []) if isinstance(prm, dict) else []:
+            if not isinstance(m, dict):
+                continue
+            role = str(m.get("role") or "")
+            counts[role] = counts.get(role, 0) + 1
+            mid = str(m.get("value") or "").strip()
+            if role not in SENT_ROLES or not mid or mid.startswith("<") or mid in seen:
+                continue
+            f, filed = uploaded.get(mid) or (str(m.get("file") or ""), "")
+            p = Path(f) if f else None
+            if p and not p.is_absolute():
+                p = rd / p
+            if not (p and p.is_file() and p.suffix.lower() in IMAGE_EXT):
+                continue
+            seen.add(mid)
+            img = f"Image {counts[role]}" if role == "image_references" else SENT_ROLES[role]
+            said = str(meaning.get(img) or "") or _input_words(filed)
+            src = _source_of(m, said, st, inv, names)
+            aid = src.get("asset_id", "")
+            try:
+                rel = str(p.resolve().relative_to(rd.resolve()))
+            except ValueError:
+                rel = p.name
+            look = " ".join(str(x or "") for x in (m.get("label"), rel, filed))
+            named = PRODUCT_FILE.search(look) or any(re.search(r"(?<![A-Za-z0-9])" + re.escape(c) + r"(?![A-Za-z0-9])", look, re.I) for c in codes)
+            kind = src.get("kind") or ("product" if (aid in pids or named
+                                                     or any(c in prods for c in P_CODE.findall(" ".join((said, str(m.get("meaning") or ""), look)))))
+                                       else "character" if CHARACTER_FILE.search(look) else "")
+            label = tag + " · ".join(x for x in (img, aid, src.get("name") or p.name) if x) + ("" if src else " · its original file is not recorded")
+            out.append({"path": p, "name": p.name, "label": label, "image": tag + img, "role": role, "media_id": mid, "asset_id": aid, "kind": kind,
+                        "original": src.get("original", ""), "original_name": src.get("name", ""), "prepared": src.get("prepared", ""),
+                        "recorded": src.get("recorded", ""), "request": rf.name, "job": job,
+                        "words": _input_words(str(m.get("meaning") or meaning.get(img) or "")), "run": run, "video": nn})
     return out
+
+
+def generation_assets(run: str, video: str, wrong: str = "", path: str = "") -> list[dict]:
+    """The images the admin may show in a sample's band (the admin, 2026-10-30: "just show the product image sample that was used as a reference and
+    attached to that video generation thats all ... and then if i want to exclude some or add more i'll do it myself"): exactly the images sent with
+    the generation of the take (sent_images), one per attached image, each ticked by default (`suggested`); neither a client's original nor any other
+    file is offered.  [] when the run's records verify none."""
+    return [{**x, "source": "sent with job " + x["job"][:8] if x.get("job") else "sent with this generation", "suggested": True}
+            for x in sent_images(run, video, wrong, path)]
 
 
 CLIP_PART_FILES = ("trimmed.mp4", "conformed.mp4", "raw.mp4")     # the file whose length a clip has in the joined video: trimmed when it was trimmed
