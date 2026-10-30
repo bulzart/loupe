@@ -195,7 +195,7 @@ def compose_text(segs: list[dict], side: str = "", role: str = "") -> str:
     return "\n\n".join(f"{segment_line(s, role)}\n{s.get('prompt') or ''}" for s in _numbered(segs, side))
 
 
-ROLE_DEFAULT = {"wrong": "flawed", "fixed": "correct"}      # what a report's two prompts are unless they are an Example's
+ROLE_DEFAULT = {"wrong": "flawed", "fixed": "correct"}      # what a report's two prompt boxes are unless they are an Example's
 
 
 def prompt_roles(frames: list[dict]) -> dict:

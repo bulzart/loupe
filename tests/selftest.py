@@ -1047,7 +1047,8 @@ def main(with_keeper=False):
               and "PROMPT-F" in step2 and "Not sent: S999" in step2, str(d)[:300])
         check("the answer is the judge's template with its basis (only samples that exist), notes and changes, and the samples it read; none is sent twice",
               d.get("purpose") == "template" and d.get("template", "").startswith("TEMPLATE-MARK") and [x["id"] for x in d.get("basis", [])] == [sid0]
-              and d.get("read") == [sid0] and d.get("changes") and d.get("notes") == "keep the mug line" and not any("rests on samples" in p for p in seen), str(d)[:300])
+              and d.get("read") == [sid0] and d.get("changes") and d.get("notes") == "keep the mug line" and not any("rests on samples" in p for p in seen)
+              and d.get("prompts_judged") == [sid0] and bool(d["basis"][0].get("prompt_sides")), str(d)[:300])
         s, d, _ = req("GET", "/api/qc/keeper")
         check("the consult log keeps the template request under its own purpose", s == 200 and any(c["purpose"] == "template" for c in d["consults"]))
         seen.clear()
@@ -1076,8 +1077,9 @@ def main(with_keeper=False):
             return {"result": "not json", "total_cost_usd": 0}
         _qc._run_claude = judge_origin
         s, d, _ = req("POST", "/api/qc/consult", {"run": "r", "video": "05", "question": "same"}, key=kq)
-        check("a sample whose prompts the judge already fetched in that consult is not sent again", s == 200 and not any("rests on samples" in p for p in seen)
-              and not d.get("prompts_judged") and d.get("relevant"), str(d)[:200])
+        check("a sample whose prompts the judge already fetched in that consult is not sent again, and prompts_judged still names it (it read them)",
+              s == 200 and not any("rests on samples" in p for p in seen) and d.get("prompts_judged") == [sid0] and not d.get("prompts_unread")
+              and d.get("relevant"), str(d)[:200])
 
         def judge_bad(prompt, *a, **k):
             if "rests on samples" in prompt:
@@ -1086,6 +1088,10 @@ def main(with_keeper=False):
         _qc._run_claude = judge_bad
         s, d, _ = req("POST", "/api/qc/consult", {"run": "r", "video": "05", "question": "again"}, key=kq)
         check("a second answer that does not parse keeps the first one", s == 200 and d["relevant"][0]["why"] == "first answer" and d.get("prompts_judged") == [sid0], str(d)[:200])
+        pj, pu = _qc._prompts_seen({"relevant": [{"id": sid0}, {"id": "S99999"}]}, "relevant", [], [], [])
+        check("a cited sample whose prompts the judge was not given is named unread (prompts_unread), one it was given judged; the final round reads up to six",
+              pj == [] and pu == [sid0] and _qc._prompts_seen({"relevant": [{"id": sid0}]}, "relevant", [], [], [sid0]) == ([sid0], [])
+              and _qc.PROMPTS_READ == _qc.TEMPLATE_READ == 6 and "up to six, in the order you cite them" in _qc.ROLE, f"{pj} {pu}")
         req("PATCH", f"/api/misses/{mid0}", {k: before_pp.get(k) or "" for k in ("wrong_prompt", "fixed_prompt", "prompt_note")})
         _qc._run_claude = fake_keeper
         req("PATCH", f"/api/moments/{sid0[1:]}", {"details": "Edited again, so its reading is stale."})

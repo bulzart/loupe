@@ -421,7 +421,11 @@ def brief(ctx: dict, limit: int = 8) -> dict:
             "everything inside a record belongs to that sample and the generation miss it names, never to another. Look at each image; compare the marked "
             "region with the same place in the video under QC.\n\n"
             + "\n\n".join(sample_record(s, "brief", lib) for s in sam)) if sam else "No sample in the library matches this video."
-    return {"mode": "brief", "samples": [{k: s[k] for k in ("id", "title", "kinds", "model", "details", "correct_note", "idea", "better", "missed", "prompts", "prompt_note", "sample_kind", "has_right", "frames", "n_frames", "composite_path", "image_url", "score")} for s in sam],
+    # each sample with the fields a keeper's answer gives it, but the keeper's own (why, check, wrong_pattern): its origin, what its prompt boxes are
+    # and what the data collector saw in its picture
+    return {"mode": "brief", "samples": [{**{k: s[k] for k in ("id", "title", "kinds", "model", "details", "correct_note", "idea", "better", "missed", "prompts", "prompt_note", "sample_kind", "has_right", "frames", "n_frames", "composite_path", "image_url", "score")},
+                                          **{k: s.get(k, d) for k, d in (("run", ""), ("video", ""), ("t_wrong", None), ("prompt_roles", {}), ("prompt_sides", []))},
+                                          **_reading_brief(s)} for s in sam],
             "text": text, "library_size": len(library())}
 
 
@@ -888,7 +892,7 @@ ROLE = ("You are the Loupe keeper of a video-generation pipeline. You hold a lib
         "prompts: those prompts made frames the admin keeps as examples, suggestions of what could have changed or been done another way, neither a bad "
         "generation nor a correct one; read them as suggestions, never as the flawed or the correct prompt. "
         "They are not in your digest. In a TEMPLATE request you name the samples whose prompts you need and Loupe sends them whole; before a QC or planning answer "
-        "of yours is final, Loupe sends the prompts of every sample it cites that you have not read in that consult; at any other time ask for them with "
+        "of yours is final, Loupe sends the prompts of the samples it cites that you have not read in that consult (up to six, in the order you cite them: cite first the samples your answer rests on most); at any other time ask for them with "
         "sample_origin (they come whole, as evidence for that one answer) when the question is about how the video was or "
         "should be prompted, when a hint of yours would rest on that sample, or when a QC question asks what was fixed by prompting; then read them yourself and judge what the "
         "correct version's prompt did differently from the flawed version's at the frames each made (S12-P1 made the frames its line names) and whether that difference "
@@ -1172,8 +1176,8 @@ def plan_hints_from(parsed, ctx: dict, lib: dict, cap: int = 3, why: list | None
             continue
         out.append({"id": s["id"], "trigger": _clip(r["trigger"], 600), "right_outcome": _clip(r.get("right_outcome", ""), 600),
                     "lever": _clip(r["lever"], 700), "caveat": _clip(r.get("caveat", ""), 500), "confidence": conf, "model_independent": indep,
-                    "prompts": s.get("prompts", ""), "prompt_roles": s.get("prompt_roles", {}), "prompt_note": _clip(s.get("prompt_note", ""), 400),
-                    "reading_path": _reading_path(s) if s.get("composite_path") else ""})
+                    "prompts": s.get("prompts", ""), "prompt_roles": s.get("prompt_roles", {}), "prompt_sides": s.get("prompt_sides", []),
+                    "prompt_note": _clip(s.get("prompt_note", ""), 400), "reading_path": _reading_path(s) if s.get("composite_path") else ""})
     out.sort(key=lambda h: 0 if h["confidence"] == "high" else 1)
     for extra in out[cap:]:
         _why(why, extra["id"], f"beyond the cap of {cap} hints")
@@ -1329,7 +1333,8 @@ def _ask_loop(parsed, st: dict, ctx: dict, plan: bool):
     return parsed, asked, cost, turns
 
 
-TEMPLATE_READ = 6        # samples whose two prompts a template request reads whole
+TEMPLATE_READ = 6        # samples whose saved prompts a template request reads whole
+PROMPTS_READ = TEMPLATE_READ      # cited samples whose saved prompts the final prompts round of an answer sends whole, in the order cited
 # The judge's template, its template_fix, and the prompt used, the template given and the brief a question carries are video generation prompts or hold
 # them: each goes whole, never cut (the user, 2026-10-29).
 
@@ -1366,16 +1371,18 @@ def _prompts_text(sid: str, s: dict) -> str:
 
 
 def _prompts_round(parsed, st: dict, key: str, asked: list, done=()):
-    """The saved prompts (every box its frames speak through) of every sample the keeper's answer cites reach it whole from the record before the
-    answer is final (the user, 2026-10-28: the prompts go to the judge, which decides; no other session reads or judges them).  A sample whose origin it already fetched in this
-    consult is not sent again.  One more keeper turn, only when a cited sample has saved prompts; an answer that does not parse keeps the first one.
-    Answers (parsed, cost, turns, the ids whose prompts it was given)."""
+    """The saved prompts (every box its frames speak through) of the samples the keeper's answer cites reach it whole from the record before the
+    answer is final (the user, 2026-10-28: the prompts go to the judge, which decides; no other session reads or judges them): up to PROMPTS_READ, in
+    the order cited, so one turn stays the size of a template request's; the message names any cited sample left over.  A sample whose prompts it
+    already read in this consult (sample_origin, a template's reads) is not sent again.  One more keeper turn, only when a cited sample has saved
+    prompts; an answer that does not parse keeps the first one.  Answers (parsed, cost, turns, the ids whose prompts it was given)."""
     if not isinstance(parsed, dict):
         return parsed, 0.0, 0, []
     cited = [str(x.get("id")) for x in parsed.get(key) or [] if isinstance(x, dict) and x.get("id")]
     lib = {s["id"]: s for s in library()}
     fetched = {str(a.get("id")) for a in asked if a.get("kind") == "sample_origin" and a.get("fulfilled") and a.get("id")} | set(done)
-    todo = [sid for sid in dict.fromkeys(cited) if sid in lib and lib[sid].get("prompts") and sid not in fetched][:ASK_ITEMS]
+    want = [sid for sid in dict.fromkeys(cited) if sid in lib and lib[sid].get("prompts") and sid not in fetched]
+    todo, left = want[:PROMPTS_READ], want[PROMPTS_READ:]
     if not todo:
         return parsed, 0.0, 0, []
     parts = [_prompts_text(sid, lib[sid]) for sid in todo]
@@ -1387,13 +1394,27 @@ def _prompts_round(parsed, st: dict, key: str, asked: list, done=()):
            "(a sample of frames called RIGHT only has the correct version's prompt alone, one of frames called WRONG only the flawed version's alone); "
            "for an Examples sample, what its one prompt suggests (a suggestion, never a flawed or a correct prompt); and whether that is the mechanism of this "
            "question. Keep, change or drop what you said accordingly, name the sample and the prompt label (S..-Pn) behind each point you keep, and answer "
-           "again with the same kind of JSON object (no needs).\n\n"
-           + "\n\n".join(parts))
+           "again with the same kind of JSON object (no needs)."
+           + (f" Only the first {PROMPTS_READ} you cited are sent; you have not read the prompts of {', '.join(left)}: judge them from their records alone "
+              "and say so, or cite fewer." if left else "")
+           + "\n\n" + "\n\n".join(parts))
     res = _run_claude(msg, st["session_id"], True, st["model"])
     st["chars"] = st.get("chars", 0) + _carried(msg, res)
     p2 = _json_of(res.get("result", ""))
     ok = isinstance(p2, dict) and isinstance(p2.get(key), list) and (key != "basis" or isinstance(p2.get("template"), str))
     return (p2 if ok else parsed), float(res.get("total_cost_usd") or 0), 1, todo
+
+
+def _prompts_seen(parsed, key: str, asked: list, done=(), sent=()) -> tuple[list, list]:
+    """Of the samples a final answer cites that keep saved prompts: those whose prompts the keeper read whole in this consult (sample_origin, a
+    template's reads, the final prompts round) and those it did not (more than PROMPTS_READ cited at once), each in the order cited."""
+    if not isinstance(parsed, dict):
+        return [], []
+    cited = [str(x.get("id")) for x in parsed.get(key) or [] if isinstance(x, dict) and x.get("id")]
+    lib = {s["id"]: s for s in library()}
+    read = {str(a.get("id")) for a in asked if a.get("kind") == "sample_origin" and a.get("fulfilled") and a.get("id")} | set(done) | set(sent)
+    keep = [sid for sid in dict.fromkeys(cited) if sid in lib and lib[sid].get("prompts")]
+    return [sid for sid in keep if sid in read], [sid for sid in keep if sid not in read]
 
 
 def _template_round(parsed, st: dict, ctx: dict):
@@ -1439,7 +1460,7 @@ def template_from(parsed, lib: dict) -> dict:
             s = lib[b["id"]]
             basis.append({"id": s["id"], "worked": _clip(b.get("worked", ""), 600), "failed": _clip(b.get("failed", ""), 600), "where": _clip(b.get("where", ""), 300),
                           "title": _clip(s.get("title", ""), 300), "model": s.get("model", ""), "prompts": s.get("prompts", ""), "prompt_roles": s.get("prompt_roles", {}),
-                          "prompt_note": _clip(s.get("prompt_note", ""), 400), "reading_path": _reading_path(s) if s.get("composite_path") else ""})
+                          "prompt_sides": s.get("prompt_sides", []), "prompt_note": _clip(s.get("prompt_note", ""), 400), "reading_path": _reading_path(s) if s.get("composite_path") else ""})
     changes = [{"what": _clip(c.get("what", ""), 400), "why": _clip(c.get("why", ""), 400), "id": str(c.get("id") or "")[:12]}
                for c in (p.get("changes") or [])[:5] if isinstance(c, dict) and str(c.get("what") or "").strip()]
     tpl = str(p.get("template") or "").strip()
@@ -1531,7 +1552,9 @@ def consult(key_name: str, ctx: dict, question: str, purpose: str = "qc") -> dic
             parsed, asked, cost2, turns2 = _ask_loop(parsed, st, ctx, pre_video)
             asked = asked0 + asked
             cost += cost2
-            parsed, cost3, turns3, prompts_judged = _prompts_round(parsed, st, "basis" if tmpl else ("hints" if plan else "relevant"), asked, read_ids)
+            cite_key = "basis" if tmpl else ("hints" if plan else "relevant")
+            parsed, cost3, turns3, sent_ids = _prompts_round(parsed, st, cite_key, asked, read_ids)
+            prompts_judged, prompts_unread = _prompts_seen(parsed, cite_key, asked, read_ids, sent_ids)
             cost += cost3
             turns2 += turns1 + turns3
             if turns2:
@@ -1553,8 +1576,8 @@ def consult(key_name: str, ctx: dict, question: str, purpose: str = "qc") -> dic
                         rel.append({"id": s["id"], "why": _clip(r.get("why", ""), 600), "check": _clip(r.get("check", ""), 600),
                                     "wrong_pattern": _clip(r.get("wrong_pattern", ""), 300), "composite_path": s["composite_path"], "image_url": s["image_url"],
                                     "title": _clip(s.get("title", ""), 600), "model": s.get("model", ""), "run": s.get("run", ""), "video": s.get("video", ""),
-                                    "t_wrong": s.get("t_wrong"), "kinds": s.get("kinds", []), "prompts": s.get("prompts", ""), "prompt_roles": s.get("prompt_roles", {}), "prompt_note": _clip(s.get("prompt_note", ""), 400),
-                                    "details": s["details"], "correct_note": s["correct_note"], "has_right": s.get("has_right", True),
+                                    "t_wrong": s.get("t_wrong"), "kinds": s.get("kinds", []), "prompts": s.get("prompts", ""), "prompt_roles": s.get("prompt_roles", {}), "prompt_sides": s.get("prompt_sides", []),
+                                    "prompt_note": _clip(s.get("prompt_note", ""), 400), "details": s["details"], "correct_note": s["correct_note"], "has_right": s.get("has_right", True),
                                     "idea": s.get("idea", ""), "better": s.get("better", ""), "missed": s.get("missed", ""), "sample_kind": s.get("sample_kind", "pair"),
                                     "frames": s.get("frames", []), "n_frames": s.get("n_frames", 0), **_reading_brief(s)})
                 res = {"mode": "keeper", "purpose": "qc", "relevant": rel, "advice": _clip((parsed or {}).get("advice", ""), 700) if isinstance(parsed, dict) else _clip(d.get("result", ""), 700),
@@ -1567,7 +1590,9 @@ def consult(key_name: str, ctx: dict, question: str, purpose: str = "qc") -> dic
             if fl:
                 res["flags"] = fl          # what the judge found missing, contradictory or ambiguous in the records it used: the agent reports them to the admin
             if prompts_judged:
-                res["prompts_judged"] = prompts_judged      # the samples whose two prompts the keeper read whole before this answer
+                res["prompts_judged"] = prompts_judged      # the cited samples whose saved prompts the keeper read whole before this answer
+            if prompts_unread:
+                res["prompts_unread"] = prompts_unread      # cited samples whose saved prompts it did not read (more than PROMPTS_READ cited)
             if asked:
                 res["needs_asked"] = [{k: x[k] for k in ("kind", "why", "fulfilled", "question", "reason") if k in x} for x in asked]
                 res["needs_unmet"] = [{k: x[k] for k in ("kind", "why", "fulfilled", "question", "reason") if k in x} for x in asked if not x.get("fulfilled")]
