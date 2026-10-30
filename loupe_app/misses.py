@@ -936,6 +936,24 @@ def refresh_boxes(miss_id: int, actor: str = "system") -> dict:
     return cols
 
 
+def product_label(ps: dict, run: str, video: str = "") -> tuple[str, dict]:
+    """How a product image is named on the sample's picture and in its records (the admin, 2026-10-30: "the names are far better to be told as they were
+    in their original files ... so the upcoming runs know which assets samples to use or how much of them", "just the exact file/image name"): the
+    request input it was sent as, its asset id and the client's original file name, 'Image 2 · A82 · Carton_Single-Front.png'; a file the run recorded no
+    original for keeps the name it was picked by and says so.  (label, where it came from)."""
+    run, video = str(ps.get("run") or run or ""), str(ps.get("video") or video or "")      # the run and video the pick was read from
+    src = runs.file_source(ps.get("path"), run) if ps.get("path") else {}
+    if ps.get("path") and not src.get("image") and run and video:      # the client's original itself: the request input the run made of it
+        rd, key = runs.run_dir(run), runs._file_key(ps["path"])
+        src = next((r for r in (runs.input_sources(rd, video).values() if rd else []) if r.get("original") and runs._file_key(r["original"]) == key), src)
+    pick = str(ps.get("label") or ps.get("name") or "")
+    img = src.get("image") or (pick.split(" · ")[0] if re.match(r"(?i)image \d+\b", pick) else "")
+    aid = src.get("asset_id") or str(ps.get("asset_id") or "")
+    if src:
+        return " · ".join(x for x in (img, aid, src["name"]) if x), src
+    return f"{pick} · its original file is not recorded", {}
+
+
 def regenerate(mid: int):
     """Cut every frame of the moment, draw the admin's marks on each, build the composite and the zoom, and store them.  Every frame is numbered as the saved
     prompts number it (FRAME n), names its video (VIDEO A or B) and, for a take made of several generations, the generation that made it (the user,
@@ -971,9 +989,13 @@ def regenerate(mid: int):
             picks = ([{"path": Path(x["path"]), "label": x.get("label") or Path(x["path"]).name, "asset_id": x.get("asset_id") or "", "name": Path(x["path"]).name} for x in chosen]
                      or runs.product_samples(miss["run"], miss["video"], miss["wrong_label"] or miss["wrong_path"], path=miss["wrong_path"] or ""))
             meta["product_sample_chosen"] = bool(chosen)
-            for ps in picks:
-                samples.append((compose.load_product(ps["path"]), ps["label"]))
-                meta.setdefault("product_samples", []).append({"asset": ps["asset_id"], "label": ps["label"], "file": ps["name"]})
+            for ps in picks:          # each named by the client's original file the run recorded for it (the admin, 2026-10-30): its name, never its folder
+                label, src = product_label(ps, miss["run"], miss["video"])
+                samples.append((compose.load_product(ps["path"]), label))
+                meta.setdefault("product_samples", []).append({"asset": ps.get("asset_id") or src.get("asset_id", ""), "label": label, "file": ps["name"],
+                                                               "image": src.get("image", ""), "original": src.get("original", ""),
+                                                               "original_name": src.get("name", ""), "prepared": src.get("prepared", ""),
+                                                               "recorded": src.get("recorded", "")})
         except Exception as e:  # noqa: BLE001
             core.audit("system", "product-sample.failed", f"miss {miss['id']}", str(e)[:300])
             samples = []

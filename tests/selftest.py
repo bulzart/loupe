@@ -304,12 +304,12 @@ def main(with_keeper=False):
     s, d, _ = req("GET", "/api/qc/keeper/state", key=kq)
     check("the keeper's state (in sync, turns, library version) is readable with the qc key, without the consult log or the session id",
           s == 200 and "in_sync" in d and "consults" not in d and "session_id" not in d, str(d)[:150])
-    print("\n[the prompts of the two takes: in the record, never in the image, never diffed]")
+    print("\n[the prompts of the flawed and the correct version: in the record, never in the image, never diffed]")
     req("PATCH", "/api/moments/1", {"status": "active"})       # S1 was archived above; it is active for this block and archived again after it
     img1, meta1 = core.DATA / "samples" / "1" / "composite.png", core.DATA / "samples" / "1" / "meta.json"
     before_img, before_meta = img1.read_bytes(), meta1.read_text(encoding="utf-8")
     s, d, _ = req("PATCH", "/api/misses/1", {"wrong_prompt": "PROMPT-A the can on the desk.", "fixed_prompt": "PROMPT-B the can on the desk, as tall as the mug.", "prompt_note": "the height was stated against the mug"})
-    check("the prompts of both takes and the admin's note are kept on the report", s == 200 and d["miss"]["wrong_prompt"].startswith("PROMPT-A") and d["miss"]["fixed_prompt"].startswith("PROMPT-B") and d["miss"]["prompts"] == "pair", str(d)[:200])
+    check("the prompts of both boxes (the flawed version's, the correct version's) and the admin's note are kept on the report", s == 200 and d["miss"]["wrong_prompt"].startswith("PROMPT-A") and d["miss"]["fixed_prompt"].startswith("PROMPT-B") and d["miss"]["prompts"] == "pair", str(d)[:200])
     check("they never touch the sample image or its meta (nothing rebuilt, nothing burned in)", img1.read_bytes() == before_img and meta1.read_text(encoding="utf-8") == before_meta and "PROMPT-A" not in before_meta)
     s, d, _ = req("GET", "/api/qc/samples?model=wan3_0_prime", key=kq)
     s1 = next(x for x in d["samples"] if x["id"] == "S1")
@@ -382,7 +382,7 @@ def main(with_keeper=False):
         con.close()
     check("the usage index reads a guide plate and a start frame as what they are, not as the first attempt", att == {"a1", "a2", "g1", "image"}, str(att))
     s, d, _ = req("PATCH", "/api/misses/1", {"fixed_prompt": ""})
-    check("clearing one prompt leaves the other (the prompt of the wrong take only)", s == 200 and d["miss"]["prompts"] == "wrong")
+    check("clearing one prompt leaves the other (the flawed version's prompt only)", s == 200 and d["miss"]["prompts"] == "wrong")
     s, d, _ = req("PATCH", "/api/misses/1", {"fixed_prompt": "PROMPT-B the can on the desk, as tall as the mug."})
     req("PATCH", "/api/moments/1", {"status": "archived"})
     s, d, _ = req("GET", "/api/misses/suggest-kinds?text=" + quote("The can size changes after the cut and the lid opens by itself; the label reads mirrored"))
@@ -419,7 +419,7 @@ def main(with_keeper=False):
         seeded_prompt = scon.execute("SELECT wrong_prompt FROM misses WHERE id=1").fetchone()[0]
     finally:
         scon.close()
-    check("the seed carries the prompts of the two takes with the misses", str(seeded_prompt or "").startswith("PROMPT-A"))
+    check("the seed carries the prompts of both boxes with the misses", str(seeded_prompt or "").startswith("PROMPT-A"))
     s, d, _ = req("PATCH", f"/api/moments/1", {"status": "active"})
     long_title = ("The can size changes drastically and unexpectedly without any logical reasoning, " * 8).strip()
     s, d, _ = req("POST", "/api/misses", {"run": "20261001-000000-07", "video": "04", "title": long_title, "model": "wan3_0_prime", "wrong_path": wrong})
@@ -674,7 +674,7 @@ def main(with_keeper=False):
 
     print("\n[Example frames only: the prompts are Example prompts, never the wrong or the corrected one]")
     c2take = str(v7 / "c2" / "a1" / "trimmed.mp4")
-    s, d, _ = req("POST", "/api/misses", {"run": "20261001-000000-07", "video": "07", "title": "Two takes kept as examples", "model": "wan3_0_prime",
+    s, d, _ = req("POST", "/api/misses", {"run": "20261001-000000-07", "video": "07", "title": "Two videos kept as examples", "model": "wan3_0_prime",
                                           "wrong_path": clean7, "fixed_path": c2take, "wrong_prompt": "EX-PROMPT-A the can on the desk.",
                                           "fixed_prompt": "EX-PROMPT-B the can in the hand."})
     em = d["miss"]["id"] if s == 200 else 0
@@ -1203,6 +1203,110 @@ def main(with_keeper=False):
         _lcm.DATA, _lcm.health, _lcm.subprocess = real[:3]
         if real[3] is not None:
             os.environ["LOUPE_PORT"] = real[3]
+    print("\n[the product sample band: how many images, each one's whole name]")
+    from loupe_app import compose as _cmp
+    from PIL import Image as _Im, ImageDraw as _Dr
+    _dr = _Dr.Draw(_Im.new("RGB", (10, 10)))
+    _long = "Image 4 · = image4-a-much-longer-product-file-name-with-many-parts-front-view-padded-v2"
+    _ls = _cmp._wrap_hard(_dr, _long, _cmp.font(15, True), 160)
+    check("a product image's name is wrapped to its picture's width and never cut (the admin, 2026-10-30)",
+          len(_ls) > 1 and "".join(_ls).replace(" ", "") == _long.replace(" ", "") and all(_dr.textlength(x, font=_cmp.font(15, True)) <= 160 for x in _ls), str(_ls))
+    _fr = [{"img": _Im.new("RGB", (720, 1280), (120, 110, 100)), "role": "right", "desc": "as generated", "t": 0.0, "shapes": [], "n": 1, "video": "A", "gen": None}]
+    _one, _, _ = _cmp.build(_fr, {"title": "t", "sample": "S1"}, "words", "", product_samples=[(_Im.new("RGB", (400, 500)), "Image 2 · = a-name")])
+    _three, _, _ = _cmp.build(_fr, {"title": "t", "sample": "S1"}, "words", "", product_samples=[(_Im.new("RGB", (400, 500)), "Image 2 · = a-name"),
+                                                                                                (_Im.new("RGB", (400, 500)), "Image 3 · = b-name"), (_Im.new("RGB", (300, 300)), _long)])
+    check("the band of three product images with a long name grows to hold every name whole", _three.height >= _one.height, f"{_one.size} {_three.size}")
+    print("\n[the product images by the client's original files; the judge decides which and how many (the admin, 2026-10-30)]")
+    from loupe_app import misses as _pm, qc as _pq
+    from PIL import Image as _PI
+    ref9 = TMP / "reference-folder"
+    v9 = atp_run / "55-references" / "video-09" / "a1"
+    v9.mkdir(parents=True, exist_ok=True)
+    _PI.new("RGB", (300, 400), (200, 150, 120)).save(ref9 / "person.png")
+    _PI.new("RGB", (300, 400), (210, 160, 130)).save(v9 / "image1-character-person.png")
+    _PI.new("RGB", (300, 400), (0, 0, 250)).save(v9 / "image2-product-P1-front-padded.png")
+    take9 = atp_run / "60-outputs" / "video-09" / "a1" / "raw.mp4"
+    mkvideo(take9, "0x302050", "white")
+    (atp_run / "50-requests" / "video-09-request.json").write_text(json.dumps({"params": {"model": "wan3_0_prime", "duration": 5, "prompt": "Video nine: the man of Image 1 holds the can of Image 2.",
+        "medias": [{"role": "video_references", "value": "v9"},
+                   {"role": "image_references", "value": "m91", "source": {"original": str(ref9 / "person.png"), "asset_id": "A28", "prepared": "cropped above the collar", "kind": "character"}},
+                   {"role": "image_references", "value": "m92", "build": f"from {ref9 / 'product-front.png'} (A14): padded to 9:16 on white"}]}}))
+    (atp_run / "50-requests" / "video-09-uploads.json").write_text(json.dumps({"video": "09", "schema": 1, "uploads": {
+        "a1 Image 1: person": {"media_id": "m91", "file": str(v9 / "image1-character-person.png"), "role": "image_references"},
+        "a1 Image 2: P1 front padded": {"media_id": "m92", "file": str(v9 / "image2-product-P1-front-padded.png"), "role": "image_references"}}}))
+    srcs9 = runs.input_sources(atp_run, "09")
+    r92, r91 = srcs9.get("m92") or {}, srcs9.get("m91") or {}
+    check("each input's source is read from the request (a source record, else a build note) and found by its media id and by the file the uploads record names",
+          (r92.get("image"), r92.get("asset_id"), r92.get("name"), r92.get("prepared"), r92.get("recorded")) == ("Image 2", "A14", "product-front.png", "padded to 9:16 on white", "build")
+          and srcs9.get(runs._file_key(v9 / "image2-product-P1-front-padded.png")) == r92
+          and (r91.get("recorded"), r91.get("name"), r91.get("kind"), r91.get("prepared")) == ("source", "person.png", "character", "cropped above the collar"), str(srcs9)[:700])
+    fs_prep = runs.file_source(str(v9 / "image2-product-P1-front-padded.png"), "20261001-000000-07")
+    fs_orig = runs.file_source(str(ref9 / "product-front.png"), "20261001-000000-07")
+    fs_none = runs.file_source(str(TMP / "elsewhere.png"), "20261001-000000-07")
+    check("a picked file names where it came from: a prepared input its record, one of the client's own files itself with its asset id, any other file nothing",
+          (fs_prep.get("image"), fs_prep.get("name")) == ("Image 2", "product-front.png") and (fs_orig.get("recorded"), fs_orig.get("asset_id")) == ("the client's file", "A14")
+          and fs_none == {}, f"{fs_prep} | {fs_orig} | {fs_none}")
+    lab_auto, _x = _pm.product_label({"path": ref9 / "product-front.png", "label": "Test can", "asset_id": "A14", "run": "20261001-000000-07", "video": "09"}, "")
+    lab_prep, _x = _pm.product_label({"path": v9 / "image2-product-P1-front-padded.png", "label": "Image 2 · P1 front padded"}, "20261001-000000-07")
+    lab_none, _x = _pm.product_label({"path": TMP / "elsewhere.png", "label": "Image 3 · = elsewhere"}, "20261001-000000-07")
+    check("a product image is named by its request input, its asset id and the client's original file name, never a folder; the automatic pick (the "
+          "original itself) gets the input the run made of it; a file with no record says so",
+          lab_auto == "Image 2 · A14 · product-front.png" and lab_prep == "Image 2 · A14 · product-front.png"
+          and lab_none == "Image 3 · = elsewhere · its original file is not recorded", f"{lab_auto} | {lab_prep} | {lab_none}")
+    s, d, _ = req("GET", "/api/generation-assets?run=20261001-000000-07&video=09&wrong=" + quote(str(take9)))
+    ga9 = {a["name"]: a for a in d.get("assets") or []}
+    gp9 = ga9.get("image2-product-P1-front-padded.png") or {}
+    check("the images offered for a product sample are named by the request input, the asset id and the client's original file name, with how each was prepared",
+          s == 200 and (ga9.get("product-front.png") or {}).get("label") == "Image 2 · A14 · product-front.png"
+          and (gp9.get("label"), gp9.get("original_name"), gp9.get("prepared")) == ("Image 2 · A14 · product-front.png", "product-front.png", "padded to 9:16 on white")
+          and (ga9.get("person.png") or {}).get("label") == "Image 1 · A28 · person.png", str(list(ga9.values()))[:800])
+    s, d, _ = req("POST", "/api/misses", {"run": "20261001-000000-07", "video": "09", "title": "The product images of a sample", "model": "wan3_0_prime",
+                                          "wrong_path": str(take9), "wrong_label": "a1 · raw.mp4"})
+    pm9 = d["miss"]["id"] if s == 200 else 0
+    s, d, _ = req("POST", f"/api/misses/{pm9}/moments", {"frames": [{"src": "wrong", "role": "wrong", "t": 1.0}], "details": "The label is wrong."})
+    mo9 = d["moment"]["moment_id"] if s == 200 else 0
+    meta9 = json.loads((core.DATA / "samples" / str(mo9) / "meta.json").read_text(encoding="utf-8")) if mo9 else {}
+    ps9 = meta9.get("product_samples") or []
+    check("a sample keeps each product image with its request input, asset id, the client's original (by name for every reader) and how it was prepared",
+          [(x.get("image"), x.get("asset"), x.get("original_name"), x.get("prepared"), x.get("label"), x.get("recorded")) for x in ps9]
+          == [("Image 2", "A14", "product-front.png", "padded to 9:16 on white", "Image 2 · A14 · product-front.png", "build")], str(ps9)[:500])
+    s, d, _ = req("GET", f"/api/qc/samples/S{mo9}?prompts=1", key=kq)
+    smp9 = d.get("sample") or {}
+    rec9 = smp9.get("record", "")
+    dig9 = _pq.records_of(_pq._digest()).get(f"S{mo9}", "")
+    check("the judge reads which product images a sample's generation was given and how many, each by the client's original file: one line in the "
+          "digest, one line per image with its preparation in the full record, and the same in the sample's answer",
+          f"PRODUCT IMAGES OF S{mo9} (1): Image 2 · A14 · product-front.png" in dig9
+          and f"  S{mo9} · Image 2 · A14 · product-front.png, prepared: padded to 9:16 on white" in rec9
+          and smp9.get("product_images") == [{"image": "Image 2", "asset": "A14", "file": "product-front.png", "prepared": "padded to 9:16 on white", "recorded": True}]
+          and str(ref9) not in dig9 and str(ref9) not in rec9, dig9[:500] + " || " + rec9[:500])
+    got9 = _pq._fulfil({"kind": "sample_origin", "id": f"S{mo9}"}, {}, TMP / "fulfil", False)
+    reg9 = _pq._fulfil({"kind": "product_registry"}, {"run": "20261001-000000-07", "video": "09"}, TMP / "fulfil", False)
+    check("what the judge fetches about a sample's or a run's product images names each by its asset id and the client's original file name",
+          f"PRODUCT IMAGE 1 OF S{mo9} (product image 1, A14 · product-front.png, which the request calls " in got9.get("text", "")
+          and "product image 1 (A14 · product-front.png, which the request calls " in reg9.get("text", ""), got9.get("text", "")[-400:] + " || " + reg9.get("text", "")[-300:])
+    old9 = TMP / "old-sample"
+    old9.mkdir(exist_ok=True)
+    (old9 / "meta.json").write_text(json.dumps({"product_samples": [{"asset": "", "label": "Image 2 · = image2-product-x-front-padded", "file": "image2-product-x-front-padded.png"}]}))
+    ob9 = _pq.product_images_brief({"composite_path": str(old9 / "composite.png")})
+    ow9 = _pq._pim_words(_pq.product_images({"composite_path": str(old9 / "composite.png")})[0], True)
+    check("a sample saved before the originals were recorded keeps its image number and says its original file is not recorded",
+          ob9 == [{"image": "Image 2", "asset": "", "file": "image2-product-x-front-padded.png", "prepared": "", "recorded": False}]
+          and ow9 == "Image 2 · = image2-product-x-front-padded · its original file is not recorded", f"{ob9} | {ow9}")
+    pif = _pq.product_images_from({"product_images": [{"asset": "the A82 front", "file": "client/assets/Carton-Front.png", "prepare": "", "why": "w"},
+                                                     {"file": "C:\\x\\y\\Back.png"}, {"why": "neither"}, "not a dict"] + [{"asset": f"A{k}"} for k in range(100, 110)]})
+    check("the judge's product images are held to their shape: an asset id or a file name (never its folder), the first six well-formed, in its order",
+          pif[0] == {"asset": "A82", "file": "Carton-Front.png", "prepare": "", "why": "w"} and (pif[1]["asset"], pif[1]["file"]) == ("", "Back.png")
+          and [x["asset"] for x in pif[2:]] == ["A100", "A101", "A102", "A103"] and len(pif) == _pq.PRODUCT_IMAGES_MAX == 6
+          and _pq.product_images_from({"template": "x"}) == [] and _pq.product_images_from(None) == [], str(pif)[:500])
+    tf9 = _pq.template_from({"template": "T", "product_images": [{"asset": "A14", "file": "x/product-front.png"}]}, {})
+    check("a template answer carries the judge's product images", tf9.get("product_images") == [{"asset": "A14", "file": "product-front.png", "prepare": "", "why": ""}], str(tf9)[:300])
+    check("the judge is told the product images are its to decide (which and how many), how they are numbered, how to name each, and where they go in a "
+          "template and in a QC answer; the library header explains the records' section",
+          "PRODUCT IMAGES (the admin, 2026-10-30)" in _pq.ROLE and "ride last among the image inputs" in _pq.ROLE and "<the original file's name>" in _pq.ROLE
+          and '"product_images":[<see PRODUCT IMAGES; [] keeps the draft\'s>]' in _pq.ROLE
+          and '"product_images":[<optional, see PRODUCT IMAGES: for the regeneration>]' in _pq.ROLE and "PRODUCT IMAGES OF S.." in _pq.LIB_HEADER)
+    req("DELETE", f"/api/misses/{pm9}")
     print("\n[cleanup]")
     httpd.shutdown()
     shutil.rmtree(TMP, ignore_errors=True)

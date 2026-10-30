@@ -447,6 +447,7 @@ def generation_assets(h):
     run, video, wrong = h.q.get("run", ""), h.q.get("video", ""), h.q.get("wrong", "")
     qs = "run=%s&video=%s&wrong=%s" % (quote(run), quote(video), quote(wrong))
     h.send_json({"ok": True, "assets": [{"path": str(a["path"]), "name": a["name"], "label": a["label"], "source": a["source"], "asset_id": a["asset_id"],
+                                          "original_name": a.get("original_name", ""), "prepared": a.get("prepared", ""),
                                           "request": a["request"], "suggested": a["suggested"], "image_url": f"/api/generation-assets/image?{qs}&i={i}"}
                                          for i, a in enumerate(runs.generation_assets(run, video, wrong, path=wrong))]})
 
@@ -673,8 +674,9 @@ def moments_image(h, mid):
 
 # ======================================================================= QC (what the QC phase and the keeper use)
 def _qc_sample(s: dict) -> dict:
-    return {k: s[k] for k in ("id", "miss_id", "title", "explanation", "details", "correct_note", "kinds", "model", "mode", "product", "run", "video",
-                              "t_wrong", "t_fixed", "frames", "n_frames", "idea", "better", "missed", "prompts", "prompt_sides", "prompt_note", "sample_kind", "has_right", "image_url", "zoom_url", "composite_path", "created") if k in s}
+    return {**{k: s[k] for k in ("id", "miss_id", "title", "explanation", "details", "correct_note", "kinds", "model", "mode", "product", "run", "video",
+                                 "t_wrong", "t_fixed", "frames", "n_frames", "idea", "better", "missed", "prompts", "prompt_sides", "prompt_note", "sample_kind", "has_right", "image_url", "zoom_url", "composite_path", "created") if k in s},
+            "product_images": qc.product_images_brief(s)}      # the product images its generation was given, by the original files' names
 
 
 @route("GET", "/api/qc/samples", scope="qc:read")

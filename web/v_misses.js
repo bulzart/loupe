@@ -357,7 +357,7 @@ export async function work(qs) {
           if (pickedAssets().length > 4) { cb.checked = false; toast('At most four images in the product sample', true); }
           useSample.checked = pickedAssets().length > 0;
         });
-        return h('label', { class: 'card', style: 'padding:6px;width:150px;margin:0;cursor:pointer', title: `${a.source} · ${a.name}${a.request ? ' · ' + a.request : ''}` },
+        return h('label', { class: 'card', style: 'padding:6px;width:150px;margin:0;cursor:pointer', title: `${a.source} · ${a.name}${a.original_name && a.original_name !== a.name ? ' · made from ' + a.original_name : ''}${a.prepared ? ' · prepared: ' + a.prepared : ''}${a.request ? ' · ' + a.request : ''}` },
           h('img', { src: a.image_url, alt: a.label, style: 'width:100%;height:110px;object-fit:contain;border-radius:6px;background:#cdd0d6' }),
           h('div', { class: 'row', style: 'gap:4px;margin-top:4px;align-items:flex-start;flex-wrap:nowrap' }, cb, h('span', { class: 'small' }, a.label)),
           h('div', { class: 'muted small' }, a.source + (a.suggested ? ' · picked automatically' : '')));

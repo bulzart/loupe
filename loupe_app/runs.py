@@ -592,6 +592,132 @@ def _request_files(rd: Path, video: str, attempt: int) -> list[Path]:
     return sorted(files, key=lambda f: (_attempt_in_name(f.name), f.name), reverse=True)
 
 
+# ------------------------------------------------------------------ where each input of a request came from (the admin, 2026-10-30)
+# "the names are far better to be told as they were in their original files at the <client's> assets folders ... so the upcoming runs know which assets
+# samples to use or how much of them"; then "no need to say the exact folder such as <client>/filename.png, just the exact file/image name": a file is
+# named by its own name and asset id, its full path kept only as `original`.  A request records, for each input, the client's original file it was made from: params.medias[].source
+# {original, asset_id, prepared, kind} (the pipeline's form since 2026-10-30), else a 'build' note ("from <file> (A82): <how it was prepared>", "byte copy
+# of <file> (...)"), else the one asset id or the one original file name that what the request says of the input names.  Read, never guessed: an input
+# whose original no record names has none.
+MEDIA_FILE = re.compile(r"\.(?:png|jpe?g|webp|bmp|tiff?|gif|mp4|mov|m4v|webm|mkv)$", re.I)      # a value that names a file
+BUILD_NOTE = re.compile(r"^\s*(byte copy of|from)\s+(.+?\.(?:png|jpe?g|webp|bmp|tiff?|gif|mp4|mov|m4v|webm|mkv))\s*(?:\((A\d{1,4})\))?\s*(?:\(([^)]*)\))?\s*:?\s*(.*)$",
+                        re.I | re.S)
+
+
+def _in_asset_roots(st: dict, path) -> bool:
+    """Whether a file sits in one of the client's asset folders the run was given (state.json assets_paths)."""
+    raw = os.path.normcase(os.path.normpath(str(path or "")))
+    return any(raw.startswith(os.path.normcase(os.path.normpath(str(r)).rstrip("\\/")) + os.sep)
+               for r in (st.get("assets_paths") or []) if isinstance(r, str) and r.strip())
+
+
+def _inventory(rd: Path) -> tuple[dict, dict]:
+    """The run's asset inventory by asset id, and by lower-cased file name (a name two items share names neither)."""
+    items = [it for it in ((_json(rd / "30-assets" / "project" / "asset-inventory.json") or {}).get("items") or []) if isinstance(it, dict) and it.get("id")]
+    names: dict = {}
+    for it in items:
+        n = Path(str(it.get("path") or it.get("rel") or "")).name.lower()
+        if n:
+            names.setdefault(n, []).append(it)
+    return {str(it["id"]): it for it in items}, {n: v[0] for n, v in names.items() if len(v) == 1}
+
+
+def _source_of(m: dict, said: str, st: dict, inv: dict, names: dict) -> dict:
+    """What a request's records say one input was made from: {original (its full path), name (its file name), asset_id, prepared, kind, recorded}, or {}
+    when no record names it."""
+    s = m.get("source") if isinstance(m.get("source"), dict) else None
+    orig = aid = prep = kind = how = ""
+    said_path = next((str(m[k]).strip() for k in ("source", "source_file", "from") if isinstance(m.get(k), str) and MEDIA_FILE.search(str(m[k]).strip())), "")
+    if s and str(s.get("original") or "").strip():
+        orig, aid, how = str(s["original"]).strip(), str(s.get("asset_id") or "").strip(), "source"
+        prep, kind = str(s.get("prepared") or "").strip(), str(s.get("kind") or "").strip()
+    elif said_path:          # the forms runs wrote before the source record: the client's file in source, source_file or from, its prepare words
+        orig, how, prep = said_path, "source", str(m.get("prepare") or "").strip()
+    else:
+        b = BUILD_NOTE.match(str(m.get("build") or ""))
+        if b:
+            orig, aid, how = b.group(2).strip(), b.group(3) or next(iter(A_ID.findall(b.group(4) or "")), ""), "build"
+            prep = ("a byte copy" + (f" ({b.group(4)})" if b.group(4) else "")) if b.group(1).lower().startswith("byte") else (b.group(5) or b.group(4) or "").strip()
+        else:
+            text = " ".join(str(x or "") for x in (m.get("meaning"), said, m.get("label"), m.get("source") if isinstance(m.get("source"), str) else "",
+                                                   m.get("source_file"), m.get("from")))
+            ids = list(dict.fromkeys(a for a in A_ID.findall(text) if a in inv))
+            hit = inv[ids[0]] if len(ids) == 1 else None
+            if not ids:
+                tl = text.lower()
+                found = [n for n in names if n in tl]
+                found = [n for n in found if not any(n != o and n in o for o in found)]
+                hit = names[found[0]] if len(found) == 1 else None
+            if hit:
+                orig, aid, how = str(hit.get("path") or ""), str(hit.get("id") or ""), "named"
+                prep = str(m.get("meaning") or said or "").strip()
+    if not orig:
+        return {}
+    if not aid:
+        aid = next((k for k, it in inv.items() if it.get("path") and _file_key(it["path"]) == _file_key(orig)), "")
+    return {"original": orig, "name": Path(orig.replace("\\", "/")).name, "asset_id": aid, "prepared": prep, "kind": kind, "recorded": how}
+
+
+def input_sources(rd: Path, video: str) -> dict:
+    """Where each input of a video's requests came from, under every name its file goes by (the file the request or the uploads record names, and its
+    media id): {original, name, asset_id, prepared, kind, recorded, image ('Image 2'), role, request}.  Every request of the video counts (its attempts,
+    its clips, the drafts); the first record of a file is kept."""
+    nn = core.nn(video)
+    st = _json(rd / "state.json") or {}
+    inv, names = _inventory(rd)
+    led = (_json(rd / "50-requests" / f"video-{nn}-uploads.json") or {}).get("uploads")
+    by_mid = {str(v.get("media_id")): str(v.get("file") or "") for v in (led.values() if isinstance(led, dict) else []) if isinstance(v, dict) and v.get("media_id")}
+    ups = _uploads(rd)
+    out: dict = {}
+    rq = rd / "50-requests"
+    for f in (sorted(rq.glob(f"video-{nn}*request*.json")) if rq.is_dir() else []):
+        if "frame-request" in f.name:
+            continue
+        j = _json(f) or {}
+        prm = j.get("params") if isinstance(j.get("params"), dict) else j
+        meaning = _input_meanings(j)
+        counts: dict = {}
+        for m in (prm.get("medias") or []) if isinstance(prm, dict) else []:
+            if not isinstance(m, dict):
+                continue
+            role = str(m.get("role", ""))
+            counts[role] = counts.get(role, 0) + 1
+            label = f"{ROLE_LABEL.get(role, role)} {counts[role]}"
+            src = _source_of(m, str(meaning.get(label) or ""), st, inv, names)
+            if not src:
+                continue
+            rec = {**src, "image": label, "role": role, "request": f.name}
+            mid = str(m.get("value") or "")
+            for k in (m.get("file"), by_mid.get(mid), (ups.get(mid) or {}).get("file")):
+                if k:
+                    out.setdefault(_file_key(k), rec)
+            if mid and not mid.startswith("<"):
+                out.setdefault(mid, rec)
+    return out
+
+
+def file_source(path, run: str = "") -> dict:
+    """Where a picked file came from: the record of the request input it was sent as (input_sources of the run and video it sits in); for one of the
+    client's own files (under the asset roots of `run`), that file itself with its asset id; {} when no record names it."""
+    if not path:
+        return {}
+    loc = locate(path)
+    if loc and loc[1]:
+        rd = run_dir(loc[0])
+        src = input_sources(rd, loc[1]).get(_file_key(path)) if rd else None
+        if src:
+            return src
+    rd = run_dir(run) if run else None
+    if rd:
+        st = _json(rd / "state.json") or {}
+        if _in_asset_roots(st, path):
+            inv, _names = _inventory(rd)
+            aid = next((k for k, it in inv.items() if it.get("path") and _file_key(it["path"]) == _file_key(path)), "")
+            return {"original": str(path), "name": Path(str(path).replace("\\", "/")).name, "asset_id": aid, "prepared": "", "kind": "",
+                    "recorded": "the client's file", "image": "", "role": "", "request": ""}
+    return {}
+
+
 def product_samples(run: str, video: str, wrong: str = "", path: str = "") -> list[dict]:
     """The product image(s) a video's request used, as the original files in the client's own reference folder.  The request names each image input
     (by its asset id, "<what it is>: A14" in its medias_meaning or on the input itself in params.medias, or by the product code in its prepared file name,
@@ -655,7 +781,7 @@ def product_samples(run: str, video: str, wrong: str = "", path: str = "") -> li
             seen.update({aid, key} - {None, ""})       # one picture per product: another view of the same product is not shown again
             said = _said(text, aid) if aid in found else ""       # what the request itself called it, else the registry's name
             name = said or (prods.get(key or "") or {}).get("name") or aid
-            out.append({"asset_id": aid, "label": name[:90], "path": path, "name": path.name, "request": rf.name})
+            out.append({"asset_id": aid, "label": name[:90], "path": path, "name": path.name, "request": rf.name, "run": run, "video": core.nn(video)})
         if out:
             return out[:2]
     return []
@@ -706,6 +832,7 @@ def generation_assets(run: str, video: str, wrong: str = "", path: str = "") -> 
         reqs = [rd / "50-requests" / s["request"] for s in segs if s.get("request")] or reqs
     auto = product_samples(run, video, wrong)
     suggested = {_file_key(p["path"]) for p in auto}
+    srcs = input_sources(rd, nn)          # where each input came from, as the run recorded it (the admin, 2026-10-30)
 
     def file_of(aid: str):
         it = inv.get(aid) or {}
@@ -716,7 +843,7 @@ def generation_assets(run: str, video: str, wrong: str = "", path: str = "") -> 
 
     out, seen = [], set()
 
-    def add(p, label: str, source: str, aid: str, req: str):
+    def add(p, label: str, source: str, aid: str, req: str, src: dict | None = None):
         if not p:
             return
         p = Path(p)
@@ -728,7 +855,9 @@ def generation_assets(run: str, video: str, wrong: str = "", path: str = "") -> 
         if k in seen:
             return
         seen.add(k)
-        out.append({"path": p, "name": p.name, "label": label[:120], "source": source, "asset_id": aid or "", "request": req, "suggested": k in suggested})
+        src = src or {}
+        out.append({"path": p, "name": p.name, "label": label[:160], "source": source, "asset_id": aid or src.get("asset_id") or "", "request": req,
+                    "suggested": k in suggested, "original": src.get("original", ""), "original_name": src.get("name", ""), "prepared": src.get("prepared", "")})
 
     for rf in reqs:
         req = _json(rf) or {}
@@ -743,12 +872,17 @@ def generation_assets(run: str, video: str, wrong: str = "", path: str = "") -> 
             if not aid:
                 code = next((c for c in P_CODE.findall(text + " " + Path(str(inp.get("path") or (hit[1] if hit else "") or "")).name) if c in prods), None)
                 aid = (prods[code]["canonical"] or "") if code else ""
+            src = (srcs.get(_file_key(inp["path"])) if inp.get("path") else None) or srcs.get(str(inp.get("media_id") or "")) \
+                or (srcs.get(_file_key(hit[1])) if hit and hit[1] else None)
+            aid = aid or (src or {}).get("asset_id", "")
             what = (_said(text, aid) if aid and aid in found else "") or ((prods.get(id_owner.get(aid, "")) or {}).get("name") if aid else "") or _input_words(text)
             name = f"{lab} · {what}" if what else lab
-            add(file_of(aid) if aid else None, name, "the client's original", aid, rf.name)
-            add(inp.get("path"), name, "as sent to the model", aid, rf.name)
+            if src:          # named by the client's original file the run recorded for it
+                name = f"{lab} · " + (f"{src['asset_id']} · " if src.get("asset_id") else "") + Path(src["original"]).name
+            add(Path(src["original"]) if src else (file_of(aid) if aid else None), name, "the client's original", aid, rf.name, src)
+            add(inp.get("path"), name, "as sent to the model", aid, rf.name, src)
             if hit:
-                add(hit[1], name, "as the uploads record names it", aid, rf.name)
+                add(hit[1], name, "as the uploads record names it", aid, rf.name, src)
     for p in auto:
         add(p["path"], p["label"], "the client's original", p["asset_id"], p.get("request", ""))
     return out

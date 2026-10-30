@@ -179,6 +179,26 @@ def _wrap(d, text: str, f, width: int) -> list[str]:
     return lines
 
 
+def _wrap_hard(d, text: str, f, width: int) -> list[str]:
+    """_wrap, and a word longer than the width (a file name) broken at its last '-', '_' or space that fits (a '.' only when none fits past the
+    first third, so 'Front.png' stays whole), else where it must: nothing is cut."""
+    out = []
+    for ln in _wrap(d, text, f, width):
+        while ln and d.textlength(ln, font=f) > width:
+            k = len(ln)
+            while k > 1 and d.textlength(ln[:k], font=f) > width:
+                k -= 1
+            cut = max(ln.rfind(c, 0, k) for c in "-_ ")
+            if cut < k // 3:
+                cut = max(cut, ln.rfind(".", 0, k))
+            k = cut + 1 if cut > 0 else k
+            out.append(ln[:k].rstrip())
+            ln = ln[k:].lstrip()
+        if ln:
+            out.append(ln)
+    return out
+
+
 def _fit(im: Image.Image, w: int, h: int, bg=(18, 18, 22)) -> Image.Image:
     s = min(w / im.width, h / im.height)
     r = im.resize((max(1, round(im.width * s)), max(1, round(im.height * s))), Image.LANCZOS)
@@ -367,6 +387,17 @@ def build(frames: list[dict], meta: dict, details: str, correct_note: str, inclu
         cap.insert(0, (f_leg, (170, 174, 184), _wrap(scratch, t, f_leg, cap_w)))
     text_h = 36 + sum(len(ls) * (f.size + 9) + 12 for f, _c, ls in cap) if cap else 0
     cap_h = max(text_h, 300) if ps else text_h        # the product needs some height to be recognised
+    # the product sample band (the admin, 2026-10-30): how many images it shows, all used by this video's generation, and each one's full name under
+    # its own picture, wrapped, never cut; the band grows when the names need the room
+    f_ps, f_ps_head = font(15, True), font(16, True)
+    ps_box_w = (W - M) - (W // 2 + M) - 24
+    ps_cell = ps_box_w // max(1, len(ps))
+    ps_names = [_wrap_hard(scratch, str(lab or ""), f_ps, ps_cell - 12) for _im, lab in ps]
+    ps_head = _wrap_hard(scratch, (f"PRODUCT SAMPLE{'S' if len(ps) > 1 else ''} · {len(ps)} IMAGE{'S' if len(ps) > 1 else ''} USED IN "
+                                   "THIS VIDEO"), f_ps_head, ps_box_w) if ps else []
+    ps_text_h = (10 + len(ps_head) * (f_ps_head.size + 6) + 6 + max((len(x) for x in ps_names), default=0) * (f_ps.size + 5) + 18) if ps else 0
+    if ps:
+        cap_h = max(cap_h, 232 + ps_text_h)          # about 200 px left for the pictures
 
     head_h, tag_room = ((104 if two else 74) if n else 40), (70 if two else 40)
     row_h = [max(pics[i].height for i in row) for row in rows]
@@ -454,16 +485,21 @@ def build(frames: list[dict], meta: dict, details: str, correct_note: str, inclu
             d.line([(colw, band_top + 16), (colw, H - 16)], fill=(58, 60, 70), width=1)
             x0, y0, x1, y1 = colw + M, band_top + 16, W - M, H - 16
             d.rectangle([x0, y0, x1, y1], fill=PRODUCT_BG)
-            lab_h = 30
-            iw_all, ih_all = x1 - x0 - 24, y1 - y0 - 24 - lab_h
-            cell = iw_all // len(ps)
-            for i, (pim, _lab) in enumerate(ps):
-                sc = min(cell / pim.width, ih_all / pim.height)
+            hy = y0 + 10
+            for ln in ps_head:
+                d.text((x0 + 12, hy), ln, font=f_ps_head, fill=(40, 42, 50))
+                hy += f_ps_head.size + 6
+            names_h = max(len(x) for x in ps_names) * (f_ps.size + 5)
+            iy0 = hy + 6
+            ih_all = max(40, y1 - 18 - names_h - iy0)
+            cell = (x1 - x0 - 24) // len(ps)
+            for i, ((pim, _lab), names) in enumerate(zip(ps, ps_names)):
+                sc = min((cell - 12) / pim.width, ih_all / pim.height)
                 nw, nh = max(1, round(pim.width * sc)), max(1, round(pim.height * sc))
-                img.paste(pim.resize((nw, nh), Image.LANCZOS), (x0 + 12 + i * cell + (cell - nw) // 2, y0 + 12 + (ih_all - nh) // 2))
-            lab = "PRODUCT SAMPLE · " + " / ".join(l for _i, l in ps)
-            fl = font(15, True)
-            while d.textlength(lab, font=fl) > x1 - x0 - 24 and len(lab) > 24:
-                lab = lab[:-4].rstrip() + "…"
-            d.text((x0 + 12, y1 - lab_h + 6), lab, font=fl, fill=(40, 42, 50))
+                cx = x0 + 12 + i * cell
+                img.paste(pim.resize((nw, nh), Image.LANCZOS), (cx + (cell - nw) // 2, iy0 + (ih_all - nh) // 2))
+                ny = iy0 + ih_all + 8
+                for ln in names:          # its whole name, centred under its own picture
+                    d.text((cx + (cell - d.textlength(ln, font=f_ps)) / 2, ny), ln, font=f_ps, fill=(40, 42, 50))
+                    ny += f_ps.size + 5
     return img, zoom, annotated

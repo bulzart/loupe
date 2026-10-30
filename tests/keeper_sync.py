@@ -504,7 +504,7 @@ check("its digest line says which prompts are saved, named by what they are, and
       and "NOTE-ON-PROMPT" in line and "WRONGPROMPT-MARK" not in line and "FIXEDPROMPT-MARK" not in line, line[:300])
 check("the header and the role tell the keeper to read the prompts through sample_origin and judge what changed itself, never to assume", "sample_origin" in qc.LIB_HEADER and "Never assume what changed without reading them" in qc.ROLE)
 qc._run_claude = scripted
-script[:] = [{"relevant": [], "needs": [{"kind": "sample_origin", "id": f"S{pm_mo}", "why": "what the corrected prompt said"}]},
+script[:] = [{"relevant": [], "needs": [{"kind": "sample_origin", "id": f"S{pm_mo}", "why": "what the correct version's prompt said"}]},
              {"relevant": [{"id": f"S{pm_mo}", "why": "w", "check": "c", "wrong_pattern": "p"}], "advice": "", "not_covered": ""}]
 res = qc.consult("sync-test", dict(CTX), "how was the height fixed", "qc")
 check("sample_origin brings both prompts whole to the keeper, as evidence for that answer, and nothing of them enters the library", "WRONGPROMPT-MARK" in calls[-1] and "FIXEDPROMPT-MARK" in calls[-1] and "NOTE-ON-PROMPT" in calls[-1] and "WRONGPROMPT-MARK" not in qc._digest(), calls[-1][:400])
@@ -640,6 +640,30 @@ check("the digest carries only the short collection (three fields, each cut) and
       "READ (collected from its picture, no verdict" in line and "full collection:" in line and not any(m in line for m in ("WORDS-MARK", "OPEN-MARK", "FRAME-MARK"))
       and len(line.split("READ (collected from its picture", 1)[1].split("\n", 1)[0]) < 1000, line[-400:])
 (ud / f"{s_any['id']}.json").unlink()
+
+print("\n[the product images of a sample: which and how many its generation was given, by the client's original files (the admin, 2026-10-30)]")
+pi_id, pi_mo = mk_miss("the label is wrong with one view", video="09")
+ask()                                  # the new sample reaches the keeper; what follows must come from its product images alone
+pi_meta_p = core.DATA / "samples" / str(pi_mo) / "meta.json"
+pi_meta = json.loads(pi_meta_p.read_text(encoding="utf-8"))
+pi_meta["product_samples"] = [{"asset": "A82", "label": "Image 2 · A82 · Carton-Front.png", "file": "image2-product-front.png", "image": "Image 2",
+                               "original": "C:/client/carton/Carton-Front.png", "original_name": "Carton-Front.png", "prepared": "padded to 9:16 on white", "recorded": "source"}]
+pi_meta_p.write_text(json.dumps(pi_meta), encoding="utf-8")
+fresh, current, text = ask()
+line = line_of(pi_mo)
+check("a sample whose product images change re-syncs the keeper, with that sample's record alone", fresh and current and DELTA in text
+      and list(qc.records_of(text)) == [f"S{pi_mo}"], text[:300])
+check("its digest line says how many product images its generation was given and names each by its input, asset id and the client's original file "
+      "name, never a folder", f"PRODUCT IMAGES OF S{pi_mo} (1): Image 2 · A82 · Carton-Front.png" in line and "C:/client" not in line, line[:400])
+pi_meta["product_samples"].append({"asset": "A83", "label": "Image 3 · A83 · Carton-Back.png", "file": "image3-product-back.png", "image": "Image 3",
+                                   "original": "C:/client/carton/Carton-Back.png", "original_name": "Carton-Back.png", "prepared": "", "recorded": "source"})
+pi_meta_p.write_text(json.dumps(pi_meta), encoding="utf-8")
+fresh, current, text = ask()
+check("a second product image re-syncs it again, the count with it", fresh and current
+      and f"PRODUCT IMAGES OF S{pi_mo} (2): Image 2 · A82 · Carton-Front.png; Image 3 · A83 · Carton-Back.png" in line_of(pi_mo), line_of(pi_mo)[:400])
+check("the boot message explains the PRODUCT IMAGES section of a record", "PRODUCT IMAGES OF S.." in qc.LIB_HEADER)
+misses.delete(pi_id, "test") if hasattr(misses, "delete") else None
+ask()
 
 print("\n[the same library everywhere]")
 same_library("at the end")

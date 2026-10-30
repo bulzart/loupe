@@ -57,6 +57,7 @@ ROT_TURNS = 30           # a keeper session this long is replaced by a fresh one
 KEEPER_CALL_TIMEOUT = 240     # seconds one keeper (judge) call may run before its process tree is ended; the collector keeps its own 300 s
 TEMPLATE_READ = 10      # samples whose saved prompts a template request reads whole
 PROMPTS_READ = TEMPLATE_READ      # cited samples whose saved prompts the final prompts round of an answer sends whole, in the order cited
+PRODUCT_IMAGES_MAX = 6  # the product images the judge may list for one request (the admin, 2026-10-30: the judge decides which and how many)
 DEFAULT_MODEL = "claude-opus-5-5"     # the keeper is the judge: Opus 5.5 (the user, 2026-10-28); the Haiku collector below only collects
 EFFORTS = ("high", "xhigh", "max")   # the reasoning effort every keeper and collector call is started with; never low or medium
 EFFORT_DEFAULT = "high"
@@ -315,6 +316,15 @@ def sample_record(s: dict, mode: str = "digest", lib=None, more=None) -> str:
     out.append(f"WHAT {sid} IS: " + what)
     out.append(f"WHERE {sid} CAME FROM: model {s.get('model') or 'any'} · " + (_origin(s) or "no run recorded").replace(" | ", " · ")
                + " · kinds: " + (", ".join(s.get("kinds") or []) or ("-" if compact else "not tagged (judge from the words and the image)")))
+    pim = product_images(s)
+    if pim:          # how many product images its generation was given, and which (the admin, 2026-10-30)
+        head = f"PRODUCT IMAGES OF {sid} ({len(pim)}" + ("" if compact else f": the product reference image{'s' if len(pim) > 1 else ''} its generation was "
+                                                       "given, as its picture shows them, each by the client's original file") + "):"
+        if compact:
+            out.append(head + " " + "; ".join(_pim_words(x, False) for x in pim))
+        else:
+            out.append(head)
+            out += [f"  {sid} · " + _pim_words(x, True) for x in pim]
     out.append(f"THE GENERATION MISS R{mid} OF {sid}" + ("" if compact else " (the admin's report it belongs to)") + f": {s.get('title', '')}"
                + (f" — {cap(s['explanation'], 600)}" if s.get("explanation") else ""))
     words = []
@@ -429,6 +439,7 @@ def brief(ctx: dict, limit: int = 8) -> dict:
     # and what the data collector saw in its picture
     return {"mode": "brief", "samples": [{**{k: s[k] for k in ("id", "title", "kinds", "model", "details", "correct_note", "idea", "better", "missed", "prompts", "prompt_note", "sample_kind", "has_right", "frames", "n_frames", "composite_path", "image_url", "score")},
                                           **{k: s.get(k, d) for k, d in (("run", ""), ("video", ""), ("t_wrong", None), ("prompt_roles", {}), ("prompt_sides", []))},
+                                          "product_images": product_images_brief(s),
                                           **_reading_brief(s)} for s in sam],
             "text": text, "library_size": len(library())}
 
@@ -465,7 +476,7 @@ LIB_HEADER = ("One record per sample, each from its line '=== SAMPLE S.. · gene
               "its frames are all called RIGHT, how it looks when it is right, with the correct version's prompt alone; SCENARIO OF EXAMPLES ONLY: "
               "its frames are all Examples, taken from one video, each a suggestion of what could have changed or how it could have been done another way, "
               "neither a bad generation nor a correct one); WHERE S.. CAME FROM (model, run, video, time, mode, the product when the admin named it, the "
-              "kinds; an empty kinds field, '-', means the admin did not tag the sample: judge from the words and the image); THE GENERATION MISS R.. OF S.. "
+              "kinds; an empty kinds field, '-', means the admin did not tag the sample: judge from the words and the image); PRODUCT IMAGES OF S.. (how many product reference images its generation was given and which, as its picture shows them: each by the request input it was sent as, the client's asset id and the original file's name, and in a full record how it was prepared; 'its original file is not recorded' when the run kept no record of it); THE GENERATION MISS R.. OF S.. "
               "(the report's title and explanation, the admin's own words); THE ADMIN'S WORDS FOR S.. (each tied to the frames it speaks of: what is wrong at "
               "the marked place of the frames called WRONG, what the frames called RIGHT show, the idea, what could have been better, what the AI agents "
               "missed, the admin's one-line note on the prompt); FRAMES OF S.. (one line per frame as its image tags it: its number, WRONG, RIGHT or EXAMPLE, "
@@ -490,6 +501,51 @@ LIB_HEADER = ("One record per sample, each from its line '=== SAMPLE S.. · gene
 # LIB_HEADER reaches a keeper session once, when it boots; a delta never sends it again.  So the session keeps the version of the header it was told
 # (HEADER_SIG), and a session told another header (a wording change of how a record is read) is replaced by a fresh one, as a model change does.
 HEADER_SIG = hashlib.sha1(LIB_HEADER.encode("utf-8")).hexdigest()[:12]
+
+
+# ------------------------------------------------------------------ the product images of a sample (the admin, 2026-10-30)
+# "the names are far better to be told as they were in their original files ... so the upcoming runs know which assets samples to use or how much of them",
+# "just the exact file/image name".  A sample's picture shows the product images its generation was given; its meta.json keeps each one's request input,
+# asset id, original file and how it was prepared (misses.product_label).  Read from there, cached by the file's time and size.
+_PIM_CACHE: dict = {}
+
+
+def product_images(s: dict) -> list[dict]:
+    """The product images a sample's picture shows, as its meta.json product_samples keeps them: [{image, asset, original_name, prepared, label, ...}]."""
+    try:
+        mp = Path(s["composite_path"]).parent / "meta.json"
+        sm = mp.stat()
+        mt = (sm.st_mtime_ns, sm.st_size)          # its time and size: a rewrite inside one clock tick is still seen
+    except (OSError, KeyError, TypeError):
+        return []
+    hit = _PIM_CACHE.get(str(mp))
+    if hit and hit[0] == mt:
+        return hit[1]
+    try:
+        ps = json.loads(mp.read_text(encoding="utf-8")).get("product_samples") or []
+    except (OSError, ValueError, AttributeError):
+        ps = []
+    out = [x for x in ps if isinstance(x, dict)]
+    _PIM_CACHE[str(mp)] = (mt, out)
+    return out
+
+
+def _pim_words(x: dict, long: bool) -> str:
+    """'Image 2 · A82 · Carton_Single-Front.png' (and, long, how it was prepared); a file whose original the run did not record is named
+    by the name it was picked by and says so."""
+    name = str(x.get("original_name") or "")
+    if not name:
+        lab = str(x.get("label") or x.get("file") or "a product image")
+        return lab if "not recorded" in lab else lab + " · its original file is not recorded"
+    words = " · ".join(v for v in (str(x.get("image") or ""), str(x.get("asset") or ""), name) if v)
+    return words + (f", prepared: {x['prepared']}" if long and x.get("prepared") else "")
+
+
+def product_images_brief(s: dict) -> list[dict]:
+    """A sample's product images as an answer carries them: [{image, asset, file (the original file's name, or the name it was picked by), prepared, recorded}]."""
+    return [{"image": str(x.get("image") or "") or (re.match(r"(?i)image \d+", str(x.get("label") or "")) or [""])[0], "asset": str(x.get("asset") or ""),
+             "file": str(x.get("original_name") or x.get("file") or ""),
+             "prepared": _clip(x.get("prepared", ""), 300), "recorded": bool(x.get("original_name"))} for x in product_images(s)]
 
 
 def _origin(s: dict) -> str:
@@ -925,7 +981,8 @@ ROLE = ("You are the Loupe keeper of a video-generation pipeline. You hold a lib
         '{"relevant":[{"id":"S12","why":"<why it applies>","check":"<what exactly to compare in the video under QC>","wrong_pattern":"<the miss in a phrase>"}],'
         '"advice":"<at most 80 words>","cause":"<when the question carries the prompt: which part of the prompt or of your template let the error happen, and why; '
         'or empty>","template_fix":"<that part rewritten so the error is designed out, in positive words, the wrong behaviour never named; or empty>",'
-        '"not_covered":"<what in the question the library does not cover, or empty>","needs":[<optional, see ASK, DO NOT GUESS>],"flags":[<optional, see FLAG, DO NOT PAPER OVER>]}. '
+        '"not_covered":"<what in the question the library does not cover, or empty>","product_images":[<optional, see PRODUCT IMAGES: for the regeneration>],'
+        '"needs":[<optional, see ASK, DO NOT GUESS>],"flags":[<optional, see FLAG, DO NOT PAPER OVER>]}. '
         "PLANNING QUESTION (the video has NOT been generated; the prompt writer shows the beats of its plan and asks which past misses could matter): "
         "the writer will act on what you say, and over-correcting from old misses distorts a good plan, so be sparse and exact. Your default answer is NO "
         "hints. Give a hint only when a beat of THIS plan matches the sample's trigger AND the model, mode and product form are compatible; one sure "
@@ -952,7 +1009,7 @@ ROLE = ("You are the Loupe keeper of a video-generation pipeline. You hold a lib
         "generation nor a correct one; read it as one), and write the final prompt for THIS "
         "video: the whole prompt in the request structure the brief gives (its sections, order and syntax; never your general knowledge of the model), built on the "
         "checked draft (its beats, the product's form, sizes and counts, the inputs and their roles stay unless a sample shows a better way for the same "
-        "situation); carry every must-carry line word for word; stay within the service's prompt limit the brief names; carry the wording and the mechanism that "
+        "situation; the product images are yours to decide, see PRODUCT IMAGES); carry every must-carry line word for word; stay within the service's prompt limit the brief names; carry the wording and the mechanism that "
         "made a correct version work wherever the situation is the same, adapted "
         "to this product and scene (never another video's nouns); design each failure out in positive words (the right state written as what the right version "
         "shows, the wrong behaviour never named, no list of negatives, at most one targeted exclusion for the product); and put [SLOT: <what goes here>] only "
@@ -963,10 +1020,26 @@ ROLE = ("You are the Loupe keeper of a video-generation pipeline. You hold a lib
         '{"template":"<the whole final prompt>","basis":[{"id":"S12","worked":"<what the correct version\'s prompt did that worked>","failed":"<what the flawed version\'s '
         'prompt did that failed>","where":"<which part of the prompt carries it>"}],"notes":"<at most 120 words: what you changed from the draft and why>",'
         '"changes":[{"what":"<a part of the plan that earlier generations say should change, already carried in your prompt>","why":"<the sample and the mechanism>","id":"S12"}],'
-        '"not_covered":"<what in the brief the library does not cover, or empty>","needs":[<optional, see ASK, DO NOT GUESS>],"flags":[<optional, see FLAG, DO NOT PAPER OVER>]}. '
+        '"not_covered":"<what in the brief the library does not cover, or empty>","product_images":[<see PRODUCT IMAGES; [] keeps the draft\'s>],'
+        '"needs":[<optional, see ASK, DO NOT GUESS>],"flags":[<optional, see FLAG, DO NOT PAPER OVER>]}. '
         "The pipeline uses your prompt as it stands: it fills a slot only with a value its plan already decided, asks you once more when a must-carry line is "
         "missing or the prompt is too long, and only then adds a missing line itself; you are not asked again before the video is generated, and after it is "
         "generated the QC consult brings you the prompt it used. "
+        "PRODUCT IMAGES (the admin, 2026-10-30). Which of the client's images of the product a generation is given, and how many, one or several, is "
+        "yours to decide; the character, the original reference and every other input stay as the pipeline set them. Each record says under PRODUCT "
+        "IMAGES which product images that generation was given (the request input, the client's asset id and the original file's name, and in a full "
+        "record how each was prepared), and its frames show what came of them; a template request lists the checked draft's inputs the same way and "
+        "the client's images of the product (ask product_registry for the whole registry row). Decide from what the samples show: a second view where"
+        " one view left the size, the thinness or the label wrong, one view where two confused the model, the image or the preparation that worked. "
+        "product_images in your answer is the whole list of the product images the request should carry, in order, each {\"asset\":\"A82\",\"file\":\"<the "
+        "original file's name>\",\"prepare\":\"<how to prepare it, when not as the draft already does; or empty>\",\"why\":\"<the samples and what they "
+        "show>\"}; an empty list keeps the draft's product images as they are. The product images ride last among the image inputs: the inputs that "
+        "are not product images keep their Image numbers and your product images take the numbers after them, in your order, so your prompt names "
+        "each by its final number. A must-carry line that names a product image by its number is carried with the number that image has in your list "
+        "and otherwise word for word; one that names an image you leave out is no longer the request's. In a QC answer, product_images is for the "
+        "regeneration and only when the error comes from the product images: the images your template_fix does not touch keep their numbers, so add "
+        "images after the last one, or leave out the last ones that nothing in the prompt names any more, never both at once and never another "
+        "file in an image's place (the same image prepared anew keeps its place). "
         "ASK, DO NOT GUESS. When you cannot judge something because it is missing or unclear (what this plan intended at a checkpoint, the product registry row, "
         "how the video under QC looks at a time the question does not show, where a sample came from or the prompts it keeps (the flawed version's, "
         "the correct version's or its example prompt, whichever boxes its frames speak through), or what the QC agent itself sees), put a needs list (at most 3) "
@@ -1181,7 +1254,8 @@ def plan_hints_from(parsed, ctx: dict, lib: dict, cap: int = 3, why: list | None
         out.append({"id": s["id"], "trigger": _clip(r["trigger"], 600), "right_outcome": _clip(r.get("right_outcome", ""), 600),
                     "lever": _clip(r["lever"], 700), "caveat": _clip(r.get("caveat", ""), 500), "confidence": conf, "model_independent": indep,
                     "prompts": s.get("prompts", ""), "prompt_roles": s.get("prompt_roles", {}), "prompt_sides": s.get("prompt_sides", []),
-                    "prompt_note": _clip(s.get("prompt_note", ""), 400), "reading_path": _reading_path(s) if s.get("composite_path") else ""})
+                    "product_images": product_images_brief(s), "prompt_note": _clip(s.get("prompt_note", ""), 400),
+                    "reading_path": _reading_path(s) if s.get("composite_path") else ""})
     out.sort(key=lambda h: 0 if h["confidence"] == "high" else 1)
     for extra in out[cap:]:
         _why(why, extra["id"], f"beyond the cap of {cap} hints")
@@ -1261,7 +1335,8 @@ def _fulfil(n: dict, ctx: dict, d: Path, plan: bool) -> dict:
                     more.append(f"THE NEWEST REQUEST PROMPT OF THAT VIDEO, FROM ITS RUN (the admin saved no prompt for {sid}; which generation made which frame is "
                                 "not told here, so it is neither the flawed nor the correct version's prompt until you tie it to the frames): " + pr)
                 for k, ps in enumerate(runs.product_samples(s["run"], s["video"])[:2], 1):
-                    more.append(f"PRODUCT IMAGE {k} OF {sid} (product image {k}, {ps['label']}): {_copy_in(Path(ps['path']), d, f'{sid}-product-{k}')}")
+                    more.append(f"PRODUCT IMAGE {k} OF {sid} (product image {k}, {ps['asset_id']} · {ps['name']}, which the request calls {ps['label']}): "
+                                f"{_copy_in(Path(ps['path']), d, f'{sid}-product-{k}')}")
             else:
                 more.append(f"ITS RUN FOLDER is not available (run {s.get('run') or 'none recorded'})")
             return {"ok": True, "text": sample_record(s, "full", more=more), "why_not": ""}
@@ -1281,7 +1356,7 @@ def _fulfil(n: dict, ctx: dict, d: Path, plan: bool) -> dict:
             if reg:
                 lines.append("the run's asset registry (first 3500 characters):\n" + reg)
             for k, ps in enumerate(runs.product_samples(run, video)[:2], 1):
-                lines.append(f"product image {k} ({ps['label']}): {_copy_in(Path(ps['path']), d, f'product-{k}')}")
+                lines.append(f"product image {k} ({ps['asset_id']} · {ps['name']}, which the request calls {ps['label']}): {_copy_in(Path(ps['path']), d, f'product-{k}')}")
             return {"ok": True, "text": "\n".join(lines), "why_not": ""} if lines else no("this run has no registry or product image")
         if kind == "video_frame":
             if plan:
@@ -1453,6 +1528,25 @@ def _template_round(parsed, st: dict, ctx: dict):
     return _json_of(res.get("result", "")), read, float(res.get("total_cost_usd") or 0), 1, asked
 
 
+def product_images_from(parsed) -> list[dict]:
+    """The judge's list of the product images a request (or a regeneration) should carry, held to its shape: at most PRODUCT_IMAGES_MAX, in its order,
+    each naming the client's asset id or the original file's name (one is needed; a file is named by its name alone, never its folder), how to prepare
+    it (empty: as the draft already does) and why.  [] when it listed none: the draft's product images stay."""
+    raw = parsed.get("product_images") if isinstance(parsed, dict) else None
+    out = []
+    for x in (raw if isinstance(raw, list) else []):
+        if len(out) >= PRODUCT_IMAGES_MAX:
+            break
+        if not isinstance(x, dict):
+            continue
+        m = runs.A_ID.search(str(x.get("asset") or ""))
+        name = Path(str(x.get("file") or "").replace("\\", "/")).name.strip()[:200]
+        if not (m or name):
+            continue
+        out.append({"asset": m.group(0) if m else "", "file": name, "prepare": _clip(x.get("prepare", ""), 600), "why": _clip(x.get("why", ""), 400)})
+    return out
+
+
 def template_from(parsed, lib: dict) -> dict:
     """The keeper's template answer, held to its shape: the template whole (a video generation prompt, never cut), basis only for samples that exist, short fields."""
     p = parsed if isinstance(parsed, dict) else {}
@@ -1462,11 +1556,11 @@ def template_from(parsed, lib: dict) -> dict:
             s = lib[b["id"]]
             basis.append({"id": s["id"], "worked": _clip(b.get("worked", ""), 600), "failed": _clip(b.get("failed", ""), 600), "where": _clip(b.get("where", ""), 300),
                           "title": _clip(s.get("title", ""), 300), "model": s.get("model", ""), "prompts": s.get("prompts", ""), "prompt_roles": s.get("prompt_roles", {}),
-                          "prompt_sides": s.get("prompt_sides", []), "prompt_note": _clip(s.get("prompt_note", ""), 400), "reading_path": _reading_path(s) if s.get("composite_path") else ""})
+                          "prompt_sides": s.get("prompt_sides", []), "product_images": product_images_brief(s), "prompt_note": _clip(s.get("prompt_note", ""), 400), "reading_path": _reading_path(s) if s.get("composite_path") else ""})
     changes = [{"what": _clip(c.get("what", ""), 400), "why": _clip(c.get("why", ""), 400), "id": str(c.get("id") or "")[:12]}
                for c in (p.get("changes") or [])[:5] if isinstance(c, dict) and str(c.get("what") or "").strip()]
     tpl = str(p.get("template") or "").strip()
-    return {"template": tpl, "basis": basis, "notes": _clip(p.get("notes", ""), 900),
+    return {"template": tpl, "basis": basis, "notes": _clip(p.get("notes", ""), 900), "product_images": product_images_from(p),
             "changes": changes, "not_covered": _clip(p.get("not_covered", ""), 500),
             "none_reason": "" if tpl else ("the keeper gave no template" if p else "the keeper's answer was not a JSON object")}
 
@@ -1535,7 +1629,9 @@ def consult(key_name: str, ctx: dict, question: str, purpose: str = "qc") -> dic
             else:
                 ev = "".join(f"\n\n{what}:\n{_evidence(ctx.get(k))}" for k, what in (
                     ("request_prompt", "The prompt this video was generated from (whole, as submitted)"),
-                    ("request_params", "The video model and parameters of that request"), ("video_model", "That video model (from the pipeline's model index)"),
+                    ("request_params", "The video model and parameters of that request"),
+                    ("request_inputs", "The inputs of that request (what each is and the client's original file it was made from) and its product images"),
+                    ("video_model", "That video model (from the pipeline's model index)"),
                     ("template", "The template you gave for it before it was written"), ("brief", "The agent's brief at that time")) if _evidence(ctx.get(k)))
                 prompt = (f"QC question for {who}:\n{question}{ev}\n\nContext: {json.dumps({k: ctx.get(k) for k in ('kinds', 'checkpoints', 'product_forms') if ctx.get(k)}, ensure_ascii=False)}\n"
                           f"Server pre-ranking (ids, best first): {', '.join(s['id'] for s in pre) or 'none'}.{delta}\nAnswer with the JSON object only; if you cannot judge something that Loupe could fetch (the plan, a frame, the product row, a sample's origin), ask with needs instead of guessing.")
@@ -1579,12 +1675,14 @@ def consult(key_name: str, ctx: dict, question: str, purpose: str = "qc") -> dic
                                     "wrong_pattern": _clip(r.get("wrong_pattern", ""), 300), "composite_path": s["composite_path"], "image_url": s["image_url"],
                                     "title": _clip(s.get("title", ""), 600), "model": s.get("model", ""), "run": s.get("run", ""), "video": s.get("video", ""),
                                     "t_wrong": s.get("t_wrong"), "kinds": s.get("kinds", []), "prompts": s.get("prompts", ""), "prompt_roles": s.get("prompt_roles", {}), "prompt_sides": s.get("prompt_sides", []),
-                                    "prompt_note": _clip(s.get("prompt_note", ""), 400), "details": s["details"], "correct_note": s["correct_note"], "has_right": s.get("has_right", True),
+                                    "product_images": product_images_brief(s), "prompt_note": _clip(s.get("prompt_note", ""), 400), "details": s["details"], "correct_note": s["correct_note"], "has_right": s.get("has_right", True),
                                     "idea": s.get("idea", ""), "better": s.get("better", ""), "missed": s.get("missed", ""), "sample_kind": s.get("sample_kind", "pair"),
                                     "frames": s.get("frames", []), "n_frames": s.get("n_frames", 0), **_reading_brief(s)})
                 res = {"mode": "keeper", "purpose": "qc", "relevant": rel, "advice": _clip((parsed or {}).get("advice", ""), 700) if isinstance(parsed, dict) else _clip(d.get("result", ""), 700),
                        "not_covered": _clip((parsed or {}).get("not_covered", ""), 500) if isinstance(parsed, dict) else "", "library_size": len(ids)}
                 if isinstance(parsed, dict):
+                    if product_images_from(parsed):
+                        res["product_images"] = product_images_from(parsed)      # the judge's product images for the regeneration
                     for k, n in (("cause", 900), ("template_fix", 0)):
                         if str(parsed.get(k) or "").strip():
                             res[k] = _clip(parsed[k], n) if k == "cause" else str(parsed[k]).strip()      # template_fix is a part of a prompt: whole
