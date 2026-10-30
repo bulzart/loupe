@@ -25,16 +25,80 @@
   }
  ],
  "product_sample_chosen": false,
- "product_samples": [
+ "images_sent": [
+  {
+   "asset": "A19",
+   "label": "Image 1 · A19 · download (12).jpg",
+   "file": "CH-M06_A19-head.jpg",
+   "image": "Image 1",
+   "kind": "character",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\download (12).jpg",
+   "original_name": "download (12).jpg",
+   "prepared": "CH-M06 identity: A19 cropped above the collar onto grey",
+   "recorded": "named",
+   "job": "c23461c1-b2de-4de9-a0e0-20c3585022ed"
+  },
   {
    "asset": "A44",
    "label": "Image 2 · A44 · watermelon front - cans usa.png",
-   "file": "watermelon front - cans usa.png",
+   "file": "A44_can-ref.png",
    "image": "Image 2",
+   "kind": "product",
    "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\watermelon front - cans usa.png",
    "original_name": "watermelon front - cans usa.png",
    "prepared": "CELSIUS Watermelon can, sealed: A44",
-   "recorded": "named"
+   "recorded": "named",
+   "job": "c23461c1-b2de-4de9-a0e0-20c3585022ed"
+  },
+  {
+   "asset": "",
+   "label": "Image 3 · video-05-guide.png · its original file is not recorded",
+   "file": "video-05-guide.png",
+   "image": "Image 3",
+   "kind": "",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "c23461c1-b2de-4de9-a0e0-20c3585022ed"
+  }
+ ],
+ "product_samples": [
+  {
+   "asset": "A19",
+   "label": "Image 1 · A19 · download (12).jpg",
+   "file": "CH-M06_A19-head.jpg",
+   "image": "Image 1",
+   "kind": "character",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\download (12).jpg",
+   "original_name": "download (12).jpg",
+   "prepared": "CH-M06 identity: A19 cropped above the collar onto grey",
+   "recorded": "named",
+   "job": "c23461c1-b2de-4de9-a0e0-20c3585022ed"
+  },
+  {
+   "asset": "A44",
+   "label": "Image 2 · A44 · watermelon front - cans usa.png",
+   "file": "A44_can-ref.png",
+   "image": "Image 2",
+   "kind": "product",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\watermelon front - cans usa.png",
+   "original_name": "watermelon front - cans usa.png",
+   "prepared": "CELSIUS Watermelon can, sealed: A44",
+   "recorded": "named",
+   "job": "c23461c1-b2de-4de9-a0e0-20c3585022ed"
+  },
+  {
+   "asset": "",
+   "label": "Image 3 · video-05-guide.png · its original file is not recorded",
+   "file": "video-05-guide.png",
+   "image": "Image 3",
+   "kind": "",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "c23461c1-b2de-4de9-a0e0-20c3585022ed"
   }
  ],
  "shapes": [

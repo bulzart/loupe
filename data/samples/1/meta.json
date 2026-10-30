@@ -18,16 +18,80 @@
   }
  ],
  "product_sample_chosen": false,
+ "images_sent": [
+  {
+   "asset": "",
+   "label": "Image 1 · C13-head.jpg · its original file is not recorded",
+   "file": "C13-head.jpg",
+   "image": "Image 1",
+   "kind": "character",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "5d29b337-0152-4286-b3a9-b2f4e447a804"
+  },
+  {
+   "asset": "",
+   "label": "Image 2 · P08-front-p40.jpg · its original file is not recorded",
+   "file": "P08-front-p40.jpg",
+   "image": "Image 2",
+   "kind": "product",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "5d29b337-0152-4286-b3a9-b2f4e447a804"
+  },
+  {
+   "asset": "",
+   "label": "Image 3 · P08-left-p40.jpg · its original file is not recorded",
+   "file": "P08-left-p40.jpg",
+   "image": "Image 3",
+   "kind": "product",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "5d29b337-0152-4286-b3a9-b2f4e447a804"
+  }
+ ],
  "product_samples": [
   {
-   "asset": "A140",
-   "label": "A140 · NG_XE_SMB90 front ver2.png",
-   "file": "NG_XE_SMB90 front ver2.png",
-   "image": "",
-   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\product_samples_and_designs\\Gum - Extra Strength\\Pouch 90 pieces - Spearmint\\NG_XE_SMB90 front ver2.png",
-   "original_name": "NG_XE_SMB90 front ver2.png",
+   "asset": "",
+   "label": "Image 1 · C13-head.jpg · its original file is not recorded",
+   "file": "C13-head.jpg",
+   "image": "Image 1",
+   "kind": "character",
+   "original": "",
+   "original_name": "",
    "prepared": "",
-   "recorded": "the client's file"
+   "recorded": "",
+   "job": "5d29b337-0152-4286-b3a9-b2f4e447a804"
+  },
+  {
+   "asset": "",
+   "label": "Image 2 · P08-front-p40.jpg · its original file is not recorded",
+   "file": "P08-front-p40.jpg",
+   "image": "Image 2",
+   "kind": "product",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "5d29b337-0152-4286-b3a9-b2f4e447a804"
+  },
+  {
+   "asset": "",
+   "label": "Image 3 · P08-left-p40.jpg · its original file is not recorded",
+   "file": "P08-left-p40.jpg",
+   "image": "Image 3",
+   "kind": "product",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "5d29b337-0152-4286-b3a9-b2f4e447a804"
   }
  ],
  "shapes": [

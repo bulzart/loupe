@@ -53,6 +53,58 @@
   }
  ],
  "product_sample_chosen": false,
+ "images_sent": [
+  {
+   "asset": "A17",
+   "label": "Image 1 · A17 · peach vibe front - cans usa.png",
+   "file": "A17-padded.jpg",
+   "image": "Image 1",
+   "kind": "product",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets2\\peach vibe front - cans usa.png",
+   "original_name": "peach vibe front - cans usa.png",
+   "prepared": "Peach Vibe front (product sheet, image 1) (A17)",
+   "recorded": "named",
+   "job": "85e56feb-6029-466e-a042-27098833be4d"
+  },
+  {
+   "asset": "A12",
+   "label": "Image 2 · A12 · ipiccy_image.jpg",
+   "file": "A12-padded.jpg",
+   "image": "Image 2",
+   "kind": "product",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets2\\ipiccy_image.jpg",
+   "original_name": "ipiccy_image.jpg",
+   "prepared": "Peach Vibe front, square (same flavour) (A12)",
+   "recorded": "named",
+   "job": "85e56feb-6029-466e-a042-27098833be4d"
+  }
+ ],
+ "product_samples": [
+  {
+   "asset": "A17",
+   "label": "Image 1 · A17 · peach vibe front - cans usa.png",
+   "file": "A17-padded.jpg",
+   "image": "Image 1",
+   "kind": "product",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets2\\peach vibe front - cans usa.png",
+   "original_name": "peach vibe front - cans usa.png",
+   "prepared": "Peach Vibe front (product sheet, image 1) (A17)",
+   "recorded": "named",
+   "job": "85e56feb-6029-466e-a042-27098833be4d"
+  },
+  {
+   "asset": "A12",
+   "label": "Image 2 · A12 · ipiccy_image.jpg",
+   "file": "A12-padded.jpg",
+   "image": "Image 2",
+   "kind": "product",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets2\\ipiccy_image.jpg",
+   "original_name": "ipiccy_image.jpg",
+   "prepared": "Peach Vibe front, square (same flavour) (A12)",
+   "recorded": "named",
+   "job": "85e56feb-6029-466e-a042-27098833be4d"
+  }
+ ],
  "shapes": [
   {
    "type": "rect",

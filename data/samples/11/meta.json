@@ -66,6 +66,95 @@
    }
   }
  ],
+ "product_sample_chosen": false,
+ "images_sent": [
+  {
+   "asset": "A17",
+   "label": "c1, c2, c3, c4 · Image 1 · A17 · character1.jpg",
+   "file": "id-A17.jpg",
+   "image": "c1, c2, c3, c4 · Image 1",
+   "kind": "character",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\character1.jpg",
+   "original_name": "character1.jpg",
+   "prepared": "id-A17 head crop (no can image in this clip: a1 drew the sipped drink as a silver can)",
+   "recorded": "named",
+   "job": "77e6a55f-cd51-44c0-9801-66aee56c5613",
+   "jobs": [
+    "77e6a55f-cd51-44c0-9801-66aee56c5613",
+    "027bacbc-89e3-4776-b9fe-74ddae8dd3b1",
+    "32f778fa-b849-44f4-ac82-9c9b6c2c59b9",
+    "77c193a6-3f7b-4d82-b5f6-1f1263319f58"
+   ]
+  },
+  {
+   "asset": "",
+   "label": "c2 · Image 2 · ref-can-cherrycola.jpg · its original file is not recorded",
+   "file": "ref-can-cherrycola.jpg",
+   "image": "c2 · Image 2",
+   "kind": "",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "027bacbc-89e3-4776-b9fe-74ddae8dd3b1"
+  },
+  {
+   "asset": "",
+   "label": "c2 · Image 3 · video-08-c2-a2-guide.png · its original file is not recorded",
+   "file": "video-08-c2-a2-guide.png",
+   "image": "c2 · Image 3",
+   "kind": "",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "027bacbc-89e3-4776-b9fe-74ddae8dd3b1"
+  }
+ ],
+ "product_samples": [
+  {
+   "asset": "A17",
+   "label": "c1, c2, c3, c4 · Image 1 · A17 · character1.jpg",
+   "file": "id-A17.jpg",
+   "image": "c1, c2, c3, c4 · Image 1",
+   "kind": "character",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\character1.jpg",
+   "original_name": "character1.jpg",
+   "prepared": "id-A17 head crop (no can image in this clip: a1 drew the sipped drink as a silver can)",
+   "recorded": "named",
+   "job": "77e6a55f-cd51-44c0-9801-66aee56c5613",
+   "jobs": [
+    "77e6a55f-cd51-44c0-9801-66aee56c5613",
+    "027bacbc-89e3-4776-b9fe-74ddae8dd3b1",
+    "32f778fa-b849-44f4-ac82-9c9b6c2c59b9",
+    "77c193a6-3f7b-4d82-b5f6-1f1263319f58"
+   ]
+  },
+  {
+   "asset": "",
+   "label": "c2 · Image 2 · ref-can-cherrycola.jpg · its original file is not recorded",
+   "file": "ref-can-cherrycola.jpg",
+   "image": "c2 · Image 2",
+   "kind": "",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "027bacbc-89e3-4776-b9fe-74ddae8dd3b1"
+  },
+  {
+   "asset": "",
+   "label": "c2 · Image 3 · video-08-c2-a2-guide.png · its original file is not recorded",
+   "file": "video-08-c2-a2-guide.png",
+   "image": "c2 · Image 3",
+   "kind": "",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "027bacbc-89e3-4776-b9fe-74ddae8dd3b1"
+  }
+ ],
  "shapes": [
   {
    "type": "rect",

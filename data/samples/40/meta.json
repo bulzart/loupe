@@ -59,6 +59,154 @@
   }
  ],
  "product_sample_chosen": false,
+ "images_sent": [
+  {
+   "asset": "A01",
+   "label": "c1 · Image 1 · A01 · 01fe120e49c9a74245d806f4f64df7d9.jpg",
+   "file": "image1-character-CH01-head.jpg",
+   "image": "c1 · Image 1",
+   "kind": "character",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\01fe120e49c9a74245d806f4f64df7d9.jpg",
+   "original_name": "01fe120e49c9a74245d806f4f64df7d9.jpg",
+   "prepared": "the man's face, hair and beard only (CH01, A01 cropped above the collar; the photo's black printed tee left out)",
+   "recorded": "named",
+   "job": "8620050d-58d0-407f-9487-a20339eb3a7a"
+  },
+  {
+   "asset": "",
+   "label": "c1 · Image 2 · image2-product-NG-XE9-SPE-front-padded.png · its original file is not recorded",
+   "file": "image2-product-NG-XE9-SPE-front-padded.png",
+   "image": "c1 · Image 2",
+   "kind": "product",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "8620050d-58d0-407f-9487-a20339eb3a7a"
+  },
+  {
+   "asset": "",
+   "label": "c1 · Image 3 · image3-product-NG-XE9-SPE-angled-padded.png · its original file is not recorded",
+   "file": "image3-product-NG-XE9-SPE-angled-padded.png",
+   "image": "c1 · Image 3",
+   "kind": "product",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "8620050d-58d0-407f-9487-a20339eb3a7a"
+  },
+  {
+   "asset": "",
+   "label": "c1 · Image 4 · NG-scale-mouse-phone.jpg · its original file is not recorded",
+   "file": "NG-scale-mouse-phone.jpg",
+   "image": "c1 · Image 4",
+   "kind": "",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "8620050d-58d0-407f-9487-a20339eb3a7a"
+  },
+  {
+   "asset": "",
+   "label": "c1 · Image 5 · NG-scale-beside-phone.jpg · its original file is not recorded",
+   "file": "NG-scale-beside-phone.jpg",
+   "image": "c1 · Image 5",
+   "kind": "",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "8620050d-58d0-407f-9487-a20339eb3a7a"
+  },
+  {
+   "asset": "A12",
+   "label": "c2 · Image 1 · A12 · a7457df4a9416163a5fe261b7b6957f2.jpg",
+   "file": "image1-character-CH09-head.jpg",
+   "image": "c2 · Image 1",
+   "kind": "character",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\a7457df4a9416163a5fe261b7b6957f2.jpg",
+   "original_name": "a7457df4a9416163a5fe261b7b6957f2.jpg",
+   "prepared": "the woman's face and hair only (CH09, A12 cropped above the black top and the bag strap; the street sign's lettering cropped out)",
+   "recorded": "named",
+   "job": "13632389-bbe6-4324-8a59-4b4a8af31298"
+  }
+ ],
+ "product_samples": [
+  {
+   "asset": "A01",
+   "label": "c1 · Image 1 · A01 · 01fe120e49c9a74245d806f4f64df7d9.jpg",
+   "file": "image1-character-CH01-head.jpg",
+   "image": "c1 · Image 1",
+   "kind": "character",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\01fe120e49c9a74245d806f4f64df7d9.jpg",
+   "original_name": "01fe120e49c9a74245d806f4f64df7d9.jpg",
+   "prepared": "the man's face, hair and beard only (CH01, A01 cropped above the collar; the photo's black printed tee left out)",
+   "recorded": "named",
+   "job": "8620050d-58d0-407f-9487-a20339eb3a7a"
+  },
+  {
+   "asset": "",
+   "label": "c1 · Image 2 · image2-product-NG-XE9-SPE-front-padded.png · its original file is not recorded",
+   "file": "image2-product-NG-XE9-SPE-front-padded.png",
+   "image": "c1 · Image 2",
+   "kind": "product",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "8620050d-58d0-407f-9487-a20339eb3a7a"
+  },
+  {
+   "asset": "",
+   "label": "c1 · Image 3 · image3-product-NG-XE9-SPE-angled-padded.png · its original file is not recorded",
+   "file": "image3-product-NG-XE9-SPE-angled-padded.png",
+   "image": "c1 · Image 3",
+   "kind": "product",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "8620050d-58d0-407f-9487-a20339eb3a7a"
+  },
+  {
+   "asset": "",
+   "label": "c1 · Image 4 · NG-scale-mouse-phone.jpg · its original file is not recorded",
+   "file": "NG-scale-mouse-phone.jpg",
+   "image": "c1 · Image 4",
+   "kind": "",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "8620050d-58d0-407f-9487-a20339eb3a7a"
+  },
+  {
+   "asset": "",
+   "label": "c1 · Image 5 · NG-scale-beside-phone.jpg · its original file is not recorded",
+   "file": "NG-scale-beside-phone.jpg",
+   "image": "c1 · Image 5",
+   "kind": "",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "8620050d-58d0-407f-9487-a20339eb3a7a"
+  },
+  {
+   "asset": "A12",
+   "label": "c2 · Image 1 · A12 · a7457df4a9416163a5fe261b7b6957f2.jpg",
+   "file": "image1-character-CH09-head.jpg",
+   "image": "c2 · Image 1",
+   "kind": "character",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\a7457df4a9416163a5fe261b7b6957f2.jpg",
+   "original_name": "a7457df4a9416163a5fe261b7b6957f2.jpg",
+   "prepared": "the woman's face and hair only (CH09, A12 cropped above the black top and the bag strap; the street sign's lettering cropped out)",
+   "recorded": "named",
+   "job": "13632389-bbe6-4324-8a59-4b4a8af31298"
+  }
+ ],
  "shapes": [
   {
    "type": "rect",

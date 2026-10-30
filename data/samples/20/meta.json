@@ -18,16 +18,80 @@
   }
  ],
  "product_sample_chosen": false,
- "product_samples": [
+ "images_sent": [
+  {
+   "asset": "A01",
+   "label": "Image 1 · A01 · Bradley Thompson.jpg",
+   "file": "C01-head.png",
+   "image": "Image 1",
+   "kind": "character",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\Bradley Thompson.jpg",
+   "original_name": "Bradley Thompson.jpg",
+   "prepared": "C01, the man's identity: A01 face and neck only on neutral grey (30-assets/identity/C01-head.png, 732x912): no cap, hair, ear, lettering or background",
+   "recorded": "named",
+   "job": "006c7f19-409d-48b4-b62c-5abb5dfa292a"
+  },
   {
    "asset": "A15",
    "label": "Image 2 · A15 · cherry cola front - cans usa.png",
-   "file": "cherry cola front - cans usa.png",
+   "file": "P1-cherry-cola-ref.png",
    "image": "Image 2",
+   "kind": "product",
    "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\cherry cola front - cans usa.png",
    "original_name": "cherry cola front - cans usa.png",
    "prepared": "P1 Cherry Cola canonical front (A15), padded (30-assets/product/P1-cherry-cola-ref.png), shape, colours and label only",
-   "recorded": "named"
+   "recorded": "named",
+   "job": "006c7f19-409d-48b4-b62c-5abb5dfa292a"
+  },
+  {
+   "asset": "",
+   "label": "Image 3 · video-13-guide.png · its original file is not recorded",
+   "file": "video-13-guide.png",
+   "image": "Image 3",
+   "kind": "",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "006c7f19-409d-48b4-b62c-5abb5dfa292a"
+  }
+ ],
+ "product_samples": [
+  {
+   "asset": "A01",
+   "label": "Image 1 · A01 · Bradley Thompson.jpg",
+   "file": "C01-head.png",
+   "image": "Image 1",
+   "kind": "character",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\Bradley Thompson.jpg",
+   "original_name": "Bradley Thompson.jpg",
+   "prepared": "C01, the man's identity: A01 face and neck only on neutral grey (30-assets/identity/C01-head.png, 732x912): no cap, hair, ear, lettering or background",
+   "recorded": "named",
+   "job": "006c7f19-409d-48b4-b62c-5abb5dfa292a"
+  },
+  {
+   "asset": "A15",
+   "label": "Image 2 · A15 · cherry cola front - cans usa.png",
+   "file": "P1-cherry-cola-ref.png",
+   "image": "Image 2",
+   "kind": "product",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\cherry cola front - cans usa.png",
+   "original_name": "cherry cola front - cans usa.png",
+   "prepared": "P1 Cherry Cola canonical front (A15), padded (30-assets/product/P1-cherry-cola-ref.png), shape, colours and label only",
+   "recorded": "named",
+   "job": "006c7f19-409d-48b4-b62c-5abb5dfa292a"
+  },
+  {
+   "asset": "",
+   "label": "Image 3 · video-13-guide.png · its original file is not recorded",
+   "file": "video-13-guide.png",
+   "image": "Image 3",
+   "kind": "",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "006c7f19-409d-48b4-b62c-5abb5dfa292a"
   }
  ],
  "shapes": [

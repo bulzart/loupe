@@ -18,16 +18,80 @@
   }
  ],
  "product_sample_chosen": false,
- "product_samples": [
+ "images_sent": [
+  {
+   "asset": "A28",
+   "label": "Image 1 · A28 · download (20).jpg",
+   "file": "C14-head.png",
+   "image": "Image 1",
+   "kind": "character",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\download (20).jpg",
+   "original_name": "download (20).jpg",
+   "prepared": "C14, the man's identity: head crop of A28 upscaled x4 (30-assets/identity/C14-head.png), three-quarter profile, soft",
+   "recorded": "named",
+   "job": "29a22e61-75e8-4cc3-8f9b-2e621511e38c"
+  },
   {
    "asset": "A41",
    "label": "Image 2 · A41 · peach vibe front - cans usa.png",
-   "file": "peach vibe front - cans usa.png",
+   "file": "P2-peach-vibe-ref.png",
    "image": "Image 2",
+   "kind": "product",
    "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\peach vibe front - cans usa.png",
    "original_name": "peach vibe front - cans usa.png",
    "prepared": "P2 Peach Vibe canonical front (A41), padded, shape, colours and label only",
-   "recorded": "named"
+   "recorded": "named",
+   "job": "29a22e61-75e8-4cc3-8f9b-2e621511e38c"
+  },
+  {
+   "asset": "",
+   "label": "Image 3 · video-17-guide.png · its original file is not recorded",
+   "file": "video-17-guide.png",
+   "image": "Image 3",
+   "kind": "",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "29a22e61-75e8-4cc3-8f9b-2e621511e38c"
+  }
+ ],
+ "product_samples": [
+  {
+   "asset": "A28",
+   "label": "Image 1 · A28 · download (20).jpg",
+   "file": "C14-head.png",
+   "image": "Image 1",
+   "kind": "character",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\download (20).jpg",
+   "original_name": "download (20).jpg",
+   "prepared": "C14, the man's identity: head crop of A28 upscaled x4 (30-assets/identity/C14-head.png), three-quarter profile, soft",
+   "recorded": "named",
+   "job": "29a22e61-75e8-4cc3-8f9b-2e621511e38c"
+  },
+  {
+   "asset": "A41",
+   "label": "Image 2 · A41 · peach vibe front - cans usa.png",
+   "file": "P2-peach-vibe-ref.png",
+   "image": "Image 2",
+   "kind": "product",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\peach vibe front - cans usa.png",
+   "original_name": "peach vibe front - cans usa.png",
+   "prepared": "P2 Peach Vibe canonical front (A41), padded, shape, colours and label only",
+   "recorded": "named",
+   "job": "29a22e61-75e8-4cc3-8f9b-2e621511e38c"
+  },
+  {
+   "asset": "",
+   "label": "Image 3 · video-17-guide.png · its original file is not recorded",
+   "file": "video-17-guide.png",
+   "image": "Image 3",
+   "kind": "",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "29a22e61-75e8-4cc3-8f9b-2e621511e38c"
   }
  ],
  "shapes": [

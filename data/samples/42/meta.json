@@ -17,7 +17,7 @@
    "t": 0.0
   }
  ],
- "product_sample_chosen": true,
+ "product_sample_chosen": false,
  "images_sent": [
   {
    "asset": "A16",
@@ -106,6 +106,42 @@
  ],
  "product_samples": [
   {
+   "asset": "A16",
+   "label": "Image 1 · A16 · ce6a267c5acfdeb4aa855f22dc8c85e8.jpg",
+   "file": "image1-character-CH12-employee-head.jpg",
+   "image": "Image 1",
+   "kind": "character",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\ce6a267c5acfdeb4aa855f22dc8c85e8.jpg",
+   "original_name": "ce6a267c5acfdeb4aa855f22dc8c85e8.jpg",
+   "prepared": "Image 1, CH12 (A16) head and neck above the collar on neutral grey: the employee's face and hair only",
+   "recorded": "named",
+   "job": "de69609a-c2a6-406f-b83e-f38b5888d4a2"
+  },
+  {
+   "asset": "A15",
+   "label": "Image 2 · A15 · c1ef12498932ed12f5c4415955db560f.jpg",
+   "file": "image2-character-CH11-boss-head.jpg",
+   "image": "Image 2",
+   "kind": "character",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\c1ef12498932ed12f5c4415955db560f.jpg",
+   "original_name": "c1ef12498932ed12f5c4415955db560f.jpg",
+   "prepared": "Image 2, CH11 (A15) head and neck on neutral grey: the boss's face and hair only",
+   "recorded": "named",
+   "job": "de69609a-c2a6-406f-b83e-f38b5888d4a2"
+  },
+  {
+   "asset": "A06",
+   "label": "Image 3 · A06 · 5566f9f81d216f8d70bc88f7995d3893.jpg",
+   "file": "image3-character-CH06-background-head.jpg",
+   "image": "Image 3",
+   "kind": "character",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\5566f9f81d216f8d70bc88f7995d3893.jpg",
+   "original_name": "5566f9f81d216f8d70bc88f7995d3893.jpg",
+   "prepared": "Image 3, CH06 (A06) head and neck on neutral grey: the background man's face and hair only",
+   "recorded": "named",
+   "job": "de69609a-c2a6-406f-b83e-f38b5888d4a2"
+  },
+  {
    "asset": "A44",
    "label": "Image 4 · A44 · EF_Gum_6 piece_Spearmint_Single-Front.png",
    "file": "NG-EF6-SPE-front-padded.png",
@@ -115,6 +151,42 @@
    "original_name": "EF_Gum_6 piece_Spearmint_Single-Front.png",
    "prepared": "Image 4, the real front render of the E&F 6-piece Spearmint carton (A44), padded on light grey: shape, proportions, colours and printed label only (shared upload)",
    "recorded": "named",
+   "job": "de69609a-c2a6-406f-b83e-f38b5888d4a2"
+  },
+  {
+   "asset": "",
+   "label": "Image 5 · NG-EF6-SPE-angled-padded.png · its original file is not recorded",
+   "file": "NG-EF6-SPE-angled-padded.png",
+   "image": "Image 5",
+   "kind": "product",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "de69609a-c2a6-406f-b83e-f38b5888d4a2"
+  },
+  {
+   "asset": "",
+   "label": "Image 6 · NG-scale-mouse-phone.jpg · its original file is not recorded",
+   "file": "NG-scale-mouse-phone.jpg",
+   "image": "Image 6",
+   "kind": "",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "de69609a-c2a6-406f-b83e-f38b5888d4a2"
+  },
+  {
+   "asset": "",
+   "label": "Image 7 · NG-scale-beside-phone.jpg · its original file is not recorded",
+   "file": "NG-scale-beside-phone.jpg",
+   "image": "Image 7",
+   "kind": "",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
    "job": "de69609a-c2a6-406f-b83e-f38b5888d4a2"
   }
  ],

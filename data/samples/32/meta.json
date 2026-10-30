@@ -24,6 +24,107 @@
    "t": 0.0
   }
  ],
+ "product_sample_chosen": false,
+ "images_sent": [
+  {
+   "asset": "",
+   "label": "Image 1 · C09-head.jpg · its original file is not recorded",
+   "file": "C09-head.jpg",
+   "image": "Image 1",
+   "kind": "character",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "d9c4da8d-8b4c-4fad-8401-6a9c9d4a8515"
+  },
+  {
+   "asset": "",
+   "label": "Image 2 · P01-front-p25.jpg · its original file is not recorded",
+   "file": "P01-front-p25.jpg",
+   "image": "Image 2",
+   "kind": "product",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "d9c4da8d-8b4c-4fad-8401-6a9c9d4a8515"
+  },
+  {
+   "asset": "",
+   "label": "Image 3 · P01-angled-p25.jpg · its original file is not recorded",
+   "file": "P01-angled-p25.jpg",
+   "image": "Image 3",
+   "kind": "product",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "d9c4da8d-8b4c-4fad-8401-6a9c9d4a8515"
+  },
+  {
+   "asset": "",
+   "label": "Image 4 · V20-guide.jpg · its original file is not recorded",
+   "file": "V20-guide.jpg",
+   "image": "Image 4",
+   "kind": "",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "d9c4da8d-8b4c-4fad-8401-6a9c9d4a8515"
+  }
+ ],
+ "product_samples": [
+  {
+   "asset": "",
+   "label": "Image 1 · C09-head.jpg · its original file is not recorded",
+   "file": "C09-head.jpg",
+   "image": "Image 1",
+   "kind": "character",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "d9c4da8d-8b4c-4fad-8401-6a9c9d4a8515"
+  },
+  {
+   "asset": "",
+   "label": "Image 2 · P01-front-p25.jpg · its original file is not recorded",
+   "file": "P01-front-p25.jpg",
+   "image": "Image 2",
+   "kind": "product",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "d9c4da8d-8b4c-4fad-8401-6a9c9d4a8515"
+  },
+  {
+   "asset": "",
+   "label": "Image 3 · P01-angled-p25.jpg · its original file is not recorded",
+   "file": "P01-angled-p25.jpg",
+   "image": "Image 3",
+   "kind": "product",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "d9c4da8d-8b4c-4fad-8401-6a9c9d4a8515"
+  },
+  {
+   "asset": "",
+   "label": "Image 4 · V20-guide.jpg · its original file is not recorded",
+   "file": "V20-guide.jpg",
+   "image": "Image 4",
+   "kind": "",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "d9c4da8d-8b4c-4fad-8401-6a9c9d4a8515"
+  }
+ ],
  "shapes": [
   {
    "type": "arrow",

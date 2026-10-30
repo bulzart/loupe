@@ -14,27 +14,121 @@
    "role": "wrong",
    "from": "as generated",
    "video": "A",
-   "t": 11.033
+   "t": 11.033,
+   "generation": {
+    "gen": 1,
+    "of": 2,
+    "clip": "cA",
+    "t_from": 0.0,
+    "t_to": 11.1
+   }
   },
   {
    "n": 2,
    "role": "right",
    "from": "correct version",
    "video": "B",
-   "t": 11.3
+   "t": 11.3,
+   "generation": {
+    "gen": 2,
+    "of": 2,
+    "clip": "cB",
+    "t_from": 11.1,
+    "t_to": 21.8
+   }
   }
  ],
  "product_sample_chosen": false,
- "product_samples": [
+ "images_sent": [
+  {
+   "asset": "A12",
+   "label": "cA, cB · Image 1 · A12 · character1.jpg",
+   "file": "CH-M03_A12-head.jpg",
+   "image": "cA, cB · Image 1",
+   "kind": "character",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\character1.jpg",
+   "original_name": "character1.jpg",
+   "prepared": "CH-M03 identity: A12 cropped above the collar onto grey",
+   "recorded": "named",
+   "job": "4d0e5edf-8e14-4dae-8fec-412a54b129df",
+   "jobs": [
+    "4d0e5edf-8e14-4dae-8fec-412a54b129df",
+    "c3734a36-21b7-4df2-bb95-80468d430ca7"
+   ]
+  },
   {
    "asset": "A40",
-   "label": "Image 2 · A40 · peach vibe front - cans usa.png",
-   "file": "peach vibe front - cans usa.png",
-   "image": "Image 2",
+   "label": "cA, cB · Image 2 · A40 · peach vibe front - cans usa.png",
+   "file": "A40_can-ref.png",
+   "image": "cA, cB · Image 2",
+   "kind": "product",
    "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\peach vibe front - cans usa.png",
    "original_name": "peach vibe front - cans usa.png",
    "prepared": "CELSIUS Peach Vibe can, sealed: A40",
-   "recorded": "named"
+   "recorded": "named",
+   "job": "4d0e5edf-8e14-4dae-8fec-412a54b129df",
+   "jobs": [
+    "4d0e5edf-8e14-4dae-8fec-412a54b129df",
+    "c3734a36-21b7-4df2-bb95-80468d430ca7"
+   ]
+  },
+  {
+   "asset": "",
+   "label": "cB · Image 3 · video-08-cA-guide.png · its original file is not recorded",
+   "file": "video-08-cA-guide.png",
+   "image": "cB · Image 3",
+   "kind": "",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "c3734a36-21b7-4df2-bb95-80468d430ca7"
+  }
+ ],
+ "product_samples": [
+  {
+   "asset": "A12",
+   "label": "cA, cB · Image 1 · A12 · character1.jpg",
+   "file": "CH-M03_A12-head.jpg",
+   "image": "cA, cB · Image 1",
+   "kind": "character",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\character1.jpg",
+   "original_name": "character1.jpg",
+   "prepared": "CH-M03 identity: A12 cropped above the collar onto grey",
+   "recorded": "named",
+   "job": "4d0e5edf-8e14-4dae-8fec-412a54b129df",
+   "jobs": [
+    "4d0e5edf-8e14-4dae-8fec-412a54b129df",
+    "c3734a36-21b7-4df2-bb95-80468d430ca7"
+   ]
+  },
+  {
+   "asset": "A40",
+   "label": "cA, cB · Image 2 · A40 · peach vibe front - cans usa.png",
+   "file": "A40_can-ref.png",
+   "image": "cA, cB · Image 2",
+   "kind": "product",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\peach vibe front - cans usa.png",
+   "original_name": "peach vibe front - cans usa.png",
+   "prepared": "CELSIUS Peach Vibe can, sealed: A40",
+   "recorded": "named",
+   "job": "4d0e5edf-8e14-4dae-8fec-412a54b129df",
+   "jobs": [
+    "4d0e5edf-8e14-4dae-8fec-412a54b129df",
+    "c3734a36-21b7-4df2-bb95-80468d430ca7"
+   ]
+  },
+  {
+   "asset": "",
+   "label": "cB · Image 3 · video-08-cA-guide.png · its original file is not recorded",
+   "file": "video-08-cA-guide.png",
+   "image": "cB · Image 3",
+   "kind": "",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "c3734a36-21b7-4df2-bb95-80468d430ca7"
   }
  ],
  "shapes": [

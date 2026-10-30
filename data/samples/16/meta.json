@@ -53,5 +53,57 @@
   }
  ],
  "product_sample_chosen": false,
+ "images_sent": [
+  {
+   "asset": "A21",
+   "label": "Image 1 · A21 · watermelon front - cans usa.png",
+   "file": "A21-padded.jpg",
+   "image": "Image 1",
+   "kind": "product",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets2\\watermelon front - cans usa.png",
+   "original_name": "watermelon front - cans usa.png",
+   "prepared": "Watermelon front (product sheet, image 1) (A21)",
+   "recorded": "named",
+   "job": "3e131162-bbdb-4f6f-9ea7-de15162fd65a"
+  },
+  {
+   "asset": "A23",
+   "label": "Image 2 · A23 · watermelon.jpg",
+   "file": "A23-padded.jpg",
+   "image": "Image 2",
+   "kind": "product",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets2\\watermelon.jpg",
+   "original_name": "watermelon.jpg",
+   "prepared": "Watermelon front, square (same flavour) (A23)",
+   "recorded": "named",
+   "job": "3e131162-bbdb-4f6f-9ea7-de15162fd65a"
+  }
+ ],
+ "product_samples": [
+  {
+   "asset": "A21",
+   "label": "Image 1 · A21 · watermelon front - cans usa.png",
+   "file": "A21-padded.jpg",
+   "image": "Image 1",
+   "kind": "product",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets2\\watermelon front - cans usa.png",
+   "original_name": "watermelon front - cans usa.png",
+   "prepared": "Watermelon front (product sheet, image 1) (A21)",
+   "recorded": "named",
+   "job": "3e131162-bbdb-4f6f-9ea7-de15162fd65a"
+  },
+  {
+   "asset": "A23",
+   "label": "Image 2 · A23 · watermelon.jpg",
+   "file": "A23-padded.jpg",
+   "image": "Image 2",
+   "kind": "product",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets2\\watermelon.jpg",
+   "original_name": "watermelon.jpg",
+   "prepared": "Watermelon front, square (same flavour) (A23)",
+   "recorded": "named",
+   "job": "3e131162-bbdb-4f6f-9ea7-de15162fd65a"
+  }
+ ],
  "shapes": []
 }
