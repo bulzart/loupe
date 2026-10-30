@@ -1,0 +1,60 @@
+{
+ "moment": 43,
+ "miss": 31,
+ "title": "On the first frame the paper goes through the Neurogum package which is not correct and doesn't happen in real life logic, in the second frame the package changed orientation(rotated) without any means(i.e no character or action on the video stimulated that rotation) which is wrong too",
+ "model": "wan3_0_prime",
+ "run": "20261029-231113-recreate-celsius-neurogum",
+ "video": "20",
+ "t_wrong": 0.533,
+ "t_fixed": 0.533,
+ "sample": "S43",
+ "frames": [
+  {
+   "n": 1,
+   "role": "wrong",
+   "from": "as generated",
+   "video": "A",
+   "t": 0.533,
+   "generation": {
+    "gen": 1,
+    "of": 2,
+    "clip": "c1",
+    "t_from": 0.0,
+    "t_to": 5.906
+   }
+  },
+  {
+   "n": 2,
+   "role": "wrong",
+   "from": "as generated",
+   "video": "A",
+   "t": 6.367,
+   "generation": {
+    "gen": 2,
+    "of": 2,
+    "clip": "c2",
+    "t_from": 5.906,
+    "t_to": 7.307,
+    "spans": [
+     [
+      5.906,
+      7.307
+     ],
+     [
+      9.877,
+      11.178
+     ]
+    ]
+   }
+  }
+ ],
+ "product_sample_chosen": false,
+ "product_samples": [
+  {
+   "asset": "A172",
+   "label": "XS 9-piece Spearmint front render",
+   "file": "NG_XE_SM01_Front.png"
+  }
+ ],
+ "shapes": []
+}
