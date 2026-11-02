@@ -28,6 +28,15 @@ class KeeperBusy(RuntimeError):
     """Another keeper call holds the lock longer than the caller may wait."""
 
 
+class SessionLost(RuntimeError):
+    """The keeper session Loupe holds is gone from the claude CLI (it answers "No conversation found with session ID"): its saved conversation was
+    removed or cleaned up, or it was never created there.  Resuming it can never succeed, so the caller starts a fresh session instead (the admin,
+    2026-11-02: the keeper must not stay down until someone resets it)."""
+
+
+LOST_SESSION_WORDS = "No conversation found"      # what the claude CLI says when the session id given to --resume names no saved conversation
+
+
 class _TimedLock:
     """The one lock around every keeper call, acquired with a timeout so that a dead or slow call never holds every later consult for its whole HTTP timeout."""
 
@@ -1143,7 +1152,11 @@ def _run_claude(prompt: str, sid: str, resume: bool, model: str, timeout: int = 
     except ValueError:
         d = {}
     if cp.returncode != 0 or d.get("is_error") or not d:
-        raise RuntimeError("keeper session failed: " + (d.get("result") or cp.stderr.decode("utf-8", "replace") or raw)[:300])
+        err = cp.stderr.decode("utf-8", "replace")
+        said = str(d.get("result") or err or raw)
+        if resume and LOST_SESSION_WORDS in " ".join((said, err, raw)):       # the session to resume is gone: a fresh one is due, never a retry of this one
+            raise SessionLost("keeper session failed: " + said[:300])
+        raise RuntimeError("keeper session failed: " + said[:300])
     return d
 
 
@@ -1184,8 +1197,9 @@ def keeper_status() -> dict:
 
 def sync_keeper(actor: str = "system") -> dict:
     """Make the keeper hold the library as it is now, without asking it a question: boots a session when there is none (or it is worn out, the model
-    changed or it was told another library header), sends the full current list when the library changed since its last digest, does nothing when it is current. One cheap model call at most.
-    Answers {state: empty | in_sync | booted | synced | failed, library_size, cost}. Never raises."""
+    changed or it was told another library header), sends the full current list when the library changed since its last digest, does nothing when it is current. One cheap model call at most,
+    two when the session it held turns out to be gone (SessionLost): a fresh one is booted in its place and the answer says so (keeper_restarted).
+    Answers {state: empty | in_sync | booted | synced | failed, library_size, cost[, keeper_restarted]}. Never raises."""
     lib = library()
     if not lib:
         return {"state": "empty", "library_size": 0, "cost": 0.0}
@@ -1197,27 +1211,43 @@ def sync_keeper(actor: str = "system") -> dict:
             model = core.setting_get("keeper_model", DEFAULT_MODEL)
             st = core.setting_get("keeper", {}) or {}
             sig = _sig()
-            state, cost = "in_sync", 0.0
+            state, cost, restarted = "in_sync", 0.0, ""
             dl = None if _worn(st, model) or st.get("library_sig") == sig else _delta(st, sig)
             if _worn(st, model) or (st.get("library_sig") != sig and dl is None):
                 st, cost = _boot(len(lib), sig, model)
                 state = "booted"
             elif st.get("library_sig") != sig:
                 msg = dl[0] + "Reply with the single word: ready."
-                d = _run_claude(msg, st["session_id"], True, st["model"])
-                cost = float(d.get("total_cost_usd") or 0)
-                st["turns"] = st.get("turns", 0) + 1
-                st["library_sig"] = sig
-                st["lines"] = dl[1]
-                st["chars"] = st.get("chars", 0) + _carried(msg, d)
-                state = "synced"
+                try:
+                    d = _run_claude(msg, st["session_id"], True, st["model"])
+                except SessionLost:            # the session it held is gone: a fresh one told the whole library takes its place
+                    restarted = _session_lost(st, actor)
+                    st, cost = _boot(len(lib), sig, model)
+                    state = "booted"
+                else:
+                    cost = float(d.get("total_cost_usd") or 0)
+                    st["turns"] = st.get("turns", 0) + 1
+                    st["library_sig"] = sig
+                    st["lines"] = dl[1]
+                    st["chars"] = st.get("chars", 0) + _carried(msg, d)
+                    state = "synced"
             if state != "in_sync":
                 st["last_synced"] = core.now()
                 core.setting_set("keeper", st)
                 core.audit(actor, "keeper.sync", state, f"{len(lib)} samples, cost {cost:.4f}")
-            return {"state": state, "library_size": len(lib), "cost": cost}
+            return {"state": state, "library_size": len(lib), "cost": cost, **({"keeper_restarted": restarted} if restarted else {})}
         except Exception as e:  # noqa: BLE001
             return {"state": "failed", "library_size": len(lib), "cost": 0.0, "error": str(e)[:300]}
+
+
+def _session_lost(st: dict, actor: str) -> str:
+    """Record that the keeper session Loupe held is gone from the claude CLI (SessionLost) and say it in words, for the answer and the audit log; the
+    caller then boots a fresh session told the whole library, so the keeper is never left down until someone resets it."""
+    sid = str(st.get("session_id") or "")
+    words = (f"the keeper's saved conversation (session {sid[:8]}, {st.get('turns', 0)} turn(s)) was not found by the claude CLI: a fresh session "
+             "was started and told the whole library")
+    core.audit(actor, "keeper.session_lost", sid, words)
+    return words
 
 
 def keeper_reset(actor: str = "admin"):
@@ -1606,6 +1636,7 @@ def consult(key_name: str, ctx: dict, question: str, purpose: str = "qc") -> dic
     fallback = brief({**ctx, "q": question})
     res = None
     err = ""
+    restarted = ""                       # the words saying the keeper's session was gone and a fresh one answered (SessionLost)
     cost = 0.0
     if not lib_now:                      # nothing to hold: no keeper session is started for an empty library
         res = {"mode": "empty", "purpose": purpose, "hints": [], "relevant": [], "samples": [], "template": "", "library_size": 0, "text": "The library is empty."}
@@ -1625,44 +1656,62 @@ def consult(key_name: str, ctx: dict, question: str, purpose: str = "qc") -> dic
             model = core.setting_get("keeper_model", DEFAULT_MODEL)
             st = core.setting_get("keeper", {}) or {}
             sig = _sig()
+            booted = False                      # a session this consult starts itself is never booted again when it reports lost
             if _worn(st, model):
                 st, c = _boot(len(library()), sig, model)
                 cost += c
+                booted = True
             delta = ""
             if st.get("library_sig") != sig:
                 dl = _delta(st, sig)
                 if dl is None:                  # too much changed for a delta, or no record of the lines held: a fresh session told the whole library
                     st, c = _boot(len(library()), sig, model)
                     cost += c
+                    booted = True
                 else:
                     delta = "\n" + dl[0]
                     st["lines"] = dl[1]
             who = (f"run {ctx.get('run') or '?'} video {ctx.get('video') or '?'} (model {ctx.get('model') or '?'}, mode {ctx.get('mode') or '?'}, "
                    f"product {ctx.get('product') or '?'}; product details: {str(ctx.get('product_details') or '-')[:400]})")
+            note = ""
             if ctx.get("note"):
-                delta += (("\nThe prompt writer answers what you asked (from its plan): " if pre_video else "\nThe QC agent adds (what it saw when it looked at its own video): ")
-                          + str(ctx["note"])[:600] + "\n")
-            if plan:
-                prompt = (f"PLANNING question for {who}. The video has not been generated. The writer's plan, one line per beat:\n{question}\n"
-                          f"{delta}\nAnswer with the PLANNING JSON object only (an empty hints list is the normal answer); if you cannot judge something Loupe could fetch (the plan, the product row, a sample's origin), ask with needs instead of guessing.")
-            elif tmpl:
-                prompt = (f"TEMPLATE REQUEST for {who}. The video has not been generated. The agent's whole brief (what it is working on, what the video is about, "
-                          f"what it wants to achieve, the checked draft request and the lines its prompt must carry):\n{question}\n\nThe video model the request will be generated with (from the pipeline's "
-                          f"model index): {_evidence(ctx.get('video_model')) or ctx.get('model') or 'not sent'}\n\nThe locked model's request structure, from the agent's model guide:\n"
-                          f"{str(ctx.get('structure') or '').strip() or '(not sent: follow the structure the brief names)'}\n{delta}\n"
-                          f"Step 1 of 2: answer with {{\"read\": [...], \"needs\": [...]}} only: the samples whose saved prompts you need (at most {TEMPLATE_READ}, best "
-                          "first; an empty list when none applies). Loupe then sends the saved prompts of each (every box its frames speak through, named "
-                          "flawed, correct or example), whole, and you write the final prompt.")
-            else:
+                note = (("\nThe prompt writer answers what you asked (from its plan): " if pre_video else "\nThe QC agent adds (what it saw when it looked at its own video): ")
+                        + str(ctx["note"])[:600] + "\n")
+
+            def ask(delta: str) -> str:
+                """The question as the keeper reads it; delta is what changed in the library since its last digest (none for a fresh session), then the note."""
+                if plan:
+                    return (f"PLANNING question for {who}. The video has not been generated. The writer's plan, one line per beat:\n{question}\n"
+                            f"{delta}\nAnswer with the PLANNING JSON object only (an empty hints list is the normal answer); if you cannot judge something Loupe could fetch (the plan, the product row, a sample's origin), ask with needs instead of guessing.")
+                if tmpl:
+                    return (f"TEMPLATE REQUEST for {who}. The video has not been generated. The agent's whole brief (what it is working on, what the video is about, "
+                            f"what it wants to achieve, the checked draft request and the lines its prompt must carry):\n{question}\n\nThe video model the request will be generated with (from the pipeline's "
+                            f"model index): {_evidence(ctx.get('video_model')) or ctx.get('model') or 'not sent'}\n\nThe locked model's request structure, from the agent's model guide:\n"
+                            f"{str(ctx.get('structure') or '').strip() or '(not sent: follow the structure the brief names)'}\n{delta}\n"
+                            f"Step 1 of 2: answer with {{\"read\": [...], \"needs\": [...]}} only: the samples whose saved prompts you need (at most {TEMPLATE_READ}, best "
+                            "first; an empty list when none applies). Loupe then sends the saved prompts of each (every box its frames speak through, named "
+                            "flawed, correct or example), whole, and you write the final prompt.")
                 ev = "".join(f"\n\n{what}:\n{_evidence(ctx.get(k))}" for k, what in (
                     ("request_prompt", "The prompt this video was generated from (whole, as submitted)"),
                     ("request_params", "The video model and parameters of that request"),
                     ("request_inputs", "The inputs of that request (what each is and the client's original file it was made from) and its product images"),
                     ("video_model", "That video model (from the pipeline's model index)"),
                     ("template", "The template you gave for it before it was written"), ("brief", "The agent's brief at that time")) if _evidence(ctx.get(k)))
-                prompt = (f"QC question for {who}:\n{question}{ev}\n\nContext: {json.dumps({k: ctx.get(k) for k in ('kinds', 'checkpoints', 'product_forms') if ctx.get(k)}, ensure_ascii=False)}\n"
-                          f"Server pre-ranking (ids, best first): {', '.join(s['id'] for s in pre) or 'none'}.{delta}\nAnswer with the JSON object only; if you cannot judge something that Loupe could fetch (the plan, a frame, the product row, a sample's origin), ask with needs instead of guessing.")
-            d = _run_claude(prompt, st["session_id"], True, st["model"])
+                return (f"QC question for {who}:\n{question}{ev}\n\nContext: {json.dumps({k: ctx.get(k) for k in ('kinds', 'checkpoints', 'product_forms') if ctx.get(k)}, ensure_ascii=False)}\n"
+                        f"Server pre-ranking (ids, best first): {', '.join(s['id'] for s in pre) or 'none'}.{delta}\nAnswer with the JSON object only; if you cannot judge something that Loupe could fetch (the plan, a frame, the product row, a sample's origin), ask with needs instead of guessing.")
+
+            prompt = ask(delta + note)
+            try:
+                d = _run_claude(prompt, st["session_id"], True, st["model"])
+            except SessionLost:
+                if booted:                      # the session this consult has just started is not found: report it, never boot again
+                    raise
+                restarted = _session_lost(st, key_name)
+                st, c = _boot(len(library()), sig, model)
+                cost += c
+                core.setting_set("keeper", st)  # the lost session is replaced at once, even if the question below fails
+                prompt = ask(note)              # the fresh session was told the whole library: no delta
+                d = _run_claude(prompt, st["session_id"], True, st["model"])
             cost += float(d.get("total_cost_usd") or 0)
             st["turns"] = st.get("turns", 0) + 1
             st["chars"] = st.get("chars", 0) + _carried(prompt, d)
@@ -1737,6 +1786,8 @@ def consult(key_name: str, ctx: dict, question: str, purpose: str = "qc") -> dic
         res = ({"mode": mode, "purpose": "plan", "hints": [], "library_size": len(lib_now), "keeper_error": err} if plan
                else {"mode": mode, "purpose": "template", "template": "", "basis": [], "library_size": len(lib_now), "keeper_error": err} if tmpl
                else {**fallback, "mode": mode, "purpose": "qc", "keeper_error": err})
+    if restarted:
+        res["keeper_restarted"] = restarted      # the session Loupe held was gone: a fresh one was started and told the whole library (in the audit log too)
     ms = int((time.time() - t0) * 1000)
     if lib_now:
         res["library_read"] = library_read()          # which samples the keeper holds from their pictures; the rest it judged from the admin's words alone

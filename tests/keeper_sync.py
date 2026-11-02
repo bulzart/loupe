@@ -580,6 +580,88 @@ except RuntimeError as e:
 el = _time.time() - t0
 check("a keeper subprocess that hangs is ended with its process tree after the timeout and reported", "timed out" in msg and el < 12, f"{msg[:80]} {el:.1f}s")
 
+print("\n[a keeper session that is gone is replaced by a fresh one, and the same call is answered (the admin, 2026-11-02)]")
+lost_py = TMP / "lost-claude.py"
+lost_py.write_text("import sys\nsys.stdin.read()\nsys.stderr.write('No conversation found with session ID: 11111111-2222-3333-4444-555555555555\\n')\nsys.exit(1)\n", encoding="utf-8")
+lost_cmd = TMP / "lost-claude.cmd"
+lost_cmd.write_text('@echo off\r\n"%s" "%s"\r\n' % (sys.executable, lost_py), encoding="utf-8")
+qc2._claude = lambda: str(lost_cmd)
+kinds_seen = []
+for resume_ in (True, False):
+    try:
+        qc2._run_claude("x", "11111111-2222-3333-4444-555555555555", resume_, "m", timeout=30)
+        kinds_seen.append("no error")
+    except qc2.SessionLost as e:
+        kinds_seen.append("lost: " + str(e)[:60])
+    except RuntimeError as e:
+        kinds_seen.append("failed: " + str(e)[:60])
+check("the claude CLI's 'No conversation found' on a resume is SessionLost (a fresh session is due); the same words for a new session stay a failure",
+      kinds_seen[0].startswith("lost: keeper session failed: No conversation found") and kinds_seen[1].startswith("failed: keeper session failed: No conversation"), str(kinds_seen))
+gone: dict = {"sid": None}
+lost_calls: list = []
+
+
+def lost_cli(prompt, sid, resume, model, timeout=150):
+    """The keeper as the claude CLI answers once the saved conversation of one session was removed: SessionLost for that id, normal answers otherwise."""
+    lost_calls.append((sid, resume, prompt))
+    if resume and sid == gone["sid"]:
+        raise qc.SessionLost("keeper session failed: No conversation found with session ID: " + sid)
+    if prompt.startswith("LIBRARY ("):
+        return {"result": "ready", "total_cost_usd": 0}
+    return {"result": json.dumps({"relevant": [], "advice": "", "not_covered": ""}), "total_cost_usd": 0}
+
+
+qc._run_claude = lost_cli
+qc.keeper_reset("test")
+qc.sync_keeper("test")                         # a session the keeper holds, current with the library ...
+held = core.setting_get("keeper")["session_id"]
+gone["sid"] = held                             # ... whose saved conversation is then removed
+st_ = core.setting_get("keeper")
+st_["library_sig"] = "an older version"        # and the library changed since its digest: the question would carry a delta
+core.setting_set("keeper", st_)
+lost_calls.clear()
+res = qc.consult("sync-test", dict(CTX), "Which samples apply now that the session is gone?", "qc")
+new_sid = core.setting_get("keeper")["session_id"]
+check("a consult whose session is gone boots a fresh one told the whole library, asks the same question there and answers as the keeper, saying so",
+      res["mode"] == "keeper" and new_sid != held and "was not found by the claude CLI" in res.get("keeper_restarted", "")
+      and [(c[0] == held, c[1]) for c in lost_calls] == [(True, True), (False, False), (False, True)] and lost_calls[2][0] == new_sid
+      and lost_calls[1][2].startswith("LIBRARY (") and "Which samples apply now" in lost_calls[2][2], str([(c[0][:8], c[1], c[2][:30]) for c in lost_calls]))
+check("the question to the fresh session carries no delta (it was just told the whole library); the one to the lost session did",
+      DELTA in lost_calls[0][2] and DELTA not in lost_calls[2][2])
+con_ = core.db()
+try:
+    aud = con_.execute("SELECT actor, target, detail FROM audit WHERE action='keeper.session_lost' ORDER BY id DESC LIMIT 1").fetchone()
+finally:
+    con_.close()
+check("the lost session is written in the audit log, with the session it names", bool(aud) and aud["target"] == held and "fresh session" in aud["detail"], str(aud and dict(aud)))
+gone["sid"] = new_sid
+st_ = core.setting_get("keeper")
+st_["library_sig"] = "an older version"        # the library changed again: a sync sends a delta to the session it holds, which is gone too
+core.setting_set("keeper", st_)
+lost_calls.clear()
+r_ = qc.sync_keeper("test")
+check("a sync whose session is gone boots a fresh one in its place and says so", r_["state"] == "booted" and "was not found" in r_.get("keeper_restarted", "")
+      and core.setting_get("keeper")["session_id"] not in (held, new_sid) and [c[1] for c in lost_calls] == [True, False], str(r_))
+check("a session that is current again needs nothing: the next sync is in sync without a call", qc.sync_keeper("test")["state"] == "in_sync")
+
+
+def always_lost(prompt, sid, resume, model, timeout=150):
+    lost_calls.append((sid, resume, prompt))
+    if resume:
+        raise qc.SessionLost("keeper session failed: No conversation found with session ID: " + sid)
+    return {"result": "ready", "total_cost_usd": 0}
+
+
+qc._run_claude = always_lost
+qc.keeper_reset("test")
+lost_calls.clear()
+res = qc.consult("sync-test", dict(CTX), "A question to a session that is lost as soon as it starts.", "qc")
+check("a session the consult has just started that reports lost is never booted again: one boot, then the brief's answer with the error",
+      res["mode"] == "fallback" and "No conversation found" in res.get("keeper_error", "") and [c[1] for c in lost_calls] == [False, True]
+      and "keeper_restarted" not in res, str([c[1] for c in lost_calls]) + " " + str(res.get("keeper_error"))[:80])
+qc._run_claude = fake_claude
+qc.keeper_reset("test")
+
 print("\n[the composite says what its tags mean and skips a zoom that would repeat the panel]")
 from PIL import Image as _Image  # noqa: E402
 from loupe_app import compose as _compose  # noqa: E402

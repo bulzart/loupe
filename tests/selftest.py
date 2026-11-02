@@ -1202,6 +1202,18 @@ def main(with_keeper=False):
         s, d, _ = req("GET", "/api/qc/keeper")
         check("the keeper session is recorded and read-only", d["keeper"].get("session_id") and d["keeper"]["turns"] >= 3)
         check("the consult log says what each consult was for", {c["purpose"] for c in d["consults"]} >= {"qc", "plan"})
+        # the admin, 2026-11-02: a keeper whose saved conversation is gone starts a fresh session by itself; here the real claude CLI is given a
+        # session id it never saved, as after its transcript was cleaned up
+        import uuid as _uuid
+        st_k = _qc.core.setting_get("keeper")
+        gone_sid = str(_uuid.uuid4())
+        st_k["session_id"] = gone_sid
+        _qc.core.setting_set("keeper", st_k)
+        s, d, _ = req("POST", "/api/qc/consult", {"run": "r", "video": "03", "model": "wan3_0_prime", "question": "The product changes colour after a cut. Which samples apply?"}, key=kq)
+        now_sid = _qc.core.setting_get("keeper").get("session_id")
+        check("a real keeper whose saved conversation is gone is replaced by a fresh session that answers the same question, and says so",
+              s == 200 and d.get("mode") == "keeper" and "was not found by the claude CLI" in d.get("keeper_restarted", "") and now_sid and now_sid != gone_sid
+              and any(r["id"] == "S1" for r in d.get("relevant", [])), str(d)[:400])
     print("\n[one Loupe per port: a second server never shares a port, a test's data folder never starts one on the shared port]")
     first = server.OnePortServer((core.HOST, 0), server.Handler)
     try:
