@@ -1191,6 +1191,7 @@ def main(with_keeper=False):
         _qc._extract_one, _qc._claude, _qc._run_claude = real_extract, real_claude, real_run
     if with_keeper:
         print("\n[keeper] (a real headless session)")
+        _qc.keeper_reset("test")        # the sections above booted sessions only their fake keeper knew: the real one starts its own
         s, d, _ = req("POST", "/api/qc/consult", {"run": "r", "video": "03", "model": "wan3_0_prime", "question": "The product changes colour after a cut. Which samples apply?"}, key=kq)
         check("the keeper answers from its library", s == 200 and d.get("mode") == "keeper" and any(r["id"] == "S1" for r in d.get("relevant", [])), str(d)[:400])
         s, d, _ = req("POST", "/api/qc/consult", {"run": "r", "video": "03", "question": "Same question again, brief."}, key=kq)

@@ -17,7 +17,7 @@ TOOLS = [
     {"name": "qc_search", "description": "Search the QC sample library (generation misses with a wrong-vs-correct image) for the video under QC. Returns ids, titles, kinds and scores; open one with qc_get_sample.",
      "inputSchema": {"type": "object", "properties": {"model": {"type": "string"}, "mode": {"type": "string"}, "kinds": {"type": "array", "items": {"type": "string"}},
                                                       "product": {"type": "string"}, "q": {"type": "string", "description": "words describing the suspected miss"}, "limit": {"type": "integer"}}}},
-    {"name": "qc_get_sample", "description": "One QC sample: the admin's words and the composite image (left: the miss with marks; right: the correct frame at the same moment; below: zoom).",
+    {"name": "qc_get_sample", "description": "One QC sample: the admin's words and the composite image (the frames the admin chose, each tagged WRONG, RIGHT or EXAMPLE with its time and source; a zoom under each frame marked with a circle, arrow or box carries that frame's marks, the frame above it left clean; the admin's words at the bottom).",
      "inputSchema": {"type": "object", "properties": {"id": {"type": "string", "description": "e.g. S12"}}, "required": ["id"]}},
     {"name": "qc_brief", "description": "A deterministic brief: the samples that match this video (model, kinds, words) with the text of each and the image path.",
      "inputSchema": {"type": "object", "properties": {"run": {"type": "string"}, "video": {"type": "string"}, "model": {"type": "string"}, "mode": {"type": "string"},
