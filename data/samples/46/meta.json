@@ -1,0 +1,107 @@
+{
+ "moment": 46,
+ "miss": 34,
+ "title": "Excellent Neurogum package size and render",
+ "model": "wan3_0_prime",
+ "run": "20261029-231113-recreate-celsius-neurogum",
+ "video": "15",
+ "t_wrong": 0.0,
+ "t_fixed": 0.0,
+ "sample": "S46",
+ "frames": [
+  {
+   "n": 1,
+   "role": "right",
+   "from": "as generated",
+   "video": "A",
+   "t": 0.0
+  }
+ ],
+ "product_sample_chosen": false,
+ "images_sent": [
+  {
+   "asset": "A49",
+   "label": "Image 1 · A49 · 1e6e87fd5dd8482374fc58c73d1dab1c.jpg",
+   "file": "image1-character-C-NG-03-head.jpg",
+   "image": "Image 1",
+   "kind": "character",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\1e6e87fd5dd8482374fc58c73d1dab1c.jpg",
+   "original_name": "1e6e87fd5dd8482374fc58c73d1dab1c.jpg",
+   "prepared": "C-NG-03 (A49) head-and-neck crop on grey RGB 128: face and hair only",
+   "recorded": "named",
+   "job": "d883c382-72a3-4cc0-a3a0-6ba0b384d51b"
+  },
+  {
+   "asset": "A82",
+   "label": "Image 2 · A82 · EF_Gum_6 piece_Peppermint_Single-Front.png",
+   "file": "image2-product-EF6-PM-front-padded.png",
+   "image": "Image 2",
+   "kind": "product",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\product_samples_and_designs\\Gum - Energy & Focus\\Carton 6 pieces - Peppermint\\EF_Gum_6 piece_Peppermint_Single-Front.png",
+   "original_name": "EF_Gum_6 piece_Peppermint_Single-Front.png",
+   "prepared": "EF 6-piece Peppermint front render (A82) padded small on 1440x1440 RGB 236: exact printed front",
+   "recorded": "named",
+   "job": "d883c382-72a3-4cc0-a3a0-6ba0b384d51b"
+  },
+  {
+   "asset": "A273",
+   "label": "Image 3 · A273 · IMG_6917.jpg",
+   "file": "image3-product-EF6-PM-flat-real-cutout.png",
+   "image": "Image 3",
+   "kind": "product",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\product_samples_and_designs\\product_comparison_and_reference\\IMG_6917.jpg",
+   "original_name": "IMG_6917.jpg",
+   "prepared": "the real carton lying flat, cut out of IMG_6917.jpg alone, on 1440x1440 RGB 237 with a soft shadow: posture, thinness, paperboard",
+   "recorded": "named",
+   "job": "d883c382-72a3-4cc0-a3a0-6ba0b384d51b"
+  }
+ ],
+ "product_samples": [
+  {
+   "asset": "A49",
+   "label": "Image 1 · A49 · 1e6e87fd5dd8482374fc58c73d1dab1c.jpg",
+   "file": "image1-character-C-NG-03-head.jpg",
+   "image": "Image 1",
+   "kind": "character",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\1e6e87fd5dd8482374fc58c73d1dab1c.jpg",
+   "original_name": "1e6e87fd5dd8482374fc58c73d1dab1c.jpg",
+   "prepared": "C-NG-03 (A49) head-and-neck crop on grey RGB 128: face and hair only",
+   "recorded": "named",
+   "job": "d883c382-72a3-4cc0-a3a0-6ba0b384d51b"
+  },
+  {
+   "asset": "A82",
+   "label": "Image 2 · A82 · EF_Gum_6 piece_Peppermint_Single-Front.png",
+   "file": "image2-product-EF6-PM-front-padded.png",
+   "image": "Image 2",
+   "kind": "product",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\product_samples_and_designs\\Gum - Energy & Focus\\Carton 6 pieces - Peppermint\\EF_Gum_6 piece_Peppermint_Single-Front.png",
+   "original_name": "EF_Gum_6 piece_Peppermint_Single-Front.png",
+   "prepared": "EF 6-piece Peppermint front render (A82) padded small on 1440x1440 RGB 236: exact printed front",
+   "recorded": "named",
+   "job": "d883c382-72a3-4cc0-a3a0-6ba0b384d51b"
+  },
+  {
+   "asset": "A273",
+   "label": "Image 3 · A273 · IMG_6917.jpg",
+   "file": "image3-product-EF6-PM-flat-real-cutout.png",
+   "image": "Image 3",
+   "kind": "product",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\product_samples_and_designs\\product_comparison_and_reference\\IMG_6917.jpg",
+   "original_name": "IMG_6917.jpg",
+   "prepared": "the real carton lying flat, cut out of IMG_6917.jpg alone, on 1440x1440 RGB 237 with a soft shadow: posture, thinness, paperboard",
+   "recorded": "named",
+   "job": "d883c382-72a3-4cc0-a3a0-6ba0b384d51b"
+  }
+ ],
+ "shapes": [
+  {
+   "type": "arrow",
+   "frame": 0,
+   "x1": 0.20143193896722966,
+   "y1": 0.49087270587169873,
+   "x2": 0.3615149519664861,
+   "y2": 0.6657707549873775
+  }
+ ]
+}

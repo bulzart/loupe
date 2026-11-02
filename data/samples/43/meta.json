@@ -1,7 +1,7 @@
 {
  "moment": 43,
  "miss": 31,
- "title": "On the first frame the paper goes through the Neurogum package which is not correct and doesn't happen in real life logic, in the second frame the package changed orientation(rotated) without any means(i.e no character or action on the video stimulated that rotation) which is wrong too",
+ "title": "On the first frame the paper goes through or under the Neurogum package which is not correct and doesn't happen in real life logic (we could've placed the package above the blue book in the right since it would've make it more natural and avoid colliding the product with the videos original products), in the second frame the package changed orientation(rotated) without any means(i.e no character or action on the video stimulated that rotation) which is wrong too",
  "model": "wan3_0_prime",
  "run": "20261029-231113-recreate-celsius-neurogum",
  "video": "20",

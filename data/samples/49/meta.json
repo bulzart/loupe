@@ -1,0 +1,60 @@
+{
+ "moment": 49,
+ "miss": 35,
+ "title": "The product render and sizing were correct, but the Celsius can/tin changed its placement location between two frames((moves a bit and is not at the same place in both) without any logical or physical reason done by the characters or other actions in the video",
+ "model": "wan3_0_prime",
+ "run": "20261029-231113-recreate-celsius-neurogum",
+ "video": "07",
+ "t_wrong": 0.567,
+ "t_fixed": 0.567,
+ "sample": "S49",
+ "frames": [
+  {
+   "n": 1,
+   "role": "example",
+   "from": "as generated",
+   "video": "A",
+   "t": 0.567,
+   "generation": {
+    "gen": 1,
+    "of": 2,
+    "clip": "c1",
+    "t_from": 0.0,
+    "t_to": 2.967
+   }
+  },
+  {
+   "n": 2,
+   "role": "example",
+   "from": "as generated",
+   "video": "A",
+   "t": 3.033,
+   "generation": {
+    "gen": 2,
+    "of": 2,
+    "clip": "c2",
+    "t_from": 2.967,
+    "t_to": 8.2
+   }
+  }
+ ],
+ "product_sample_chosen": false,
+ "shapes": [
+  {
+   "type": "rect",
+   "frame": 0,
+   "x1": 0.25992402854126834,
+   "y1": 0.5185793116261352,
+   "x2": 0.5708538936358084,
+   "y2": 0.7419638405794395
+  },
+  {
+   "type": "rect",
+   "frame": 1,
+   "x1": 0.440546493254727,
+   "y1": 0.4839460325514609,
+   "x2": 0.7483979146749522,
+   "y2": 0.693477389917319
+  }
+ ]
+}
