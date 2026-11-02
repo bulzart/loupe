@@ -422,7 +422,8 @@ def sample_record(s: dict, mode: str = "digest", lib=None, more=None) -> str:
         out.append(f"IMAGE OF {sid}: {s['composite_path']}")
     elif fr:
         out.append(f"IMAGE OF {sid} (Read it: each frame tagged FRAME n with WRONG in red, RIGHT in green or EXAMPLE in blue and its time, under that its video (VIDEO A or B), "
-                   "its source and the generation that made it; the admin's marks, a zoom under each frame marked with a circle, arrow or box, the admin's words at the bottom): "
+                   "its source and the generation that made it; a zoom under each frame the admin marked with a circle, arrow or box, that frame's marks drawn on the "
+                   "zoom only and the frame above it left clean, a frame with no zoom carrying its marks itself; the admin's words at the bottom): "
                    + s["composite_path"])
     else:
         out.append(f"IMAGE OF {sid} (a text card with the admin's words and the product sample): {s['composite_path']}")
@@ -502,8 +503,8 @@ LIB_HEADER = ("One record per sample, each from its line '=== SAMPLE S.. · gene
               "right frame, the product and scene, collected once by a session that opened the picture but never the prompts and gave no verdict, with the "
               "path of the full collection: what each frame shows, the admin's words, what was unclear; or NOT READ YET); IMAGE OF S.. (the path of its "
               "image: Read it; each frame is tagged FRAME n with WRONG in red, RIGHT in green or EXAMPLE in blue and its time, and under that its video, "
-              "VIDEO A or B, its source and the generation that made it; the admin's marks are on the frames, a zoom under each frame marked with a circle, "
-              "arrow or box, the admin's words at the bottom). "
+              "VIDEO A or B, its source and the generation that made it; a zoom under each frame the admin marked with a circle, arrow or box carries that "
+              "frame's marks, the frame above it left clean, and a frame with no zoom carries its marks itself; the admin's words at the bottom). "
               "This is the admin's record of past misses and your only memory of them; Loupe can fetch more about a sample or about the video under QC when you ask "
               "(see ASK, DO NOT GUESS), and what a record leaves missing or unclear you flag (see FLAG, DO NOT PAPER OVER).")
 # LIB_HEADER reaches a keeper session once, when it boots; a delta never sends it again.  So the session keeps the version of the header it was told
@@ -591,19 +592,21 @@ def _origin(s: dict) -> str:
 # record.  Each collection is kept as one JSON file per sample in DATA/keeper/understood/.  Only a sample that is new, or whose words, frames or image changed since, is read again; when every active sample
 # has a current collection nothing runs.  A sample that leaves the library (archived, deleted) has its collection moved to understood/retired/.
 EXTRACT_MODEL_DEFAULT = "claude-haiku-5-5"
-COLLECTOR_VERSION = "collector-2026-10-28"     # part of every collection's signature: a collection made under an older role is read again
+COLLECTOR_VERSION = "collector-2026-11-02"     # part of every collection's signature: a collection made under an older role is read again
 READING_FIELDS = ("marked", "right_version", "product_and_scene", "admin_words", "unclear")
 EXTRACT_ROLE = (
     "You COLLECT the data of ONE sample of a video-generation pipeline's library of generation misses, once, so that the judge (the library's keeper, a "
     "separate session) holds what its picture shows. You give NO verdict: never say what went wrong, why it went wrong, when it would happen again, what a "
     "check should be, or which frame, version or prompt is better; the judge decides all of that from what you collect, the admin's words and the record. "
-    "A sample is a picture (a composite of frames of a generated video, each tagged WRONG in red, RIGHT in green or EXAMPLE in blue with its time, the admin's marks "
-    "drawn on them, a zoom under each frame the admin marked with a circle, arrow or box, and the admin's words at the bottom; a tag also names its frame's number "
+    "A sample is a picture (a composite of frames of a generated video, each tagged WRONG in red, RIGHT in green or EXAMPLE in blue with its time, a zoom under "
+    "each frame the admin marked with a circle, arrow or box that carries that frame's marks (the frame above it is left clean; a frame with no zoom carries its "
+    "marks itself), and the admin's words at the bottom; a tag also names its frame's number "
     "(FRAME n, the number the saved prompts use), its video (VIDEO A or B) and its source: as generated, "
     "correct version, or original video (the source the generation was made from, not generated), with the other video or run it was taken from when there is one, "
     "and, for a take made of several generations, the generation that made it) "
     "plus the admin's notes. "
-    "You MUST Read the composite image before you answer, and Read a single frame file too when a marked detail is small. Describe only what you can see in "
+    "You MUST Read the composite image before you answer, and Read a single frame file (that frame whole, its marks in place) too when a marked detail is "
+    "small or you need to see where a zoom sits in its frame. Describe only what you can see in "
     "the frames, and restate what the admin wrote without adding to it; never invent a detail, a cause, a right version or an opinion. You only READ: "
     "you never write, edit or create anything. Answer ONE JSON object and no other text: "
     '{"frames_seen":[{"frame":"WRONG 0:04.23","seen":"<what this frame shows: the product, its size against the objects around it, its place, its state, the camera>"}],'

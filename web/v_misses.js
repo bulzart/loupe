@@ -63,7 +63,7 @@ export async function pick(params = {}) {
 
 // ------------------------------------------------------------------------------------------ the workspace
 // One page, one step: any number of frames side by side (two to start with), each from either video, each with its own time and called WRONG or RIGHT by the
-// admin, marks drawn straight on any of them, and one button that saves the moment as a single image (the frames, the marks, a zoom of each marked place, the explanation burned in).
+// admin, marks drawn straight on any of them, and one button that saves the moment as a single image (the frames, a zoom of each marked place carrying its marks while its frame stays clean, the explanation burned in).
 function guessVersions(versions) {       // only the wrong version is guessed (the first attempt's generated take of this video); the right one is always the user's choice
   const own = versions.filter((v) => v.role !== 'original');      // the original video is never the default
   const attempts = own.filter((v) => v.kind === 'attempt');
@@ -719,7 +719,7 @@ export async function work(qs) {
       h('details', { style: 'margin-top:8px' }, h('summary', { class: 'muted small', style: 'cursor:pointer' }, 'Model, mode, product'),
         h('div', { class: 'row', style: 'margin-top:6px' }, h('span', { class: 'muted small' }, 'model'), model, h('span', { class: 'muted small' }, 'mode'), mode, h('span', { class: 'muted small' }, 'product'), product)),
       h('div', { class: 'row', style: 'margin-top:14px' }, saveBtn, cancelEdit, saveReportBtn, saveNote,
-        h('span', { class: 'muted small' }, 'One click: saves the report, cuts every frame at its own time, and builds one image: the frames tagged WRONG, RIGHT or EXAMPLE with your marks, a zoom of each frame you marked with a circle, arrow or box, and this text.'))),
+        h('span', { class: 'muted small' }, 'One click: saves the report, cuts every frame at its own time, and builds one image: the frames tagged WRONG, RIGHT or EXAMPLE, a zoom of each frame you marked with a circle, arrow or box that carries your marks (the frame above it stays clean; a frame with no zoom keeps its marks), and this text.'))),
     result,
     h('div', { class: 'card' }, h('h2', {}, 'Saved moments'), moments));
   // a report opened from one of its samples (&moment=), or a report with a single sample, comes back as it stands: that sample's frames, their times and

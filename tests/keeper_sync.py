@@ -606,6 +606,42 @@ check("the tags' legend reads as before for the two videos, and names the origin
       _compose.sources_legend(["as generated", "correct version"]) == "Frames tagged 'as generated' are from video A (the version as generated); frames tagged 'correct version' are from video B (the right version, a different video)."
       and "the original video (the source clip the generation was made from, not generated)" in _compose.sources_legend(["as generated", "original video"])
       and "taken from video 04 of the same run" in _compose.sources_legend(["correct version · video 04"]) and "taken from run R video 03" in _compose.sources_legend(["as generated · run R video 03"]))
+
+print("\n[the marks are drawn on the zoom only: a frame with a zoom stays clean above it, a frame without one keeps its marks]")
+from PIL import ImageChops as _Chops  # noqa: E402
+P1, P2 = (24, 74, 584, 1070), (608, 74, 1168, 1070)        # the two places of a row of two 360x640 frames (each panel 560 x 996)
+
+
+def _plain(im, box, src):
+    """The picture at box is exactly the frame as resized for its panel: nothing is drawn on it."""
+    crop = im.crop(box)
+    return _Chops.difference(crop, src.convert("RGB").resize(crop.size, _Image.LANCZOS)).getbbox() is None
+
+
+def _has(im, box, test):
+    return any(test(p) for p in im.crop(box).getdata())
+
+
+_red = lambda p: p[0] > 200 and p[1] < 100 and p[2] < 100          # noqa: E731
+_green = lambda p: p[1] > 140 and p[0] < 70 and p[2] < 110         # noqa: E731
+g1, g2 = _Image.new("RGB", (360, 640), (90, 90, 90)), _Image.new("RGB", (360, 640), (120, 120, 120))
+frs = [{"img": g1, "role": "wrong", "desc": "as generated", "t": 1.0, "shapes": [{"type": "rect", "frame": 0, "x1": 0.4, "y1": 0.4, "x2": 0.6, "y2": 0.7}]},
+       {"img": g2, "role": "right", "desc": "as generated", "t": 1.2, "shapes": [{"type": "circle", "frame": 1, "cx": 0.5, "cy": 0.5, "rx": 0.1, "ry": 0.1}]}]
+c6, z6, a6 = _compose.build(frs, {"title": "t"}, "d", "")
+check("a frame with a zoom stays clean above it: both panels are the plain frames, each zoom (in the composite and the zoom file) carries its own frame's marks",
+      _plain(c6, P1, g1) and _plain(c6, P2, g2) and z6 is not None and _has(z6, (24, 0, 584, 520), _red) and _has(z6, (608, 0, 1168, 520), _green)
+      and _has(c6, (24, 1094, 584, 1614), _red) and _has(c6, (608, 1094, 1168, 1614), _green))
+check("the full-size marked files keep every frame's marks in place", not _plain(a6[0], (0, 0, 360, 640), g1) and not _plain(a6[1], (0, 0, 360, 640), g2))
+frs[0]["shapes"] = [{"type": "text", "frame": 0, "x": 0.4, "y": 0.4, "text": "here"}]              # a text label alone: no zoom
+frs[1]["shapes"] = [{"type": "rect", "frame": 1, "x1": 0.0, "y1": 0.0, "x2": 1.0, "y2": 0.95}]      # marks over most of the frame: no zoom
+c7, z7, _a = _compose.build(frs, {"title": "t"}, "d", "")
+check("a frame without a zoom keeps its marks on its panel (a text label alone, marks over most of it), so no mark is lost",
+      z7 is None and not _plain(c7, P1, g1) and _has(c7, P2, _green))
+frs[0]["shapes"], frs[1]["shapes"] = [{"type": "rect", "frame": 0, "x1": 0.4, "y1": 0.4, "x2": 0.6, "y2": 0.7}], []
+c8, z8, _a = _compose.build(frs, {"title": "t"}, "d", "", include_zoom=False)
+check("with the zoom switched off the marks stay on the panel", z8 is None and _has(c8, P1, _red) and _plain(c8, P2, g2))
+c9, z9, _a = _compose.build(frs[:1], {"title": "t"}, "d", "")
+check("a frame alone in its row: the normal-range panel clean, its marks on the close range beside it only", z9 is None and _plain(c9, P1, g1) and _has(c9, P2, _red))
 qc._run_claude = fake_claude
 
 print("\n[memory rot: the keeper's context stays small and current]")

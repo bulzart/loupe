@@ -291,12 +291,13 @@ def build(frames: list[dict], meta: dict, details: str, correct_note: str, inclu
     there may be none at all (a report that is only words).  A frame that also has "n" (its number in the sample), "video" ("A" or "B") and "gen" (the generation of
     a joined take that made it, or None) gets a tag of two lines, the same words the saved prompts use: FRAME n, its role and its time on top, and under it VIDEO A
     or B, where it comes from and its generation (gen_words), with a legend line that ties a frame to its generation's prompt when any frame has one.
-    One image: every frame in a panel with a tag (red WRONG, green RIGHT or blue EXAMPLE, where it comes from, its time) and exactly the marks the admin drew on it (nothing is
-    copied or added), two panels in a row up to two frames and three in a row beyond that, every row centred.  Under a row of two or three frames, the close range (zoom) of
-    each frame the admin marked with a circle, an arrow or a box, cut around that frame's own marks and set under it; a frame with no such mark (unmarked, or a text label
-    only) has none, and neither has a frame whose marks cover most of it (it would repeat the panel), so a row with no close range has no zoom row.  A frame that sits
-    alone in its row (a one-frame sample, or the last frame of a row of three) and has a close range is shown the other way: the normal-range shot on the left and, next
-    to it, its close range at the same height, so no row is left half empty.  Each tag says where its frame comes from (desc: as generated, correct version, original
+    One image: every frame in a panel with a tag (red WRONG, green RIGHT or blue EXAMPLE, where it comes from, its time), two panels in a row up to two frames and three in a
+    row beyond that, every row centred.  Under a row of two or three frames, the close range (zoom) of each frame the admin marked with a circle, an arrow or a box, cut
+    around that frame's own marks and set under it; a frame with no such mark (unmarked, or a text label only) has none, and neither has a frame whose marks cover most of
+    it (it would repeat the panel), so a row with no close range has no zoom row.  A frame that sits alone in its row (a one-frame sample, or the last frame of a row of
+    three) and has a close range is shown the other way: the normal-range shot on the left and, next to it, its close range at the same height, so no row is left half
+    empty.  The marks are exactly the ones the admin drew (nothing is copied or added), each frame's on one picture only: on its close range when it has one, its panel
+    then left clean (the admin, 2026-11-02), else on its panel; the full-size files (annotated) carry every frame's marks in place.  Each tag says where its frame comes from (desc: as generated, correct version, original
     video, and the other video or run it was taken from); frames from more than one source get a legend of the tags.  A lone miss frame also carries a grey NO RIGHT VERSION
     tag.  The words are burned in at the bottom with the product sample beside them: the title, the explanation, and the admin's idea (what was meant to happen), what could have
     been better and what the AI agents missed or could not understand, each when given.  The marks are drawn after each picture has its final size, thin and at the same weight in
@@ -326,7 +327,9 @@ def build(frames: list[dict], meta: dict, details: str, correct_note: str, inclu
         im = fr[i]["img"]
         hi = round(pw * im.height / im.width) if abs(im.width / im.height - f0.width / f0.height) > 0.02 else ph
         pic = im.resize((pw, hi), Image.LANCZOS)
-        pics.append(draw_shapes(pic, fr[i]["shapes"], colr(fr[i]["role"]), lw=lwp, ref_h=ph) if fr[i]["shapes"] else pic)
+        # the admin, 2026-11-02: a frame that has its close range shows its marks there only, its panel stays clean; a frame with none (no circle, arrow
+        # or box, marks over most of it, or the zoom switched off) keeps its marks on the panel, so a mark is never lost
+        pics.append(draw_shapes(pic, fr[i]["shapes"], colr(fr[i]["role"]), lw=lwp, ref_h=ph) if fr[i]["shapes"] and zb[i] is None else pic)
     rows = [list(range(k, min(k + cols, n))) for k in range(0, n, cols)]
     pair = [len(row) == 1 and zb[row[0]] is not None for row in rows]          # a frame alone in its row: the normal range and its close range side by side
     zrow = [not pair[r] and any(zb[i] is not None for i in row) for r, row in enumerate(rows)]      # a zoom row under a row of frames only when one of them has a close range

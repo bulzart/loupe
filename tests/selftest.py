@@ -216,6 +216,13 @@ def main(with_keeper=False):
     check("the composite holds both frames (wide, tall) plus zoom and text", im.width > 1100 and im.height > 1500, str(im.size))
     px_left = Image.open(core.DATA / "samples" / "1" / "annotated.png").convert("RGB").getpixel((int(.38 * 720) - 9, int(.42 * 1280) - 10))     # inside the arrowhead, just behind its tip
     check("the annotation is drawn on the wrong frame (arrow tip is red/white)", px_left[0] > 200, str(px_left))
+    # the admin, 2026-11-02: a frame with a zoom stays clean in the composite, its marks are on the zoom only (the full-size annotated file above keeps them)
+    from PIL import ImageChops as _IC
+    _w1 = Image.open(core.DATA / "samples" / "1" / "wrong.png").convert("RGB").resize((560, 996), Image.LANCZOS)
+    _zf = Image.open(core.DATA / "samples" / "1" / "zoom.png").convert("RGB")
+    check("the marked frame stays clean in the composite: its marks are on its zoom only",
+          _IC.difference(im.convert("RGB").crop((24, 104, 584, 1100)), _w1).getbbox() is None
+          and any(p[0] > 200 and p[1] < 100 and p[2] < 100 for p in _zf.crop((24, 0, 584, 520)).getdata()))
     # the explanation is burned in the bottom centre, on a dark band
     W_, H_ = im.size
     rgb = im.convert("RGB")
