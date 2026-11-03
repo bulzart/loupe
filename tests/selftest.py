@@ -1711,6 +1711,11 @@ def main(with_keeper=False):
           [x["name"] for x in s22] == ["image1-product-P1-front-padded.png"] and runs.run_file(atp_run, home_rel) == pf22
           and runs.run_file(atp_run, "55-references/video-22/a1/image1-product-P1-front-padded.png") == pf22 and runs.run_file(atp_run, str(pf22)) == pf22
           and runs.run_file(atp_run, "") is None and runs.run_file(atp_run, "nowhere/x.png") == atp_run / "nowhere" / "x.png", str(s22)[:300])
+    f15 = _cmp_band.font(15, True)
+    check("a character the picture's font cannot draw (a client's file named with a sun emoji) is written as its name, never drawn as a box; one it can "
+          "draw stays",
+          _cmp_band._drawable("🌞.jpg", f15) == "[sun with face].jpg" and _cmp_band._drawable("Café · “x”", f15) == "Café · “x”"
+          and _cmp_band._drawable("download (18).jpg", f15) == "download (18).jpg", ascii(_cmp_band._drawable("🌞.jpg", f15)))
     req("DELETE", f"/api/misses/{pm21}")
     # the admin, 2026-11-03: a request written with the attempt last (video-06-request-a2.json) is the take a2's own, read like video-06-a2-request.json
     rq_n = TMP / "attempt-last" / "50-requests"

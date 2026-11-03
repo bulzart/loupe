@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import math
 import textwrap
+import unicodedata
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
@@ -163,9 +164,42 @@ def to_px(box, W: int, H: int):
     return int(box[0] * W), int(box[1] * H), int(box[2] * W), int(box[3] * H)
 
 
+_glyphs: dict = {}
+
+
+def _has_glyph(f, ch: str) -> bool:
+    """Whether the font draws the character itself: its rendering differs from the font's box for a character it lacks (U+F0000, never in a font)."""
+    key = (id(f), ch)
+    if key not in _glyphs:
+        try:
+            a, b = Image.new("L", (96, 96)), Image.new("L", (96, 96))
+            ImageDraw.Draw(a).text((8, 8), ch, font=f, fill=255)
+            ImageDraw.Draw(b).text((8, 8), "\U000F0000", font=f, fill=255)
+            _glyphs[key] = a.tobytes() != b.tobytes()
+        except Exception:  # noqa: BLE001  (a font that cannot say: the character is drawn as it is)
+            _glyphs[key] = True
+    return _glyphs[key]
+
+
+def _drawable(text: str, f) -> str:
+    """The text as the font can draw it: a character it has no glyph for (an emoji in a client's file name, 🌞.jpg) is written as its name in
+    brackets ('[sun with face].jpg'), and an invisible mark it lacks (a variation selector, a joiner) is left out, so no box stands for a letter
+    (the admin, 2026-11-03: S49's band named the client's file '□.jpg').  The records keep the text as it is."""
+    s = str(text or "")
+    if s.isascii():
+        return s
+    out = []
+    for ch in s:
+        if ord(ch) < 128 or _has_glyph(f, ch):
+            out.append(ch)
+        elif unicodedata.category(ch) not in ("Mn", "Me", "Cf"):
+            out.append("[" + unicodedata.name(ch, "a symbol").lower() + "]")
+    return "".join(out)
+
+
 def _wrap(d, text: str, f, width: int) -> list[str]:
     lines = []
-    for para in str(text).split("\n"):
+    for para in _drawable(text, f).split("\n"):
         words, cur = para.split(), ""
         for w in words:
             trial = (cur + " " + w).strip()
