@@ -443,20 +443,23 @@ def product_sample_image(h):
 @route("GET", "/api/generation-assets", scope="runs:read")
 def generation_assets(h):
     """The images a take's generation was sent, verified from the run's records, each ticked by default: the admin chooses which the sample's band shows
-    (the user, 2026-10-28; the admin, 2026-10-30: only the images sent with that generation)."""
-    run, video, wrong = h.q.get("run", ""), h.q.get("video", ""), h.q.get("wrong", "")
-    qs = "run=%s&video=%s&wrong=%s" % (quote(run), quote(video), quote(wrong))
+    (the user, 2026-10-28; the admin, 2026-10-30: only the images sent with that generation; 2026-11-03: with `fixed`, the report's Video B, the images
+    sent with its generation too, each naming the video it was sent with in `videos` and its label)."""
+    run, video, wrong, fixed = h.q.get("run", ""), h.q.get("video", ""), h.q.get("wrong", ""), h.q.get("fixed", "")
+    qs = "run=%s&video=%s&wrong=%s" % (quote(run), quote(video), quote(wrong)) + (f"&fixed={quote(fixed)}" if fixed else "")
     h.send_json({"ok": True, "assets": [{"path": str(a["path"]), "name": a["name"], "label": a["label"], "source": a["source"], "asset_id": a["asset_id"],
                                           "original_name": a.get("original_name", ""), "prepared": a.get("prepared", ""), "kind": a.get("kind", ""),
                                           "words": a.get("words", ""), "image": a.get("image", ""), "original": str(a.get("original") or ""), "job": a.get("job", ""),
                                           "jobs": a.get("jobs") or [], "paths": [str(p) for p in a.get("paths") or []],
-                                          "request": a["request"], "suggested": a["suggested"], "image_url": f"/api/generation-assets/image?{qs}&i={i}"}
-                                         for i, a in enumerate(runs.generation_assets(run, video, wrong, path=wrong))]})
+                                          "request": a["request"], "suggested": a["suggested"], "videos": a.get("videos") or [],
+                                          "image_url": f"/api/generation-assets/image?{qs}&i={i}"}
+                                         for i, a in enumerate(runs.generation_assets(run, video, wrong, path=wrong, fixed=fixed, fixed_path=fixed))]})
 
 
 @route("GET", "/api/generation-assets/image", scope="runs:read")
 def generation_asset_image(h):
-    ga = runs.generation_assets(h.q.get("run", ""), h.q.get("video", ""), h.q.get("wrong", ""), path=h.q.get("wrong", ""))
+    ga = runs.generation_assets(h.q.get("run", ""), h.q.get("video", ""), h.q.get("wrong", ""), path=h.q.get("wrong", ""), fixed=h.q.get("fixed", ""),
+                                fixed_path=h.q.get("fixed", ""))
     i = int(h.q.get("i") or 0)
     if not 0 <= i < len(ga):
         raise LookupError("no such image")

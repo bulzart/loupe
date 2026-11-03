@@ -190,13 +190,15 @@ def band_rows(n: int) -> list[int]:
 
 
 def band_heading(n: int, meta: dict | None) -> str:
-    """The band's heading: how many of the images sent with this generation it shows (meta images_sent, verified from the run's records), else how
-    many product samples it shows (an older sample, or a run whose records verify nothing it sent)."""
+    """The band's heading: how many of the images sent with this generation it shows (meta images_sent, verified from the run's records), or with the
+    generations of the report's two videos (meta images_videos: the admin, 2026-11-03), else how many product samples it shows (an older sample, or a
+    run whose records verify nothing it sent)."""
     sent = len((meta or {}).get("images_sent") or []) if isinstance(meta, dict) else 0
+    gen = "THE GENERATIONS OF VIDEO A AND VIDEO B" if isinstance(meta, dict) and len(meta.get("images_videos") or []) > 1 else "THIS GENERATION"
     if sent and n == sent:
-        return f"{sent} IMAGE{'S' if sent > 1 else ''} SENT WITH THIS GENERATION"
+        return f"{sent} IMAGE{'S' if sent > 1 else ''} SENT WITH {gen}"
     if sent:
-        return f"{n} OF THE {sent} IMAGES SENT WITH THIS GENERATION"
+        return f"{n} OF THE {sent} IMAGES SENT WITH {gen}"
     return f"PRODUCT SAMPLE{'S' if n > 1 else ''} · {n} IMAGE{'S' if n > 1 else ''} USED IN THIS VIDEO"
 
 

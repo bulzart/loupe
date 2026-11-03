@@ -18,6 +18,7 @@ let withSample = false;      // the video's request names a product
 let tickOnCopy = false;      // the report's tick was saved on another copy of the product picture (both clips sent it, as two files)
 let withSegs = false;        // the picked take was joined from two generations (clips)
 let withSavedSegs = false;   // the report was saved with the flawed version's box written from a take of two generations
+let withTwo = false;         // the report's Video B was made by another generation: the images sent with each, each naming its video
 const savedMoment = { moment_id: 5, id: 'S5', image_url: '/x?a=5', updated: 'u', details: 'the pack is right early', correct_note: 'c', has_right: true,
   frames: [{ src: 'wrong', role: 'right', t: 0.5, desc: 'as generated' }, { src: 'wrong', role: 'wrong', t: 3.0, desc: 'as generated' }, { src: 'fixed', role: 'right', t: 3.25, desc: 'correct version' }],
   shapes: [{ type: 'rect', frame: 1, x1: 0.1, y1: 0.1, x2: 0.4, y2: 0.4 }] };
@@ -76,7 +77,10 @@ const api = async (method, url, body) => {
       { clip: 'c2', attempt: 1, request: 'video-03-c2-request.json', file: 'c2/a1/trimmed.mp4', t_from: 6.1, t_to: 12.433, prompt: 'P-C2 the second generation' }] } : { prompt: 'P-ONE', request: 'video-03-request.json', attempt: 1 };
   if (url.startsWith('/api/generation-assets')) return { assets: withSample ? [
     { path: 'P.png', paths: ['P.png', 'P-copy.png'], name: 'x.png', label: 'Image 2 · the sealed test can', source: 'sent with job job-1', kind: 'product', words: 'the sealed test can', original: 'C:/client/P-front.png', asset_id: 'A14', request: 'video-03-request.json', suggested: true, image_url: '/x.png' },
-    { path: 'H.png', name: 'h.png', label: 'Image 1 · C04 head', source: 'sent with job job-1', kind: 'character', words: 'the man', asset_id: '', request: 'video-03-request.json', suggested: true, image_url: '/h.png' }] : [] };
+    { path: 'H.png', name: 'h.png', label: 'Image 1 · C04 head', source: 'sent with job job-1', kind: 'character', words: 'the man', asset_id: '', request: 'video-03-request.json', suggested: true, image_url: '/h.png' }]
+    : (withTwo && url.includes('&fixed=')) ? [
+      { path: 'P.png', name: 'p.png', label: 'Videos A and B · Image 2 · A14 · front.png', videos: ['A', 'B'], source: 'sent with jobs job-1, job-2', kind: 'product', words: 'the can', asset_id: 'A14', request: 'video-03-request.json', suggested: true, image_url: '/p.png' },
+      { path: 'W.png', name: 'w.png', label: 'Video B · Image 1 · A29 · woman.png', videos: ['B'], source: 'sent with job job-2', kind: 'character', words: 'the woman', asset_id: 'A29', request: 'video-03-a2-request.json', suggested: true, image_url: '/w.png' }] : [] };
   return {};
 };
 const code = read('v_misses.js').replace(/^import .*$/gm, '').replace(/^export (async )?function/gm, '$1function') + '\nreturn { work, pick };';
@@ -246,6 +250,16 @@ const ok = (name, cond, info = '') => { console.log((cond ? '  ok   ' : '  FAIL 
   const boxes8b = walk(root8b, (e) => e.tag === 'input' && e.attrs['data-asset']);
   ok('a tick saved on another copy of a picture several clips sent keeps its one tile ticked, and only it', boxes8b.length === 2 && boxes8b[0].checked === true && !boxes8b[1].checked, boxes8b.map((b) => b.attrs['data-asset'] + ':' + b.checked).join(' '));
   withSample = false; tickOnCopy = false;
+  // the report's Video B was made by another generation: the picker asks for both videos' images, each tile naming the video it was sent with
+  withTwo = true; withMoment = false; noRight = false; sent.length = 0;
+  const root8c = await work({ run: 'R', video: '03', miss: '1' });
+  await new Promise((r) => setTimeout(r, 0));
+  const ga8c = sent.filter((x) => x.url.startsWith('/api/generation-assets')).map((x) => x.url);
+  ok('with a right version made by another generation the picker asks for the images sent with both videos, and each tile names the video it was sent with',
+    ga8c.some((u) => u.includes('&wrong=A.mp4&fixed=B.mp4')) && walk(root8c, (e) => e.tag === 'input' && e.attrs['data-asset']).length === 2
+    && walk(root8c, (e) => e.tag === 'img' && e.attrs.alt === 'Video B · Image 1 · A29 · woman.png').length === 1
+    && walk(root8c, (e) => e.tag === 'div' && (e.text || '').startsWith('The images each video’s generation was sent')).length === 1, JSON.stringify(ga8c));
+  withTwo = false;
   // a sample opened from the list (&moment=) comes back as it stands, with nothing to click
   withMoment = true; noRight = false; sent.length = 0;
   const root9 = await work({ run: 'R', video: '03', miss: '1', moment: '5' });

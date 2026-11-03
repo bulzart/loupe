@@ -1599,6 +1599,96 @@ def main(with_keeper=False):
     check("a template answered again after the final prompts round keeps what it decided for the other samples when its new answer leaves that out",
           p2j.get("template") == "T2" and p2j.get("avoided") == first_j["avoided"] and p2j.get("set_aside") == first_j["set_aside"] and sent_j == ["S1"],
           str(p2j)[:300])
+    # the admin, 2026-11-03: a wrong example from one video and the right one from another: the images sent with each video's generation, each naming
+    # its video, a picture both were sent once; a sample shows those of the videos its frames come from
+    print("\n[two videos made by two generations: the images sent with each]")
+    v21 = atp_run / "55-references" / "video-21"
+    for _k in ("a1", "a2"):
+        (v21 / _k).mkdir(parents=True, exist_ok=True)
+    _PI.new("RGB", (300, 400), (0, 0, 250)).save(v21 / "a1" / "image2-product-P1-front-padded.png")
+    shutil.copyfile(v21 / "a1" / "image2-product-P1-front-padded.png", v21 / "a2" / "image2-product-P1-front-padded.png")      # the same picture, another folder
+    _PI.new("RGB", (300, 400), (210, 160, 130)).save(v21 / "a1" / "image1-character-man.png")
+    _PI.new("RGB", (300, 400), (130, 210, 160)).save(v21 / "a2" / "image1-character-woman.png")
+    _PI.new("RGB", (300, 400), (120, 200, 150)).save(ref9 / "woman.png")
+    take21 = {_k: atp_run / "60-outputs" / "video-21" / _k / "raw.mp4" for _k in ("a1", "a2")}
+    mkvideo(take21["a1"], "0x302050", "white")
+    mkvideo(take21["a2"], "0x503020", "white")
+    for _k, _rq, _who, _orig, _aid in (("a1", "video-21-request.json", "man", "person.png", "A28"), ("a2", "video-21-a2-request.json", "woman", "woman.png", "A29")):
+        (atp_run / "50-requests" / _rq).write_text(json.dumps({"params": {"model": "wan3_0_prime", "duration": 5,
+            "prompt": f"Video twenty-one, {_k}: the {_who} of Image 1 holds the can of Image 2.",
+            "medias": [{"role": "image_references", "value": f"m21{_k}1", "source": {"original": str(ref9 / _orig), "asset_id": _aid, "kind": "character"}},
+                       {"role": "image_references", "value": f"m21{_k}2", "build": f"from {ref9 / 'product-front.png'} (A14): padded to 9:16 on white"}]}}))
+    (atp_run / "50-requests" / "video-21-uploads.json").write_text(json.dumps({"video": "21", "schema": 1, "uploads": {
+        "a1 Image 1: man": {"media_id": "m21a11", "file": str(v21 / "a1" / "image1-character-man.png"), "role": "image_references"},
+        "a1 Image 2: P1 front padded": {"media_id": "m21a12", "file": str(v21 / "a1" / "image2-product-P1-front-padded.png"), "role": "image_references"},
+        "a2 Image 1: woman": {"media_id": "m21a21", "file": str(v21 / "a2" / "image1-character-woman.png"), "role": "image_references"},
+        "a2 Image 2: P1 front padded": {"media_id": "m21a22", "file": str(v21 / "a2" / "image2-product-P1-front-padded.png"), "role": "image_references"}}}))
+    ledger_add("video-21-request.json", "job-2101")
+    ledger_add("video-21-a2-request.json", "job-2102")
+    q21 = "/api/generation-assets?run=20261001-000000-07&video=21&wrong=" + quote(str(take21["a1"]))
+    s, d, _ = req("GET", q21 + "&fixed=" + quote(str(take21["a2"])))
+    ga21 = [(a.get("label"), a.get("videos")) for a in d.get("assets") or []]
+    si21, _b21, _h21 = req("GET", ((d.get("assets") or [{}])[-1]).get("image_url", "/none"), raw=True)
+    s1, d1, _ = req("GET", q21)
+    check("with Video B made by another generation, the images offered are those sent with both, each naming the video it was sent with, a picture "
+          "both were sent one tile (its thumbnail served); Video A alone offers its own as before",
+          s == 200 and ga21 == [("Video A · Image 1 · A28 · person.png", ["A"]), ("Videos A and B · Image 2 · A14 · product-front.png", ["A", "B"]),
+                                ("Video B · Image 1 · A29 · woman.png", ["B"])] and si21 == 200
+          and [a.get("label") for a in d1.get("assets") or []] == ["Image 1 · A28 · person.png", "Image 2 · A14 · product-front.png"]
+          and not any(a.get("videos") for a in d1.get("assets") or []), f"{ga21} | {si21} | {str(d1)[:300]}")
+    s, d, _ = req("POST", "/api/misses", {"run": "20261001-000000-07", "video": "21", "title": "The right version is another generation", "model": "wan3_0_prime",
+                                          "wrong_path": str(take21["a1"]), "wrong_label": "a1 · raw.mp4", "fixed_path": str(take21["a2"]), "fixed_label": "a2 · raw.mp4"})
+    pm21 = d["miss"]["id"] if s == 200 else 0
+    s, d, _ = req("POST", f"/api/misses/{pm21}/moments", {"frames": [{"src": "wrong", "role": "wrong", "t": 1.0}, {"src": "fixed", "role": "right", "t": 1.0}],
+                                                          "details": "The man holds the can upside down; the woman holds it upright."})
+    mo21 = d["moment"]["moment_id"] if s == 200 else 0
+    s, d, _ = req("POST", f"/api/misses/{pm21}/moments", {"frames": [{"src": "fixed", "role": "right", "t": 2.0}], "details": "The right version alone."})
+    mo21b = d["moment"]["moment_id"] if s == 200 else 0
+
+    def m21(mo):
+        return json.loads((core.DATA / "samples" / str(mo) / "meta.json").read_text(encoding="utf-8")) if mo else {}
+    meta21, meta21b = m21(mo21), m21(mo21b)
+    check("a sample of both videos' frames shows the images sent with each, each named by its video, under a heading that says so; a sample of "
+          "Video B's frames alone shows Video B's, as one generation",
+          [x.get("label") for x in meta21.get("product_samples") or []] == ["Video A · Image 1 · A28 · person.png",
+                                                                          "Videos A and B · Image 2 · A14 · product-front.png", "Video B · Image 1 · A29 · woman.png"]
+          and [x.get("videos") for x in meta21.get("images_sent") or []] == [["A"], ["A", "B"], ["B"]] and meta21.get("images_videos") == ["A", "B"]
+          and _cmp_band.band_heading(3, meta21) == "3 IMAGES SENT WITH THE GENERATIONS OF VIDEO A AND VIDEO B"
+          and _cmp_band.band_heading(2, meta21) == "2 OF THE 3 IMAGES SENT WITH THE GENERATIONS OF VIDEO A AND VIDEO B"
+          and [x.get("label") for x in meta21b.get("product_samples") or []] == ["Image 1 · A29 · woman.png", "Image 2 · A14 · product-front.png"]
+          and "images_videos" not in meta21b and not any(x.get("videos") for x in meta21b.get("images_sent") or []),
+          f"{meta21.get('product_samples')} || {meta21b.get('product_samples')}"[:900])
+    s, d, _ = req("GET", f"/api/qc/samples/S{mo21}?prompts=1", key=kq)
+    smp21 = d.get("sample") or {}
+    dig21 = _pq.records_of(_pq._digest()).get(f"S{mo21}", "")
+    mk_f21, mk_p21, mk_w21 = (runs.file_fingerprint(ref9 / _n) for _n in ("product-front.png", "person.png", "woman.png"))
+    check("the judge reads which video's generation each image was sent with (Video A, Video B, or Videos A and B for one sent with both) in the "
+          "digest, the full record and the sample's answer, and the library header explains it",
+          f"PRODUCT IMAGES OF S{mo21} (1): Videos A and B · Image 2 · A14 · product-front.png #{mk_f21}\n" in dig21
+          and f"OTHER IMAGES OF S{mo21} (2): Video A · Image 1 · A28 · person.png #{mk_p21} (character); Video B · Image 1 · A29 · woman.png #{mk_w21} (character)" in dig21
+          and "the generations of its two videos were given, each by the video it was sent with" in smp21.get("record", "")
+          and f"  S{mo21} · Video B · Image 1 · A29 · woman.png #{mk_w21} (character)" in smp21.get("record", "")
+          and smp21.get("product_images") == [{"image": "Image 2", "asset": "A14", "file": "product-front.png", "fingerprint": mk_f21,
+                                               "prepared": "padded to 9:16 on white", "recorded": True, "video": "A and B"}]
+          and "Videos A and B for one sent with both" in _pq.LIB_HEADER, dig21[:700] + " || " + smp21.get("record", "")[:700])
+    s, d, _ = req("PATCH", f"/api/misses/{pm21}", {"sample_files": [str(v21 / "a2" / "image1-character-woman.png")]})
+    meta21c, meta21d = m21(mo21), m21(mo21b)
+    s2, d2, _ = req("PATCH", f"/api/misses/{pm21}", {"sample_files": [str(v21 / "a1" / "image1-character-man.png")]})
+    meta21e = m21(mo21b)
+    s3, d3, _ = req("PATCH", f"/api/misses/{pm21}", {"sample_files": [str(ref9 / "person.png"), str(TMP / "elsewhere.png")]})
+    check("the admin's ticks choose among both videos' images: one sent with Video B is accepted and each sample shows it where its frames' videos were "
+          "sent it; one ticked from Video A alone leaves the band of a sample of Video B's frames empty, never its whole set; any other file is refused",
+          s == 200 and [x.get("label") for x in meta21c.get("product_samples") or []] == ["Video B · Image 1 · A29 · woman.png"]
+          and meta21c.get("product_sample_chosen") is True and [x.get("label") for x in meta21d.get("product_samples") or []] == ["Image 1 · A29 · woman.png"]
+          and s2 == 200 and not meta21e.get("product_samples") and meta21e.get("product_sample_chosen") is True
+          and s3 == 400 and "not one of the images the generations of this report's videos were sent" in str(d3),
+          f"{s} {str(d)[:200]} | {meta21c.get('product_samples')} | {s2} {meta21e.get('product_samples')} | {s3} {str(d3)[:200]}"[:900])
+    clean21 = take21["a1"].with_name("clean.mp4")
+    shutil.copyfile(take21["a1"], clean21)
+    one21 = runs.videos_sent_images("20261001-000000-07", "21", [("A", str(take21["a1"]), str(take21["a1"])), ("B", str(clean21), str(clean21))])
+    check("two files of one generation (a take and a copy made from it) read as that one generation: its images, named as before",
+          one21["two"] is False and [x["label"] for x in one21["images"]] == ["Image 1 · A28 · person.png", "Image 2 · A14 · product-front.png"], str(one21)[:500])
+    req("DELETE", f"/api/misses/{pm21}")
     # the admin, 2026-11-03: a request written with the attempt last (video-06-request-a2.json) is the take a2's own, read like video-06-a2-request.json
     rq_n = TMP / "attempt-last" / "50-requests"
     rq_n.mkdir(parents=True, exist_ok=True)

@@ -333,14 +333,14 @@ def _sample_files(raw) -> list[dict]:
     return [x for x in v if isinstance(x, dict) and x.get("path")] if isinstance(v, list) else []
 
 
-def _chosen_files(v, run: str, video: str, wrong_hint: str, wrong_path: str) -> str:
+def _chosen_files(v, run: str, video: str, wrong_hint: str, wrong_path: str, fixed_hint: str = "", fixed_path: str = "") -> str:
     """The images the admin ticked for the sample's band (the user, 2026-10-28; the admin, 2026-10-30: only images sent with that take's generation,
-    runs.generation_assets): JSON [{path, label, asset_id}], or '' for the default, every image sent.  A tick on a client's original stands for the
-    file sent from it; any other file is refused."""
+    runs.generation_assets; 2026-11-03: and with Video B's, when it is another generation): JSON [{path, label, asset_id}], or '' for the default,
+    every image sent.  A tick on a client's original stands for the file sent from it; any other file is refused."""
     items = [str(x.get("path") if isinstance(x, dict) else x) for x in (v if isinstance(v, list) else []) if x]
     if not items:
         return ""
-    offered = runs.generation_assets(run, video, wrong_hint, path=wrong_path)
+    offered = runs.generation_assets(run, video, wrong_hint, path=wrong_path, fixed=fixed_hint, fixed_path=fixed_path)
     allowed = {runs._file_key(p): a for a in offered for p in [a["path"], *(a.get("paths") or [])]}      # a picture several clips sent: any of its copies
     for a in offered:
         if a.get("original"):
@@ -349,7 +349,8 @@ def _chosen_files(v, run: str, video: str, wrong_hint: str, wrong_path: str) -> 
     for p in items[:SAMPLE_FILES_MAX]:
         a = allowed.get(runs._file_key(p))
         if not a:
-            raise ValueError(f"{Path(p).name} is not one of the images this generation was sent")
+            raise ValueError(f"{Path(p).name} is not one of the images "
+                             + ("the generations of this report's videos were sent" if (fixed_hint or fixed_path) else "this generation was sent"))
         if all(x["path"] != str(a["path"]) for x in out):
             out.append({"path": str(a["path"]), "label": a["label"], "asset_id": a.get("asset_id", "")})
     return json.dumps(out, ensure_ascii=False)
@@ -467,7 +468,7 @@ def create(data: dict, actor: str) -> dict:
     if not str(data.get("title") or "").strip():
         raise ValueError("a title is needed (one line: what went wrong)")
     chosen = _chosen_files(data.get("sample_files"), str(data.get("run") or ""), core.nn(data.get("video")) if data.get("video") else "",
-                           str(data.get("wrong_label") or wrong), wrong)
+                           str(data.get("wrong_label") or wrong), wrong, str(data.get("fixed_label") or fixed), fixed)
     prompts, segcols = {k: _field_text(data.get(k)) for k in ("wrong_prompt", "fixed_prompt")}, {}
     for side in ("wrong", "fixed"):          # the generations a box holds (a take made of several): each one's prompt and seconds, kept beside the box's text
         segs = _segments_clean(data.get(f"{side}_segments"), side)
@@ -580,9 +581,10 @@ def update(mid: int, patch: dict, actor: str) -> dict | None:
         elif pk in patch and cur.get(sk) and _field_text(patch[pk]) != (cur.get(pk) or ""):
             cols[sk] = ""
     if "sample_files" in patch:
-        eff = {k: (patch[k] if k in patch else cur.get(k)) for k in ("run", "video", "wrong_label", "wrong_path")}
+        eff = {k: (patch[k] if k in patch else cur.get(k)) for k in ("run", "video", "wrong_label", "wrong_path", "fixed_label", "fixed_path")}
         new = _chosen_files(patch["sample_files"], str(eff["run"] or ""), core.nn(eff["video"]) if eff["video"] else "",
-                            str(eff["wrong_label"] or eff["wrong_path"] or ""), str(eff["wrong_path"] or ""))
+                            str(eff["wrong_label"] or eff["wrong_path"] or ""), str(eff["wrong_path"] or ""),
+                            str(eff["fixed_label"] or eff["fixed_path"] or ""), str(eff["fixed_path"] or ""))
         if _sample_files(new) != cur["sample_files"]:
             cols["sample_files"] = new
     for k in ("wrong_path", "fixed_path"):
@@ -611,7 +613,8 @@ def update(mid: int, patch: dict, actor: str) -> dict | None:
                 elif "fixed" in changed and not cur["fixed_path"] and len(fr) == 1 and fr[0]["role"] == "wrong" and fr[0]["src"] == "wrong":
                     fr.append({"src": "fixed", "role": "right", "t": fr[0]["t"]})
                 _write_frames(mo["moment_id"], fr, sh)
-        if any(k in cols for k in ("title", "explanation", "wrong_path", "fixed_path", "model", "run", "video", "sample_on", "wrong_label", "sample_files")):
+        if any(k in cols for k in ("title", "explanation", "wrong_path", "fixed_path", "model", "run", "video", "sample_on", "wrong_label", "fixed_label",
+                                   "sample_files")):
             for m in cur["moments"]:       # the sample image carries the title, the caption and the source of both frames
                 regenerate(m["moment_id"])
     return get(mid)
@@ -967,7 +970,9 @@ def _image_entry(x: dict) -> dict:
     return {"asset": x.get("asset_id", ""), "label": x.get("label", ""), "file": x.get("name", ""), "image": x.get("image", ""), "kind": x.get("kind", ""),
             "fingerprint": runs.file_fingerprint(x.get("original")), "sent_fingerprint": runs.file_fingerprint(x.get("path")),
             "original": x.get("original", ""), "original_name": x.get("original_name", ""), "prepared": x.get("prepared", ""),
-            "recorded": x.get("recorded", ""), "job": x.get("job", ""), **({"jobs": x["jobs"]} if len(x.get("jobs") or []) > 1 else {})}
+            "recorded": x.get("recorded", ""), "job": x.get("job", ""), **({"jobs": x["jobs"]} if len(x.get("jobs") or []) > 1 else {}),
+            **({"videos": list(x["videos"])} if x.get("videos") else {}),          # the video(s) of the report it was sent with (runs.videos_sent_images)
+            **({"assets": dict(x["asset_ids"])} if len(set((x.get("asset_ids") or {}).values())) > 1 else {})}
 
 
 def regenerate(mid: int):
@@ -1001,18 +1006,31 @@ def regenerate(mid: int):
     samples = []
     if miss["sample_on"] != 0:
         try:       # never a reason to fail the save
-            # the images sent with the generation of Video A's take, verified from the run's records (the admin, 2026-10-30: only those, and every one
-            # by default; the admin's ticks choose among them, a tick on a client's original standing for the file sent from it)
-            sent = runs.sent_images(miss["run"], miss["video"], miss["wrong_label"] or miss["wrong_path"], path=miss["wrong_path"] or "")
-            by_file = {runs._file_key(p): x for x in sent for p in [x["path"], *(x.get("paths") or [])]}
-            by_orig = {runs._file_key(x["original"]): x for x in sent if x.get("original")}
+            # the images sent with the generation of each video the sample's frames come from, verified from the run's records (the admin, 2026-10-30:
+            # only those, and every one by default; the admin's ticks choose among them, a tick on a client's original standing for the file sent from
+            # it; 2026-11-03: a wrong example from one video and the right one from another, so the right one's too, each naming the video it was sent with)
+            def take(src):
+                return VIDEO_LETTER[src], miss[f"{src}_label"] or miss[f"{src}_path"] or "", miss[f"{src}_path"] or ""
+            every = ["wrong"] + (["fixed"] if miss["fixed_path"] else [])
+            used = [src for src in every if miss[f"{src}_path"] and any(f["src"] == src for f in frames)] or every      # a sample of words only: the report's videos
+            own = runs.videos_sent_images(miss["run"], miss["video"], [take(src) for src in used])
+            sent = own["images"]
             ticked = _sample_files(miss["sample_files"] if "sample_files" in miss.keys() else "")
+            report = own if used == every or not ticked else runs.videos_sent_images(miss["run"], miss["video"], [take(src) for src in every])
+
+            def index(xs):
+                return ({runs._file_key(p): x for x in xs for p in [x["path"], *(x.get("paths") or [])]},
+                        {runs._file_key(x["original"]): x for x in xs if x.get("original")})
+            (by_file, by_orig), (in_file, in_orig) = index(sent), index(report["images"])
             chosen = []
             for t in ticked:
                 x = by_file.get(runs._file_key(t["path"])) or by_orig.get(runs._file_key(t["path"]))
                 if x and x not in chosen:
                     chosen.append(x)
-            if ticked and not sent:      # a run whose records verify nothing it sent: the files the admin ticked stand, named as before
+            # the admin's ticks stand while they name an image of the report (ticks on the other video's images alone leave this sample's band empty);
+            # ticks that name none of them (made for another take) leave the automatic pick
+            stands = any(in_file.get(runs._file_key(t["path"])) or in_orig.get(runs._file_key(t["path"])) for t in ticked)
+            if ticked and not report["images"]:      # a run whose records verify nothing it sent: the files the admin ticked stand, named as before
                 for t in ticked:
                     if Path(t["path"]).is_file():
                         ps = {"path": Path(t["path"]), "label": t.get("label") or Path(t["path"]).name, "asset_id": t.get("asset_id") or "", "name": Path(t["path"]).name}
@@ -1020,10 +1038,13 @@ def regenerate(mid: int):
                         chosen.append({"path": ps["path"], "name": ps["name"], "label": label, "image": src.get("image", ""), "kind": src.get("kind", ""),
                                        "asset_id": ps["asset_id"] or src.get("asset_id", ""), "original": src.get("original", ""), "original_name": src.get("name", ""),
                                        "prepared": src.get("prepared", ""), "recorded": src.get("recorded", ""), "job": ""})
-            picks = chosen or sent
-            meta["product_sample_chosen"] = bool(chosen)
+                stands = bool(chosen)
+            picks = chosen if stands else sent
+            meta["product_sample_chosen"] = bool(stands)
             if sent:
                 meta["images_sent"] = [_image_entry(x) for x in sent]
+            if own["two"]:          # the images of two videos made by different generations, each naming its video
+                meta["images_videos"] = ["A", "B"]
             for x in picks:
                 samples.append((compose.load_product(x["path"]), x["label"]))
                 meta.setdefault("product_samples", []).append(_image_entry(x))

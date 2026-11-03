@@ -336,15 +336,17 @@ export async function work(qs) {
   const sampleBox = h('div', { class: 'small', style: 'margin-top:12px' });
   // the band's images (the admin, 2026-10-30): exactly the images sent with the generation of Video A's take, verified from the run's records, every
   // one ticked by default; what the admin ticks is kept with the report (sample_files) and goes into its images (a tick kept on a client's original
-  // stands for the file sent from it)
+  // stands for the file sent from it).  The admin, 2026-11-03: when Video B is another generation, the images sent with it too, each naming the video
+  // it was sent with; each sample's band shows those of the videos its frames come from
   let assetsTouched = false;
   let assetBoxes = [];      // {cb, path} of every image offered
   const pickedAssets = () => assetBoxes.filter((x) => x.cb.checked).map((x) => x.path);
   const loadSample = async () => {
     if (!qs.run || !qs.video) { sampleBox.replaceChildren(); return; }
-    const wl = state.wrong || '';      // the path: the server reads the attempt from it
+    const wl = state.wrong || '', fl = state.fixed || '';      // the paths: the server reads each take's attempt from it
     try {
-      const d = await api('GET', `/api/generation-assets?run=${encodeURIComponent(qs.run)}&video=${encodeURIComponent(qs.video)}&wrong=${encodeURIComponent(wl)}`, undefined, true);
+      const d = await api('GET', `/api/generation-assets?run=${encodeURIComponent(qs.run)}&video=${encodeURIComponent(qs.video)}&wrong=${encodeURIComponent(wl)}${fl ? '&fixed=' + encodeURIComponent(fl) : ''}`, undefined, true);
+      const two = d.assets.some((a) => (a.videos || []).length > 0);      // Video B was made by another generation: each image names the video it was sent with
       const chosen = new Set(((miss && miss.sample_files) || []).map((x) => x.path));
       const isChosen = (a) => chosen.has(a.path) || (!!a.original && chosen.has(a.original)) || (a.paths || []).some((p) => chosen.has(p));
       const anyChosen = d.assets.some(isChosen);
@@ -352,7 +354,7 @@ export async function work(qs) {
       const ticked = (a) => (anyChosen ? isChosen(a) : a.suggested);
       if (!miss && !productTyped) { const w = [...new Set(d.assets.filter((a) => a.kind === 'product' && a.words).map((a) => a.words))]; if (w.length) product.value = w.join(' + '); }
       assetBoxes = [];
-      if (!d.assets.length) { sampleBox.replaceChildren(h('span', { class: 'muted' }, 'No image sent with this generation is recorded in its run (its request is not in the ledger or changed since it was submitted, its uploads name no file, or which attempt this version is cannot be told), so the description takes the full width of the bottom band.')); return; }
+      if (!d.assets.length) { sampleBox.replaceChildren(h('span', { class: 'muted' }, (fl ? 'No image sent with the generation of either video is recorded in its run' : 'No image sent with this generation is recorded in its run') + ' (its request is not in the ledger or changed since it was submitted, its uploads name no file, or which attempt this version is cannot be told), so the description takes the full width of the bottom band.')); return; }
       const cells = d.assets.map((a) => {
         const cb = h('input', { type: 'checkbox', checked: ticked(a), 'data-asset': a.path });
         assetBoxes.push({ cb, path: a.path });
@@ -367,8 +369,10 @@ export async function work(qs) {
           h('div', { class: 'muted small' }, (a.kind ? a.kind + ' · ' : '') + a.source));
       });
       sampleBox.replaceChildren(h('div', {},
-        h('label', { class: 'small' }, useSample, ' Show the images sent with this generation in the saved image (right half of the bottom band)'),
-        h('div', { class: 'muted small', style: 'margin:4px 0 6px' }, 'The images this generation was sent with its job, as the run recorded them (the request the ledger submitted, unchanged since, and the file uploaded under each media id); nothing else is offered. All are ticked: untick one to leave it out of the saved image, tick it again to bring it back.'),
+        h('label', { class: 'small' }, useSample, two ? ' Show the images sent with the generations of Video A and Video B in the saved images (right half of the bottom band)' : ' Show the images sent with this generation in the saved image (right half of the bottom band)'),
+        h('div', { class: 'muted small', style: 'margin:4px 0 6px' }, two
+          ? 'The images each video’s generation was sent with its job, as its run recorded them (the request the ledger submitted, unchanged since, and the file uploaded under each media id); nothing else is offered. Each names the video it was sent with, and a picture both were sent is one tile (Videos A and B). Each sample shows those of the videos its frames come from. All are ticked: untick one to leave it out of the saved images, tick it again to bring it back.'
+          : 'The images this generation was sent with its job, as the run recorded them (the request the ledger submitted, unchanged since, and the file uploaded under each media id); nothing else is offered. All are ticked: untick one to leave it out of the saved image, tick it again to bring it back.'),
         h('div', { class: 'row', style: 'gap:10px;flex-wrap:wrap;align-items:stretch' }, cells)));
     } catch (_) { sampleBox.replaceChildren(); }
   };

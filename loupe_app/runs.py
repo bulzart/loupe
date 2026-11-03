@@ -1120,14 +1120,87 @@ def sent_images(run: str, video: str, wrong: str = "", path: str = "") -> list[d
     return out
 
 
-def generation_assets(run: str, video: str, wrong: str = "", path: str = "") -> list[dict]:
+VIDEO_WORDS = {("A",): "Video A", ("B",): "Video B", ("A", "B"): "Videos A and B"}      # the video(s) of a report an image was sent with
+
+
+def _picture_key(p) -> str:
+    """What one picture is, whatever folder or run holds it: the SHA-1 of its content (its path when it cannot be read)."""
+    try:
+        return media.sha1_file(Path(p))
+    except OSError:
+        return _file_key(p)
+
+
+def videos_sent_images(run: str, video: str, takes) -> dict:
+    """The images sent with the generation of each of a report's videos that a sample shows (the admin, 2026-11-03: "what happens with the attachments
+    when we use two different samples one for wrong example and other video for the right example, fix this too"): `takes` [(letter, hint, path)],
+    Video A before Video B, each read by sent_images in its own run and video; an original video (the source clip, not generated) was sent nothing.
+    When the two were made by different generations (the requests their images were sent with differ), a picture both were sent (the same content,
+    from any folder or run) is one entry, and every entry names the video(s) it was sent with: `videos` ['A'], ['B'] or ['A', 'B'], its label starting
+    'Video A · ', 'Video B · ' or 'Videos A and B · ', an input number, asset id or original name that differs between the two said for each
+    ('Image 2 of Video A, Image 1 of Video B'), and `asset_ids` {letter: id}.  One video, or two files of one generation (a take and its preview),
+    read as before: that generation's images, untagged.  {images, two, sent: {letter: how many}}."""
+    per = []
+    for letter, hint, path in takes:
+        own = path or hint
+        loc = locate(own) if own else None
+        r, v = (loc[0], loc[1]) if loc and loc[1] else (run, core.nn(video) if video else "")
+        rd = run_dir(r) if r else None
+        if own and rd and v and is_original(rd, v, own):
+            per.append((letter, []))
+            continue
+        try:
+            per.append((letter, sent_images(run, video, hint, path=path)))
+        except Exception:  # noqa: BLE001  (a run whose records cannot be read: that video shows none, the other still does)
+            per.append((letter, []))
+    sent = {k: len(xs) for k, xs in per}
+    gens = {k: {(str(x.get("run") or ""), str(q)) for x in xs for q in (x.get("requests") or [x.get("request")])} for k, xs in per}
+    have = [k for k, xs in per if xs]
+    if len(have) < 2 or gens[have[0]] == gens[have[1]]:
+        return {"images": next((xs for _k, xs in per if xs), []), "two": False, "sent": sent}
+    out, by_key = [], {}
+    for k, xs in per:
+        for x in xs:
+            pk = _picture_key(x["path"])
+            y = by_key.get(pk)
+            if y is None:
+                y = by_key[pk] = {**x, "videos": [k], "_each": {k: x}, **{f: list(x.get(f) or []) for f in ("jobs", "requests", "paths", "media_ids")}}
+                out.append(y)
+                continue
+            if k not in y["videos"]:
+                y["videos"].append(k)
+            y["_each"].setdefault(k, x)
+            for f in ("jobs", "requests", "paths", "media_ids"):
+                y[f] += [v for v in x.get(f) or [] if v not in y[f]]
+            for f in ("original", "original_name", "prepared", "recorded", "asset_id", "kind", "words"):
+                if not y.get(f) and x.get(f):
+                    y[f] = x[f]
+    for y in out:
+        each = y.pop("_each")
+        vids = tuple(k for k in ("A", "B") if k in y["videos"])
+        y["videos"] = list(vids)
+
+        def said(field, each=each, vids=vids):
+            vals = {k: str(each[k].get(field) or "") for k in vids}
+            return next(iter(vals.values())) if len(set(vals.values())) == 1 else ", ".join(f"{v} of Video {k}" for k, v in vals.items() if v)
+        y["image"] = said("image")
+        y["asset_ids"] = {k: str(each[k].get("asset_id") or "") for k in vids}
+        name = said("original_name") if all(each[k].get("original_name") for k in vids) else str(y.get("original_name") or y.get("name") or "")
+        tail = " · its original file is not recorded" if all(str(each[k].get("label") or "").endswith("its original file is not recorded") for k in vids) else ""
+        y["label"] = VIDEO_WORDS[vids] + " · " + " · ".join(v for v in (y["image"], said("asset_id"), name) if v) + tail
+    return {"images": out, "two": True, "sent": sent}
+
+
+def generation_assets(run: str, video: str, wrong: str = "", path: str = "", fixed: str = "", fixed_path: str = "") -> list[dict]:
     """The images the admin may show in a sample's band (the admin, 2026-10-30: "just show the product image sample that was used as a reference and
     attached to that video generation thats all ... and then if i want to exclude some or add more i'll do it myself"): exactly the images sent with
     the generation of the take (sent_images), one per attached image, each ticked by default (`suggested`); neither a client's original nor any other
-    file is offered.  [] when the run's records verify none."""
+    file is offered.  With the report's Video B (`fixed`, `fixed_path`; the admin, 2026-11-03) the images sent with its generation are offered too,
+    each naming the video it was sent with (videos_sent_images).  [] when the run's records verify none."""
+    takes = [("A", wrong, path)] + ([("B", fixed, fixed_path)] if (fixed or fixed_path) else [])
     return [{**x, "source": ("sent with job" + ("s " if len(x.get("jobs") or []) > 1 else " ") + ", ".join(j[:8] for j in x.get("jobs") or [x["job"]])
                              if x.get("job") else "sent with this generation"), "suggested": True}
-            for x in sent_images(run, video, wrong, path)]
+            for x in videos_sent_images(run, video, takes)["images"]]
 
 
 CLIP_PART_FILES = ("trimmed.mp4", "conformed.mp4", "raw.mp4")     # the file whose length a clip has in the joined video: trimmed when it was trimmed
