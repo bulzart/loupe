@@ -29,7 +29,9 @@
    "original_name": "download (20).jpg",
    "prepared": "C14, the man's identity: head crop of A28 upscaled x4 (30-assets/identity/C14-head.png), three-quarter profile, soft",
    "recorded": "named",
-   "job": "29a22e61-75e8-4cc3-8f9b-2e621511e38c"
+   "job": "29a22e61-75e8-4cc3-8f9b-2e621511e38c",
+   "fingerprint": "",
+   "sent_fingerprint": "176d2ca2"
   },
   {
    "asset": "A41",
@@ -41,7 +43,9 @@
    "original_name": "peach vibe front - cans usa.png",
    "prepared": "P2 Peach Vibe canonical front (A41), padded, shape, colours and label only",
    "recorded": "named",
-   "job": "29a22e61-75e8-4cc3-8f9b-2e621511e38c"
+   "job": "29a22e61-75e8-4cc3-8f9b-2e621511e38c",
+   "fingerprint": "",
+   "sent_fingerprint": "734628d2"
   },
   {
    "asset": "",
@@ -53,7 +57,9 @@
    "original_name": "",
    "prepared": "",
    "recorded": "",
-   "job": "29a22e61-75e8-4cc3-8f9b-2e621511e38c"
+   "job": "29a22e61-75e8-4cc3-8f9b-2e621511e38c",
+   "fingerprint": "",
+   "sent_fingerprint": "3c485025"
   }
  ],
  "product_samples": [
@@ -67,7 +73,9 @@
    "original_name": "download (20).jpg",
    "prepared": "C14, the man's identity: head crop of A28 upscaled x4 (30-assets/identity/C14-head.png), three-quarter profile, soft",
    "recorded": "named",
-   "job": "29a22e61-75e8-4cc3-8f9b-2e621511e38c"
+   "job": "29a22e61-75e8-4cc3-8f9b-2e621511e38c",
+   "fingerprint": "",
+   "sent_fingerprint": "176d2ca2"
   },
   {
    "asset": "A41",
@@ -79,7 +87,9 @@
    "original_name": "peach vibe front - cans usa.png",
    "prepared": "P2 Peach Vibe canonical front (A41), padded, shape, colours and label only",
    "recorded": "named",
-   "job": "29a22e61-75e8-4cc3-8f9b-2e621511e38c"
+   "job": "29a22e61-75e8-4cc3-8f9b-2e621511e38c",
+   "fingerprint": "",
+   "sent_fingerprint": "734628d2"
   },
   {
    "asset": "",
@@ -91,7 +101,9 @@
    "original_name": "",
    "prepared": "",
    "recorded": "",
-   "job": "29a22e61-75e8-4cc3-8f9b-2e621511e38c"
+   "job": "29a22e61-75e8-4cc3-8f9b-2e621511e38c",
+   "fingerprint": "",
+   "sent_fingerprint": "3c485025"
   }
  ],
  "shapes": [

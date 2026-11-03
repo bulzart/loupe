@@ -29,7 +29,9 @@
    "original_name": "Bradley Thompson.jpg",
    "prepared": "C01, the man's identity: A01 face and neck only on neutral grey (30-assets/identity/C01-head.png, 732x912): no cap, hair, ear, lettering or background",
    "recorded": "named",
-   "job": "006c7f19-409d-48b4-b62c-5abb5dfa292a"
+   "job": "006c7f19-409d-48b4-b62c-5abb5dfa292a",
+   "fingerprint": "",
+   "sent_fingerprint": "b57af3ca"
   },
   {
    "asset": "A15",
@@ -41,7 +43,9 @@
    "original_name": "cherry cola front - cans usa.png",
    "prepared": "P1 Cherry Cola canonical front (A15), padded (30-assets/product/P1-cherry-cola-ref.png), shape, colours and label only",
    "recorded": "named",
-   "job": "006c7f19-409d-48b4-b62c-5abb5dfa292a"
+   "job": "006c7f19-409d-48b4-b62c-5abb5dfa292a",
+   "fingerprint": "",
+   "sent_fingerprint": "2a053d97"
   },
   {
    "asset": "",
@@ -53,7 +57,9 @@
    "original_name": "",
    "prepared": "",
    "recorded": "",
-   "job": "006c7f19-409d-48b4-b62c-5abb5dfa292a"
+   "job": "006c7f19-409d-48b4-b62c-5abb5dfa292a",
+   "fingerprint": "",
+   "sent_fingerprint": "a50e940e"
   }
  ],
  "product_samples": [
@@ -67,7 +73,9 @@
    "original_name": "Bradley Thompson.jpg",
    "prepared": "C01, the man's identity: A01 face and neck only on neutral grey (30-assets/identity/C01-head.png, 732x912): no cap, hair, ear, lettering or background",
    "recorded": "named",
-   "job": "006c7f19-409d-48b4-b62c-5abb5dfa292a"
+   "job": "006c7f19-409d-48b4-b62c-5abb5dfa292a",
+   "fingerprint": "",
+   "sent_fingerprint": "b57af3ca"
   },
   {
    "asset": "A15",
@@ -79,7 +87,9 @@
    "original_name": "cherry cola front - cans usa.png",
    "prepared": "P1 Cherry Cola canonical front (A15), padded (30-assets/product/P1-cherry-cola-ref.png), shape, colours and label only",
    "recorded": "named",
-   "job": "006c7f19-409d-48b4-b62c-5abb5dfa292a"
+   "job": "006c7f19-409d-48b4-b62c-5abb5dfa292a",
+   "fingerprint": "",
+   "sent_fingerprint": "2a053d97"
   },
   {
    "asset": "",
@@ -91,7 +101,9 @@
    "original_name": "",
    "prepared": "",
    "recorded": "",
-   "job": "006c7f19-409d-48b4-b62c-5abb5dfa292a"
+   "job": "006c7f19-409d-48b4-b62c-5abb5dfa292a",
+   "fingerprint": "",
+   "sent_fingerprint": "a50e940e"
   }
  ],
  "shapes": [

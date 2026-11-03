@@ -36,7 +36,9 @@
    "original_name": "peach vibe front - cans usa.png",
    "prepared": "Peach Vibe front (product sheet, image 1) (A17)",
    "recorded": "named",
-   "job": "79ae5325-bf89-4545-94c2-783bdd94404e"
+   "job": "79ae5325-bf89-4545-94c2-783bdd94404e",
+   "fingerprint": "6bccec7a",
+   "sent_fingerprint": "f81fb68b"
   },
   {
    "asset": "A12",
@@ -48,7 +50,9 @@
    "original_name": "ipiccy_image.jpg",
    "prepared": "Peach Vibe front, square (same flavour) (A12)",
    "recorded": "named",
-   "job": "79ae5325-bf89-4545-94c2-783bdd94404e"
+   "job": "79ae5325-bf89-4545-94c2-783bdd94404e",
+   "fingerprint": "1d8a93df",
+   "sent_fingerprint": "005e52fe"
   }
  ],
  "product_samples": [
@@ -62,7 +66,9 @@
    "original_name": "peach vibe front - cans usa.png",
    "prepared": "Peach Vibe front (product sheet, image 1) (A17)",
    "recorded": "named",
-   "job": "79ae5325-bf89-4545-94c2-783bdd94404e"
+   "job": "79ae5325-bf89-4545-94c2-783bdd94404e",
+   "fingerprint": "6bccec7a",
+   "sent_fingerprint": "f81fb68b"
   },
   {
    "asset": "A12",
@@ -74,7 +80,9 @@
    "original_name": "ipiccy_image.jpg",
    "prepared": "Peach Vibe front, square (same flavour) (A12)",
    "recorded": "named",
-   "job": "79ae5325-bf89-4545-94c2-783bdd94404e"
+   "job": "79ae5325-bf89-4545-94c2-783bdd94404e",
+   "fingerprint": "1d8a93df",
+   "sent_fingerprint": "005e52fe"
   }
  ],
  "shapes": []

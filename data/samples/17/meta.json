@@ -36,7 +36,9 @@
    "original_name": "e075ec053fa5b62a9b3849dffc436714.jpg",
    "prepared": "C18, the woman's identity: head and hair crop of A32, above the collar",
    "recorded": "named",
-   "job": "9e5c57d7-a002-4a72-9b13-16ffa772dab0"
+   "job": "9e5c57d7-a002-4a72-9b13-16ffa772dab0",
+   "fingerprint": "",
+   "sent_fingerprint": "c71be977"
   },
   {
    "asset": "A15",
@@ -48,7 +50,9 @@
    "original_name": "cherry cola front - cans usa.png",
    "prepared": "P1 Cherry Cola canonical front (A15), padded, shape, colours and label only",
    "recorded": "named",
-   "job": "9e5c57d7-a002-4a72-9b13-16ffa772dab0"
+   "job": "9e5c57d7-a002-4a72-9b13-16ffa772dab0",
+   "fingerprint": "",
+   "sent_fingerprint": "2a053d97"
   },
   {
    "asset": "",
@@ -60,7 +64,9 @@
    "original_name": "",
    "prepared": "",
    "recorded": "",
-   "job": "9e5c57d7-a002-4a72-9b13-16ffa772dab0"
+   "job": "9e5c57d7-a002-4a72-9b13-16ffa772dab0",
+   "fingerprint": "",
+   "sent_fingerprint": "5cdd012e"
   }
  ],
  "product_samples": [
@@ -74,7 +80,9 @@
    "original_name": "e075ec053fa5b62a9b3849dffc436714.jpg",
    "prepared": "C18, the woman's identity: head and hair crop of A32, above the collar",
    "recorded": "named",
-   "job": "9e5c57d7-a002-4a72-9b13-16ffa772dab0"
+   "job": "9e5c57d7-a002-4a72-9b13-16ffa772dab0",
+   "fingerprint": "",
+   "sent_fingerprint": "c71be977"
   },
   {
    "asset": "A15",
@@ -86,7 +94,9 @@
    "original_name": "cherry cola front - cans usa.png",
    "prepared": "P1 Cherry Cola canonical front (A15), padded, shape, colours and label only",
    "recorded": "named",
-   "job": "9e5c57d7-a002-4a72-9b13-16ffa772dab0"
+   "job": "9e5c57d7-a002-4a72-9b13-16ffa772dab0",
+   "fingerprint": "",
+   "sent_fingerprint": "2a053d97"
   },
   {
    "asset": "",
@@ -98,7 +108,9 @@
    "original_name": "",
    "prepared": "",
    "recorded": "",
-   "job": "9e5c57d7-a002-4a72-9b13-16ffa772dab0"
+   "job": "9e5c57d7-a002-4a72-9b13-16ffa772dab0",
+   "fingerprint": "",
+   "sent_fingerprint": "5cdd012e"
   }
  ],
  "shapes": [

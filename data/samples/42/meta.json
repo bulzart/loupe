@@ -29,7 +29,9 @@
    "original_name": "ce6a267c5acfdeb4aa855f22dc8c85e8.jpg",
    "prepared": "Image 1, CH12 (A16) head and neck above the collar on neutral grey: the employee's face and hair only",
    "recorded": "named",
-   "job": "de69609a-c2a6-406f-b83e-f38b5888d4a2"
+   "job": "de69609a-c2a6-406f-b83e-f38b5888d4a2",
+   "fingerprint": "f5ef009d",
+   "sent_fingerprint": "4ba7b6f4"
   },
   {
    "asset": "A15",
@@ -41,7 +43,9 @@
    "original_name": "c1ef12498932ed12f5c4415955db560f.jpg",
    "prepared": "Image 2, CH11 (A15) head and neck on neutral grey: the boss's face and hair only",
    "recorded": "named",
-   "job": "de69609a-c2a6-406f-b83e-f38b5888d4a2"
+   "job": "de69609a-c2a6-406f-b83e-f38b5888d4a2",
+   "fingerprint": "7f9226ce",
+   "sent_fingerprint": "8aabed79"
   },
   {
    "asset": "A06",
@@ -53,7 +57,9 @@
    "original_name": "5566f9f81d216f8d70bc88f7995d3893.jpg",
    "prepared": "Image 3, CH06 (A06) head and neck on neutral grey: the background man's face and hair only",
    "recorded": "named",
-   "job": "de69609a-c2a6-406f-b83e-f38b5888d4a2"
+   "job": "de69609a-c2a6-406f-b83e-f38b5888d4a2",
+   "fingerprint": "ccd8b753",
+   "sent_fingerprint": "d07dd374"
   },
   {
    "asset": "A44",
@@ -65,7 +71,9 @@
    "original_name": "EF_Gum_6 piece_Spearmint_Single-Front.png",
    "prepared": "Image 4, the real front render of the E&F 6-piece Spearmint carton (A44), padded on light grey: shape, proportions, colours and printed label only (shared upload)",
    "recorded": "named",
-   "job": "de69609a-c2a6-406f-b83e-f38b5888d4a2"
+   "job": "de69609a-c2a6-406f-b83e-f38b5888d4a2",
+   "fingerprint": "5bdd2c5c",
+   "sent_fingerprint": "3179e02a"
   },
   {
    "asset": "",
@@ -77,7 +85,9 @@
    "original_name": "",
    "prepared": "",
    "recorded": "",
-   "job": "de69609a-c2a6-406f-b83e-f38b5888d4a2"
+   "job": "de69609a-c2a6-406f-b83e-f38b5888d4a2",
+   "fingerprint": "",
+   "sent_fingerprint": "deb0c408"
   },
   {
    "asset": "",
@@ -89,7 +99,9 @@
    "original_name": "",
    "prepared": "",
    "recorded": "",
-   "job": "de69609a-c2a6-406f-b83e-f38b5888d4a2"
+   "job": "de69609a-c2a6-406f-b83e-f38b5888d4a2",
+   "fingerprint": "",
+   "sent_fingerprint": "82eccfee"
   },
   {
    "asset": "",
@@ -101,7 +113,9 @@
    "original_name": "",
    "prepared": "",
    "recorded": "",
-   "job": "de69609a-c2a6-406f-b83e-f38b5888d4a2"
+   "job": "de69609a-c2a6-406f-b83e-f38b5888d4a2",
+   "fingerprint": "",
+   "sent_fingerprint": "e2114de5"
   }
  ],
  "product_samples": [
@@ -115,7 +129,9 @@
    "original_name": "ce6a267c5acfdeb4aa855f22dc8c85e8.jpg",
    "prepared": "Image 1, CH12 (A16) head and neck above the collar on neutral grey: the employee's face and hair only",
    "recorded": "named",
-   "job": "de69609a-c2a6-406f-b83e-f38b5888d4a2"
+   "job": "de69609a-c2a6-406f-b83e-f38b5888d4a2",
+   "fingerprint": "f5ef009d",
+   "sent_fingerprint": "4ba7b6f4"
   },
   {
    "asset": "A15",
@@ -127,7 +143,9 @@
    "original_name": "c1ef12498932ed12f5c4415955db560f.jpg",
    "prepared": "Image 2, CH11 (A15) head and neck on neutral grey: the boss's face and hair only",
    "recorded": "named",
-   "job": "de69609a-c2a6-406f-b83e-f38b5888d4a2"
+   "job": "de69609a-c2a6-406f-b83e-f38b5888d4a2",
+   "fingerprint": "7f9226ce",
+   "sent_fingerprint": "8aabed79"
   },
   {
    "asset": "A06",
@@ -139,7 +157,9 @@
    "original_name": "5566f9f81d216f8d70bc88f7995d3893.jpg",
    "prepared": "Image 3, CH06 (A06) head and neck on neutral grey: the background man's face and hair only",
    "recorded": "named",
-   "job": "de69609a-c2a6-406f-b83e-f38b5888d4a2"
+   "job": "de69609a-c2a6-406f-b83e-f38b5888d4a2",
+   "fingerprint": "ccd8b753",
+   "sent_fingerprint": "d07dd374"
   },
   {
    "asset": "A44",
@@ -151,7 +171,9 @@
    "original_name": "EF_Gum_6 piece_Spearmint_Single-Front.png",
    "prepared": "Image 4, the real front render of the E&F 6-piece Spearmint carton (A44), padded on light grey: shape, proportions, colours and printed label only (shared upload)",
    "recorded": "named",
-   "job": "de69609a-c2a6-406f-b83e-f38b5888d4a2"
+   "job": "de69609a-c2a6-406f-b83e-f38b5888d4a2",
+   "fingerprint": "5bdd2c5c",
+   "sent_fingerprint": "3179e02a"
   },
   {
    "asset": "",
@@ -163,7 +185,9 @@
    "original_name": "",
    "prepared": "",
    "recorded": "",
-   "job": "de69609a-c2a6-406f-b83e-f38b5888d4a2"
+   "job": "de69609a-c2a6-406f-b83e-f38b5888d4a2",
+   "fingerprint": "",
+   "sent_fingerprint": "deb0c408"
   },
   {
    "asset": "",
@@ -175,7 +199,9 @@
    "original_name": "",
    "prepared": "",
    "recorded": "",
-   "job": "de69609a-c2a6-406f-b83e-f38b5888d4a2"
+   "job": "de69609a-c2a6-406f-b83e-f38b5888d4a2",
+   "fingerprint": "",
+   "sent_fingerprint": "82eccfee"
   },
   {
    "asset": "",
@@ -187,7 +213,9 @@
    "original_name": "",
    "prepared": "",
    "recorded": "",
-   "job": "de69609a-c2a6-406f-b83e-f38b5888d4a2"
+   "job": "de69609a-c2a6-406f-b83e-f38b5888d4a2",
+   "fingerprint": "",
+   "sent_fingerprint": "e2114de5"
   }
  ],
  "shapes": [

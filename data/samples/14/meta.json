@@ -36,7 +36,9 @@
    "original_name": "watermelon front - cans usa.png",
    "prepared": "Watermelon front (product sheet, image 1) (A21)",
    "recorded": "named",
-   "job": "64e1c295-9d99-4718-818f-bdf2eb82b070"
+   "job": "64e1c295-9d99-4718-818f-bdf2eb82b070",
+   "fingerprint": "0d77b463",
+   "sent_fingerprint": "35a5b34e"
   },
   {
    "asset": "A23",
@@ -48,7 +50,9 @@
    "original_name": "watermelon.jpg",
    "prepared": "Watermelon front, square (same flavour) (A23)",
    "recorded": "named",
-   "job": "64e1c295-9d99-4718-818f-bdf2eb82b070"
+   "job": "64e1c295-9d99-4718-818f-bdf2eb82b070",
+   "fingerprint": "7b951bff",
+   "sent_fingerprint": "85f8773e"
   }
  ],
  "product_samples": [
@@ -62,7 +66,9 @@
    "original_name": "watermelon front - cans usa.png",
    "prepared": "Watermelon front (product sheet, image 1) (A21)",
    "recorded": "named",
-   "job": "64e1c295-9d99-4718-818f-bdf2eb82b070"
+   "job": "64e1c295-9d99-4718-818f-bdf2eb82b070",
+   "fingerprint": "0d77b463",
+   "sent_fingerprint": "35a5b34e"
   },
   {
    "asset": "A23",
@@ -74,7 +80,9 @@
    "original_name": "watermelon.jpg",
    "prepared": "Watermelon front, square (same flavour) (A23)",
    "recorded": "named",
-   "job": "64e1c295-9d99-4718-818f-bdf2eb82b070"
+   "job": "64e1c295-9d99-4718-818f-bdf2eb82b070",
+   "fingerprint": "7b951bff",
+   "sent_fingerprint": "85f8773e"
   }
  ],
  "shapes": []

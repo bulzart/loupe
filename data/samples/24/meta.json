@@ -36,7 +36,9 @@
    "original_name": "download (12).jpg",
    "prepared": "CH-M06 identity: A19 cropped above the collar onto grey",
    "recorded": "named",
-   "job": "c23461c1-b2de-4de9-a0e0-20c3585022ed"
+   "job": "c23461c1-b2de-4de9-a0e0-20c3585022ed",
+   "fingerprint": "",
+   "sent_fingerprint": "84ca7319"
   },
   {
    "asset": "A44",
@@ -48,7 +50,9 @@
    "original_name": "watermelon front - cans usa.png",
    "prepared": "CELSIUS Watermelon can, sealed: A44",
    "recorded": "named",
-   "job": "c23461c1-b2de-4de9-a0e0-20c3585022ed"
+   "job": "c23461c1-b2de-4de9-a0e0-20c3585022ed",
+   "fingerprint": "",
+   "sent_fingerprint": "d8c4df0c"
   },
   {
    "asset": "",
@@ -60,7 +64,9 @@
    "original_name": "",
    "prepared": "",
    "recorded": "",
-   "job": "c23461c1-b2de-4de9-a0e0-20c3585022ed"
+   "job": "c23461c1-b2de-4de9-a0e0-20c3585022ed",
+   "fingerprint": "",
+   "sent_fingerprint": "9e3eb296"
   }
  ],
  "product_samples": [
@@ -74,7 +80,9 @@
    "original_name": "download (12).jpg",
    "prepared": "CH-M06 identity: A19 cropped above the collar onto grey",
    "recorded": "named",
-   "job": "c23461c1-b2de-4de9-a0e0-20c3585022ed"
+   "job": "c23461c1-b2de-4de9-a0e0-20c3585022ed",
+   "fingerprint": "",
+   "sent_fingerprint": "84ca7319"
   },
   {
    "asset": "A44",
@@ -86,7 +94,9 @@
    "original_name": "watermelon front - cans usa.png",
    "prepared": "CELSIUS Watermelon can, sealed: A44",
    "recorded": "named",
-   "job": "c23461c1-b2de-4de9-a0e0-20c3585022ed"
+   "job": "c23461c1-b2de-4de9-a0e0-20c3585022ed",
+   "fingerprint": "",
+   "sent_fingerprint": "d8c4df0c"
   },
   {
    "asset": "",
@@ -98,7 +108,9 @@
    "original_name": "",
    "prepared": "",
    "recorded": "",
-   "job": "c23461c1-b2de-4de9-a0e0-20c3585022ed"
+   "job": "c23461c1-b2de-4de9-a0e0-20c3585022ed",
+   "fingerprint": "",
+   "sent_fingerprint": "9e3eb296"
   }
  ],
  "shapes": [

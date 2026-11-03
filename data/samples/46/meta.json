@@ -29,7 +29,9 @@
    "original_name": "1e6e87fd5dd8482374fc58c73d1dab1c.jpg",
    "prepared": "C-NG-03 (A49) head-and-neck crop on grey RGB 128: face and hair only",
    "recorded": "named",
-   "job": "d883c382-72a3-4cc0-a3a0-6ba0b384d51b"
+   "job": "d883c382-72a3-4cc0-a3a0-6ba0b384d51b",
+   "fingerprint": "9817397c",
+   "sent_fingerprint": "e9226192"
   },
   {
    "asset": "A82",
@@ -41,7 +43,9 @@
    "original_name": "EF_Gum_6 piece_Peppermint_Single-Front.png",
    "prepared": "EF 6-piece Peppermint front render (A82) padded small on 1440x1440 RGB 236: exact printed front",
    "recorded": "named",
-   "job": "d883c382-72a3-4cc0-a3a0-6ba0b384d51b"
+   "job": "d883c382-72a3-4cc0-a3a0-6ba0b384d51b",
+   "fingerprint": "d58ed62a",
+   "sent_fingerprint": "afc770f2"
   },
   {
    "asset": "A273",
@@ -53,7 +57,9 @@
    "original_name": "IMG_6917.jpg",
    "prepared": "the real carton lying flat, cut out of IMG_6917.jpg alone, on 1440x1440 RGB 237 with a soft shadow: posture, thinness, paperboard",
    "recorded": "named",
-   "job": "d883c382-72a3-4cc0-a3a0-6ba0b384d51b"
+   "job": "d883c382-72a3-4cc0-a3a0-6ba0b384d51b",
+   "fingerprint": "846e6464",
+   "sent_fingerprint": "b2046b2d"
   }
  ],
  "product_samples": [
@@ -67,7 +73,9 @@
    "original_name": "1e6e87fd5dd8482374fc58c73d1dab1c.jpg",
    "prepared": "C-NG-03 (A49) head-and-neck crop on grey RGB 128: face and hair only",
    "recorded": "named",
-   "job": "d883c382-72a3-4cc0-a3a0-6ba0b384d51b"
+   "job": "d883c382-72a3-4cc0-a3a0-6ba0b384d51b",
+   "fingerprint": "9817397c",
+   "sent_fingerprint": "e9226192"
   },
   {
    "asset": "A82",
@@ -79,7 +87,9 @@
    "original_name": "EF_Gum_6 piece_Peppermint_Single-Front.png",
    "prepared": "EF 6-piece Peppermint front render (A82) padded small on 1440x1440 RGB 236: exact printed front",
    "recorded": "named",
-   "job": "d883c382-72a3-4cc0-a3a0-6ba0b384d51b"
+   "job": "d883c382-72a3-4cc0-a3a0-6ba0b384d51b",
+   "fingerprint": "d58ed62a",
+   "sent_fingerprint": "afc770f2"
   },
   {
    "asset": "A273",
@@ -91,7 +101,9 @@
    "original_name": "IMG_6917.jpg",
    "prepared": "the real carton lying flat, cut out of IMG_6917.jpg alone, on 1440x1440 RGB 237 with a soft shadow: posture, thinness, paperboard",
    "recorded": "named",
-   "job": "d883c382-72a3-4cc0-a3a0-6ba0b384d51b"
+   "job": "d883c382-72a3-4cc0-a3a0-6ba0b384d51b",
+   "fingerprint": "846e6464",
+   "sent_fingerprint": "b2046b2d"
   }
  ],
  "shapes": [

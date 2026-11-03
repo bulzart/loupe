@@ -84,7 +84,9 @@
     "027bacbc-89e3-4776-b9fe-74ddae8dd3b1",
     "32f778fa-b849-44f4-ac82-9c9b6c2c59b9",
     "77c193a6-3f7b-4d82-b5f6-1f1263319f58"
-   ]
+   ],
+   "fingerprint": "7e4f06fe",
+   "sent_fingerprint": "b6e52ef5"
   },
   {
    "asset": "",
@@ -96,7 +98,9 @@
    "original_name": "",
    "prepared": "",
    "recorded": "",
-   "job": "027bacbc-89e3-4776-b9fe-74ddae8dd3b1"
+   "job": "027bacbc-89e3-4776-b9fe-74ddae8dd3b1",
+   "fingerprint": "",
+   "sent_fingerprint": "d38e2fbf"
   },
   {
    "asset": "",
@@ -108,7 +112,9 @@
    "original_name": "",
    "prepared": "",
    "recorded": "",
-   "job": "027bacbc-89e3-4776-b9fe-74ddae8dd3b1"
+   "job": "027bacbc-89e3-4776-b9fe-74ddae8dd3b1",
+   "fingerprint": "",
+   "sent_fingerprint": "15b55d46"
   }
  ],
  "product_samples": [
@@ -128,7 +134,9 @@
     "027bacbc-89e3-4776-b9fe-74ddae8dd3b1",
     "32f778fa-b849-44f4-ac82-9c9b6c2c59b9",
     "77c193a6-3f7b-4d82-b5f6-1f1263319f58"
-   ]
+   ],
+   "fingerprint": "7e4f06fe",
+   "sent_fingerprint": "b6e52ef5"
   },
   {
    "asset": "",
@@ -140,7 +148,9 @@
    "original_name": "",
    "prepared": "",
    "recorded": "",
-   "job": "027bacbc-89e3-4776-b9fe-74ddae8dd3b1"
+   "job": "027bacbc-89e3-4776-b9fe-74ddae8dd3b1",
+   "fingerprint": "",
+   "sent_fingerprint": "d38e2fbf"
   },
   {
    "asset": "",
@@ -152,7 +162,9 @@
    "original_name": "",
    "prepared": "",
    "recorded": "",
-   "job": "027bacbc-89e3-4776-b9fe-74ddae8dd3b1"
+   "job": "027bacbc-89e3-4776-b9fe-74ddae8dd3b1",
+   "fingerprint": "",
+   "sent_fingerprint": "15b55d46"
   }
  ],
  "shapes": [

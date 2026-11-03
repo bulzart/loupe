@@ -70,7 +70,9 @@
    "original_name": "01fe120e49c9a74245d806f4f64df7d9.jpg",
    "prepared": "the man's face, hair and beard only (CH01, A01 cropped above the collar; the photo's black printed tee left out)",
    "recorded": "named",
-   "job": "8620050d-58d0-407f-9487-a20339eb3a7a"
+   "job": "8620050d-58d0-407f-9487-a20339eb3a7a",
+   "fingerprint": "8930d488",
+   "sent_fingerprint": "04c5c0c1"
   },
   {
    "asset": "",
@@ -82,7 +84,9 @@
    "original_name": "",
    "prepared": "",
    "recorded": "",
-   "job": "8620050d-58d0-407f-9487-a20339eb3a7a"
+   "job": "8620050d-58d0-407f-9487-a20339eb3a7a",
+   "fingerprint": "",
+   "sent_fingerprint": "c103657b"
   },
   {
    "asset": "",
@@ -94,7 +98,9 @@
    "original_name": "",
    "prepared": "",
    "recorded": "",
-   "job": "8620050d-58d0-407f-9487-a20339eb3a7a"
+   "job": "8620050d-58d0-407f-9487-a20339eb3a7a",
+   "fingerprint": "",
+   "sent_fingerprint": "239be007"
   },
   {
    "asset": "",
@@ -106,7 +112,9 @@
    "original_name": "",
    "prepared": "",
    "recorded": "",
-   "job": "8620050d-58d0-407f-9487-a20339eb3a7a"
+   "job": "8620050d-58d0-407f-9487-a20339eb3a7a",
+   "fingerprint": "",
+   "sent_fingerprint": "82eccfee"
   },
   {
    "asset": "",
@@ -118,7 +126,9 @@
    "original_name": "",
    "prepared": "",
    "recorded": "",
-   "job": "8620050d-58d0-407f-9487-a20339eb3a7a"
+   "job": "8620050d-58d0-407f-9487-a20339eb3a7a",
+   "fingerprint": "",
+   "sent_fingerprint": "e2114de5"
   },
   {
    "asset": "A12",
@@ -130,7 +140,9 @@
    "original_name": "a7457df4a9416163a5fe261b7b6957f2.jpg",
    "prepared": "the woman's face and hair only (CH09, A12 cropped above the black top and the bag strap; the street sign's lettering cropped out)",
    "recorded": "named",
-   "job": "13632389-bbe6-4324-8a59-4b4a8af31298"
+   "job": "13632389-bbe6-4324-8a59-4b4a8af31298",
+   "fingerprint": "62930125",
+   "sent_fingerprint": "698c6e44"
   }
  ],
  "product_samples": [
@@ -144,7 +156,9 @@
    "original_name": "01fe120e49c9a74245d806f4f64df7d9.jpg",
    "prepared": "the man's face, hair and beard only (CH01, A01 cropped above the collar; the photo's black printed tee left out)",
    "recorded": "named",
-   "job": "8620050d-58d0-407f-9487-a20339eb3a7a"
+   "job": "8620050d-58d0-407f-9487-a20339eb3a7a",
+   "fingerprint": "8930d488",
+   "sent_fingerprint": "04c5c0c1"
   },
   {
    "asset": "",
@@ -156,7 +170,9 @@
    "original_name": "",
    "prepared": "",
    "recorded": "",
-   "job": "8620050d-58d0-407f-9487-a20339eb3a7a"
+   "job": "8620050d-58d0-407f-9487-a20339eb3a7a",
+   "fingerprint": "",
+   "sent_fingerprint": "c103657b"
   },
   {
    "asset": "",
@@ -168,7 +184,9 @@
    "original_name": "",
    "prepared": "",
    "recorded": "",
-   "job": "8620050d-58d0-407f-9487-a20339eb3a7a"
+   "job": "8620050d-58d0-407f-9487-a20339eb3a7a",
+   "fingerprint": "",
+   "sent_fingerprint": "239be007"
   },
   {
    "asset": "",
@@ -180,7 +198,9 @@
    "original_name": "",
    "prepared": "",
    "recorded": "",
-   "job": "8620050d-58d0-407f-9487-a20339eb3a7a"
+   "job": "8620050d-58d0-407f-9487-a20339eb3a7a",
+   "fingerprint": "",
+   "sent_fingerprint": "82eccfee"
   },
   {
    "asset": "",
@@ -192,7 +212,9 @@
    "original_name": "",
    "prepared": "",
    "recorded": "",
-   "job": "8620050d-58d0-407f-9487-a20339eb3a7a"
+   "job": "8620050d-58d0-407f-9487-a20339eb3a7a",
+   "fingerprint": "",
+   "sent_fingerprint": "e2114de5"
   },
   {
    "asset": "A12",
@@ -204,7 +226,9 @@
    "original_name": "a7457df4a9416163a5fe261b7b6957f2.jpg",
    "prepared": "the woman's face and hair only (CH09, A12 cropped above the black top and the bag strap; the street sign's lettering cropped out)",
    "recorded": "named",
-   "job": "13632389-bbe6-4324-8a59-4b4a8af31298"
+   "job": "13632389-bbe6-4324-8a59-4b4a8af31298",
+   "fingerprint": "62930125",
+   "sent_fingerprint": "698c6e44"
   }
  ],
  "shapes": [
