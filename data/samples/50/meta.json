@@ -1,0 +1,149 @@
+{
+ "moment": 50,
+ "miss": 36,
+ "title": "The render graphics and place is wrong, could've been better if it was placed on the shelf right before the mirror close to the deodorant",
+ "model": "wan3_0_prime",
+ "run": "20261102-233733-02",
+ "video": "06",
+ "t_wrong": 3.133,
+ "t_fixed": 3.133,
+ "sample": "S50",
+ "frames": [
+  {
+   "n": 1,
+   "role": "wrong",
+   "from": "as generated",
+   "video": "A",
+   "t": 3.133
+  },
+  {
+   "n": 2,
+   "role": "wrong",
+   "from": "as generated",
+   "video": "A",
+   "t": 4.1
+  },
+  {
+   "n": 3,
+   "role": "wrong",
+   "from": "as generated",
+   "video": "A",
+   "t": 4.733
+  }
+ ],
+ "product_sample_chosen": false,
+ "images_sent": [
+  {
+   "asset": "A26",
+   "label": "Image 1 · A26 · download (19).jpg",
+   "file": "image1-character-A26-head.jpg",
+   "image": "Image 1",
+   "kind": "character",
+   "fingerprint": "d904d857",
+   "sent_fingerprint": "322d773e",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\download (19).jpg",
+   "original_name": "download (19).jpg",
+   "prepared": "head-and-neck crop above the collar on neutral grey RGB 128, face about half the image width",
+   "recorded": "source",
+   "job": "b892dd35-4098-4454-be69-38bfd063ce22"
+  },
+  {
+   "asset": "A38",
+   "label": "Image 2 · A38 · peach vibe front - cans usa.png",
+   "file": "image2-product-CEL-PV-front-padded.png",
+   "image": "Image 2",
+   "kind": "product",
+   "fingerprint": "6bccec7a",
+   "sent_fingerprint": "0984d838",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\peach vibe front - cans usa.png",
+   "original_name": "peach vibe front - cans usa.png",
+   "prepared": "alpha flattened, centred on a 1440x1440 light-grey field RGB 236, can about 40 % of the field height",
+   "recorded": "source",
+   "job": "b892dd35-4098-4454-be69-38bfd063ce22"
+  },
+  {
+   "asset": "A33",
+   "label": "Image 3 · A33 · ipiccy_image.jpg",
+   "file": "image3-product-CEL-PV-upright-padded.png",
+   "image": "Image 3",
+   "kind": "product",
+   "fingerprint": "1d8a93df",
+   "sent_fingerprint": "fd508fea",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\ipiccy_image.jpg",
+   "original_name": "ipiccy_image.jpg",
+   "prepared": "can cut from its white background, centred on a 1440x1440 light-grey field RGB 236, can about 40 % of the field height",
+   "recorded": "source",
+   "job": "b892dd35-4098-4454-be69-38bfd063ce22"
+  }
+ ],
+ "product_samples": [
+  {
+   "asset": "A26",
+   "label": "Image 1 · A26 · download (19).jpg",
+   "file": "image1-character-A26-head.jpg",
+   "image": "Image 1",
+   "kind": "character",
+   "fingerprint": "d904d857",
+   "sent_fingerprint": "322d773e",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\download (19).jpg",
+   "original_name": "download (19).jpg",
+   "prepared": "head-and-neck crop above the collar on neutral grey RGB 128, face about half the image width",
+   "recorded": "source",
+   "job": "b892dd35-4098-4454-be69-38bfd063ce22"
+  },
+  {
+   "asset": "A38",
+   "label": "Image 2 · A38 · peach vibe front - cans usa.png",
+   "file": "image2-product-CEL-PV-front-padded.png",
+   "image": "Image 2",
+   "kind": "product",
+   "fingerprint": "6bccec7a",
+   "sent_fingerprint": "0984d838",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\peach vibe front - cans usa.png",
+   "original_name": "peach vibe front - cans usa.png",
+   "prepared": "alpha flattened, centred on a 1440x1440 light-grey field RGB 236, can about 40 % of the field height",
+   "recorded": "source",
+   "job": "b892dd35-4098-4454-be69-38bfd063ce22"
+  },
+  {
+   "asset": "A33",
+   "label": "Image 3 · A33 · ipiccy_image.jpg",
+   "file": "image3-product-CEL-PV-upright-padded.png",
+   "image": "Image 3",
+   "kind": "product",
+   "fingerprint": "1d8a93df",
+   "sent_fingerprint": "fd508fea",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\ipiccy_image.jpg",
+   "original_name": "ipiccy_image.jpg",
+   "prepared": "can cut from its white background, centred on a 1440x1440 light-grey field RGB 236, can about 40 % of the field height",
+   "recorded": "source",
+   "job": "b892dd35-4098-4454-be69-38bfd063ce22"
+  }
+ ],
+ "shapes": [
+  {
+   "type": "rect",
+   "frame": 0,
+   "x1": 0.5096833120672158,
+   "y1": 0.5123804086942044,
+   "x2": 0.6788398866553247,
+   "y2": 0.6525111813258305
+  },
+  {
+   "type": "rect",
+   "frame": 1,
+   "x1": 0.6781189683818848,
+   "y1": 0.5071903217829401,
+   "x2": 0.9395426665472779,
+   "y2": 0.7545818121180493
+  },
+  {
+   "type": "rect",
+   "frame": 2,
+   "x1": 0.8092391953199618,
+   "y1": 0.5798507515543853,
+   "x2": 1.0,
+   "y2": 0.8220522424211475
+  }
+ ]
+}

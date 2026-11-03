@@ -28,117 +28,281 @@
  "images_sent": [
   {
    "asset": "",
-   "label": "Image 1 · C09-head.jpg · its original file is not recorded",
+   "label": "Video A · Image 1 · C09-head.jpg · its original file is not recorded",
    "file": "C09-head.jpg",
    "image": "Image 1",
    "kind": "character",
+   "fingerprint": "",
+   "sent_fingerprint": "0c8c0b65",
    "original": "",
    "original_name": "",
    "prepared": "",
    "recorded": "",
    "job": "d9c4da8d-8b4c-4fad-8401-6a9c9d4a8515",
-   "fingerprint": "",
-   "sent_fingerprint": "0c8c0b65"
+   "videos": [
+    "A"
+   ]
   },
   {
    "asset": "",
-   "label": "Image 2 · P01-front-p25.jpg · its original file is not recorded",
+   "label": "Video A · Image 2 · P01-front-p25.jpg · its original file is not recorded",
    "file": "P01-front-p25.jpg",
    "image": "Image 2",
    "kind": "product",
+   "fingerprint": "",
+   "sent_fingerprint": "65908f26",
    "original": "",
    "original_name": "",
    "prepared": "",
    "recorded": "",
    "job": "d9c4da8d-8b4c-4fad-8401-6a9c9d4a8515",
-   "fingerprint": "",
-   "sent_fingerprint": "65908f26"
+   "videos": [
+    "A"
+   ]
   },
   {
    "asset": "",
-   "label": "Image 3 · P01-angled-p25.jpg · its original file is not recorded",
+   "label": "Video A · Image 3 · P01-angled-p25.jpg · its original file is not recorded",
    "file": "P01-angled-p25.jpg",
    "image": "Image 3",
    "kind": "product",
+   "fingerprint": "",
+   "sent_fingerprint": "65415847",
    "original": "",
    "original_name": "",
    "prepared": "",
    "recorded": "",
    "job": "d9c4da8d-8b4c-4fad-8401-6a9c9d4a8515",
-   "fingerprint": "",
-   "sent_fingerprint": "65415847"
+   "videos": [
+    "A"
+   ]
   },
   {
    "asset": "",
-   "label": "Image 4 · V20-guide.jpg · its original file is not recorded",
+   "label": "Video A · Image 4 · V20-guide.jpg · its original file is not recorded",
    "file": "V20-guide.jpg",
    "image": "Image 4",
    "kind": "",
+   "fingerprint": "",
+   "sent_fingerprint": "d3d430a8",
    "original": "",
    "original_name": "",
    "prepared": "",
    "recorded": "",
    "job": "d9c4da8d-8b4c-4fad-8401-6a9c9d4a8515",
+   "videos": [
+    "A"
+   ]
+  },
+  {
+   "asset": "A07",
+   "label": "Video B · Image 1 · A07 · 7077b329913794f1a27fa3c9fa077eaf.jpg",
+   "file": "id-A07.jpg",
+   "image": "Image 1",
+   "kind": "character",
+   "fingerprint": "63c87373",
+   "sent_fingerprint": "94ab050a",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\7077b329913794f1a27fa3c9fa077eaf.jpg",
+   "original_name": "7077b329913794f1a27fa3c9fa077eaf.jpg",
+   "prepared": "id-A07 head crop",
+   "recorded": "named",
+   "job": "b1aae7a5-8cb9-4c08-be02-034cd51d04a8",
+   "videos": [
+    "B"
+   ]
+  },
+  {
+   "asset": "",
+   "label": "Video B · Image 2 · ref-xe9-peppermint-front.jpg · its original file is not recorded",
+   "file": "ref-xe9-peppermint-front.jpg",
+   "image": "Image 2",
+   "kind": "",
    "fingerprint": "",
-   "sent_fingerprint": "d3d430a8"
+   "sent_fingerprint": "9f1b6735",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "b1aae7a5-8cb9-4c08-be02-034cd51d04a8",
+   "videos": [
+    "B"
+   ]
+  },
+  {
+   "asset": "",
+   "label": "Video B · Image 3 · ref-xe9-peppermint-left.jpg · its original file is not recorded",
+   "file": "ref-xe9-peppermint-left.jpg",
+   "image": "Image 3",
+   "kind": "",
+   "fingerprint": "",
+   "sent_fingerprint": "d3ff932e",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "b1aae7a5-8cb9-4c08-be02-034cd51d04a8",
+   "videos": [
+    "B"
+   ]
+  },
+  {
+   "asset": "",
+   "label": "Video B · Image 4 · guide-V07-neurogum.png · its original file is not recorded",
+   "file": "guide-V07-neurogum.png",
+   "image": "Image 4",
+   "kind": "",
+   "fingerprint": "",
+   "sent_fingerprint": "5468ddc7",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "b1aae7a5-8cb9-4c08-be02-034cd51d04a8",
+   "videos": [
+    "B"
+   ]
   }
+ ],
+ "images_videos": [
+  "A",
+  "B"
  ],
  "product_samples": [
   {
    "asset": "",
-   "label": "Image 1 · C09-head.jpg · its original file is not recorded",
+   "label": "Video A · Image 1 · C09-head.jpg · its original file is not recorded",
    "file": "C09-head.jpg",
    "image": "Image 1",
    "kind": "character",
+   "fingerprint": "",
+   "sent_fingerprint": "0c8c0b65",
    "original": "",
    "original_name": "",
    "prepared": "",
    "recorded": "",
    "job": "d9c4da8d-8b4c-4fad-8401-6a9c9d4a8515",
-   "fingerprint": "",
-   "sent_fingerprint": "0c8c0b65"
+   "videos": [
+    "A"
+   ]
   },
   {
    "asset": "",
-   "label": "Image 2 · P01-front-p25.jpg · its original file is not recorded",
+   "label": "Video A · Image 2 · P01-front-p25.jpg · its original file is not recorded",
    "file": "P01-front-p25.jpg",
    "image": "Image 2",
    "kind": "product",
+   "fingerprint": "",
+   "sent_fingerprint": "65908f26",
    "original": "",
    "original_name": "",
    "prepared": "",
    "recorded": "",
    "job": "d9c4da8d-8b4c-4fad-8401-6a9c9d4a8515",
-   "fingerprint": "",
-   "sent_fingerprint": "65908f26"
+   "videos": [
+    "A"
+   ]
   },
   {
    "asset": "",
-   "label": "Image 3 · P01-angled-p25.jpg · its original file is not recorded",
+   "label": "Video A · Image 3 · P01-angled-p25.jpg · its original file is not recorded",
    "file": "P01-angled-p25.jpg",
    "image": "Image 3",
    "kind": "product",
+   "fingerprint": "",
+   "sent_fingerprint": "65415847",
    "original": "",
    "original_name": "",
    "prepared": "",
    "recorded": "",
    "job": "d9c4da8d-8b4c-4fad-8401-6a9c9d4a8515",
-   "fingerprint": "",
-   "sent_fingerprint": "65415847"
+   "videos": [
+    "A"
+   ]
   },
   {
    "asset": "",
-   "label": "Image 4 · V20-guide.jpg · its original file is not recorded",
+   "label": "Video A · Image 4 · V20-guide.jpg · its original file is not recorded",
    "file": "V20-guide.jpg",
    "image": "Image 4",
    "kind": "",
+   "fingerprint": "",
+   "sent_fingerprint": "d3d430a8",
    "original": "",
    "original_name": "",
    "prepared": "",
    "recorded": "",
    "job": "d9c4da8d-8b4c-4fad-8401-6a9c9d4a8515",
+   "videos": [
+    "A"
+   ]
+  },
+  {
+   "asset": "A07",
+   "label": "Video B · Image 1 · A07 · 7077b329913794f1a27fa3c9fa077eaf.jpg",
+   "file": "id-A07.jpg",
+   "image": "Image 1",
+   "kind": "character",
+   "fingerprint": "63c87373",
+   "sent_fingerprint": "94ab050a",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\7077b329913794f1a27fa3c9fa077eaf.jpg",
+   "original_name": "7077b329913794f1a27fa3c9fa077eaf.jpg",
+   "prepared": "id-A07 head crop",
+   "recorded": "named",
+   "job": "b1aae7a5-8cb9-4c08-be02-034cd51d04a8",
+   "videos": [
+    "B"
+   ]
+  },
+  {
+   "asset": "",
+   "label": "Video B · Image 2 · ref-xe9-peppermint-front.jpg · its original file is not recorded",
+   "file": "ref-xe9-peppermint-front.jpg",
+   "image": "Image 2",
+   "kind": "",
    "fingerprint": "",
-   "sent_fingerprint": "d3d430a8"
+   "sent_fingerprint": "9f1b6735",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "b1aae7a5-8cb9-4c08-be02-034cd51d04a8",
+   "videos": [
+    "B"
+   ]
+  },
+  {
+   "asset": "",
+   "label": "Video B · Image 3 · ref-xe9-peppermint-left.jpg · its original file is not recorded",
+   "file": "ref-xe9-peppermint-left.jpg",
+   "image": "Image 3",
+   "kind": "",
+   "fingerprint": "",
+   "sent_fingerprint": "d3ff932e",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "b1aae7a5-8cb9-4c08-be02-034cd51d04a8",
+   "videos": [
+    "B"
+   ]
+  },
+  {
+   "asset": "",
+   "label": "Video B · Image 4 · guide-V07-neurogum.png · its original file is not recorded",
+   "file": "guide-V07-neurogum.png",
+   "image": "Image 4",
+   "kind": "",
+   "fingerprint": "",
+   "sent_fingerprint": "5468ddc7",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "b1aae7a5-8cb9-4c08-be02-034cd51d04a8",
+   "videos": [
+    "B"
+   ]
   }
  ],
  "shapes": [

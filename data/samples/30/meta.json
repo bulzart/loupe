@@ -28,61 +28,121 @@
  "images_sent": [
   {
    "asset": "A10",
-   "label": "Image 1 · A10 · ce6a267c5acfdeb4aa855f22dc8c85e8.jpg",
+   "label": "Video A · Image 1 · A10 · ce6a267c5acfdeb4aa855f22dc8c85e8.jpg",
    "file": "image1-character-C04-head.jpg",
    "image": "Image 1",
    "kind": "character",
+   "fingerprint": "f5ef009d",
+   "sent_fingerprint": "9e92ca40",
    "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\ce6a267c5acfdeb4aa855f22dc8c85e8.jpg",
    "original_name": "ce6a267c5acfdeb4aa855f22dc8c85e8.jpg",
    "prepared": "Image 1: C04 identity (A10 ce6a267c...jpg, tight ellipse crop of the face and hair on grey, the hood edges excluded): facial identity only (the photo grins: expression excluded in the prompt)",
    "recorded": "named",
    "job": "96515abe-4752-4441-9d37-e729a50fd21c",
-   "fingerprint": "f5ef009d",
-   "sent_fingerprint": "9e92ca40"
+   "videos": [
+    "A"
+   ]
   },
   {
    "asset": "A14",
-   "label": "Image 2 · A14 · cherry cola front - cans usa.png",
+   "label": "Videos A and B · Image 2 · A14 · cherry cola front - cans usa.png",
    "file": "image2-product-P1-CC-sealed-front-padded.png",
    "image": "Image 2",
    "kind": "product",
+   "fingerprint": "5c33608c",
+   "sent_fingerprint": "3d6eeaba",
    "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\cherry cola front - cans usa.png",
    "original_name": "cherry cola front - cans usa.png",
    "prepared": "Image 2: the sealed CELSIUS Cherry Cola can (A14 front, tab flat), padded small in a 2200x2200 white field: structure, proportions, material, colours, printed label",
    "recorded": "named",
    "job": "96515abe-4752-4441-9d37-e729a50fd21c",
-   "fingerprint": "5c33608c",
-   "sent_fingerprint": "3d6eeaba"
+   "jobs": [
+    "96515abe-4752-4441-9d37-e729a50fd21c",
+    "40375670-fee0-40ce-9c41-c006fd798e3b"
+   ],
+   "videos": [
+    "A",
+    "B"
+   ]
+  },
+  {
+   "asset": "",
+   "label": "Video B · Image 1 · image1-character-C04-head-no-earbud.jpg · its original file is not recorded",
+   "file": "image1-character-C04-head-no-earbud.jpg",
+   "image": "Image 1",
+   "kind": "character",
+   "fingerprint": "",
+   "sent_fingerprint": "450c46d4",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "40375670-fee0-40ce-9c41-c006fd798e3b",
+   "videos": [
+    "B"
+   ]
   }
+ ],
+ "images_videos": [
+  "A",
+  "B"
  ],
  "product_samples": [
   {
    "asset": "A10",
-   "label": "Image 1 · A10 · ce6a267c5acfdeb4aa855f22dc8c85e8.jpg",
+   "label": "Video A · Image 1 · A10 · ce6a267c5acfdeb4aa855f22dc8c85e8.jpg",
    "file": "image1-character-C04-head.jpg",
    "image": "Image 1",
    "kind": "character",
+   "fingerprint": "f5ef009d",
+   "sent_fingerprint": "9e92ca40",
    "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\ce6a267c5acfdeb4aa855f22dc8c85e8.jpg",
    "original_name": "ce6a267c5acfdeb4aa855f22dc8c85e8.jpg",
    "prepared": "Image 1: C04 identity (A10 ce6a267c...jpg, tight ellipse crop of the face and hair on grey, the hood edges excluded): facial identity only (the photo grins: expression excluded in the prompt)",
    "recorded": "named",
    "job": "96515abe-4752-4441-9d37-e729a50fd21c",
-   "fingerprint": "f5ef009d",
-   "sent_fingerprint": "9e92ca40"
+   "videos": [
+    "A"
+   ]
   },
   {
    "asset": "A14",
-   "label": "Image 2 · A14 · cherry cola front - cans usa.png",
+   "label": "Videos A and B · Image 2 · A14 · cherry cola front - cans usa.png",
    "file": "image2-product-P1-CC-sealed-front-padded.png",
    "image": "Image 2",
    "kind": "product",
+   "fingerprint": "5c33608c",
+   "sent_fingerprint": "3d6eeaba",
    "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\cherry cola front - cans usa.png",
    "original_name": "cherry cola front - cans usa.png",
    "prepared": "Image 2: the sealed CELSIUS Cherry Cola can (A14 front, tab flat), padded small in a 2200x2200 white field: structure, proportions, material, colours, printed label",
    "recorded": "named",
    "job": "96515abe-4752-4441-9d37-e729a50fd21c",
-   "fingerprint": "5c33608c",
-   "sent_fingerprint": "3d6eeaba"
+   "jobs": [
+    "96515abe-4752-4441-9d37-e729a50fd21c",
+    "40375670-fee0-40ce-9c41-c006fd798e3b"
+   ],
+   "videos": [
+    "A",
+    "B"
+   ]
+  },
+  {
+   "asset": "",
+   "label": "Video B · Image 1 · image1-character-C04-head-no-earbud.jpg · its original file is not recorded",
+   "file": "image1-character-C04-head-no-earbud.jpg",
+   "image": "Image 1",
+   "kind": "character",
+   "fingerprint": "",
+   "sent_fingerprint": "450c46d4",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "40375670-fee0-40ce-9c41-c006fd798e3b",
+   "videos": [
+    "B"
+   ]
   }
  ],
  "shapes": [

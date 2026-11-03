@@ -28,89 +28,141 @@
  "images_sent": [
   {
    "asset": "A19",
-   "label": "Image 1 · A19 · download (12).jpg",
+   "label": "Videos A and B · Image 1 · A19 · download (12).jpg",
    "file": "CH-M06_A19-head.jpg",
    "image": "Image 1",
    "kind": "character",
+   "fingerprint": "6cd925cd",
+   "sent_fingerprint": "84ca7319",
    "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\download (12).jpg",
    "original_name": "download (12).jpg",
    "prepared": "CH-M06 identity: A19 cropped above the collar onto grey",
    "recorded": "named",
    "job": "c23461c1-b2de-4de9-a0e0-20c3585022ed",
-   "fingerprint": "6cd925cd",
-   "sent_fingerprint": "84ca7319"
+   "jobs": [
+    "c23461c1-b2de-4de9-a0e0-20c3585022ed",
+    "d603c118-d463-4415-a0a8-d18f6759145a"
+   ],
+   "videos": [
+    "A",
+    "B"
+   ]
   },
   {
    "asset": "A44",
-   "label": "Image 2 · A44 · watermelon front - cans usa.png",
+   "label": "Videos A and B · Image 2 · A44 · watermelon front - cans usa.png",
    "file": "A44_can-ref.png",
    "image": "Image 2",
    "kind": "product",
+   "fingerprint": "0d77b463",
+   "sent_fingerprint": "d8c4df0c",
    "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\watermelon front - cans usa.png",
    "original_name": "watermelon front - cans usa.png",
    "prepared": "CELSIUS Watermelon can, sealed: A44",
    "recorded": "named",
    "job": "c23461c1-b2de-4de9-a0e0-20c3585022ed",
-   "fingerprint": "0d77b463",
-   "sent_fingerprint": "d8c4df0c"
+   "jobs": [
+    "c23461c1-b2de-4de9-a0e0-20c3585022ed",
+    "d603c118-d463-4415-a0a8-d18f6759145a"
+   ],
+   "videos": [
+    "A",
+    "B"
+   ]
   },
   {
    "asset": "",
-   "label": "Image 3 · video-05-guide.png · its original file is not recorded",
+   "label": "Videos A and B · Image 3 · video-05-guide.png · its original file is not recorded",
    "file": "video-05-guide.png",
    "image": "Image 3",
    "kind": "",
+   "fingerprint": "",
+   "sent_fingerprint": "9e3eb296",
    "original": "",
    "original_name": "",
    "prepared": "",
    "recorded": "",
    "job": "c23461c1-b2de-4de9-a0e0-20c3585022ed",
-   "fingerprint": "",
-   "sent_fingerprint": "9e3eb296"
+   "jobs": [
+    "c23461c1-b2de-4de9-a0e0-20c3585022ed",
+    "d603c118-d463-4415-a0a8-d18f6759145a"
+   ],
+   "videos": [
+    "A",
+    "B"
+   ]
   }
+ ],
+ "images_videos": [
+  "A",
+  "B"
  ],
  "product_samples": [
   {
    "asset": "A19",
-   "label": "Image 1 · A19 · download (12).jpg",
+   "label": "Videos A and B · Image 1 · A19 · download (12).jpg",
    "file": "CH-M06_A19-head.jpg",
    "image": "Image 1",
    "kind": "character",
+   "fingerprint": "6cd925cd",
+   "sent_fingerprint": "84ca7319",
    "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\download (12).jpg",
    "original_name": "download (12).jpg",
    "prepared": "CH-M06 identity: A19 cropped above the collar onto grey",
    "recorded": "named",
    "job": "c23461c1-b2de-4de9-a0e0-20c3585022ed",
-   "fingerprint": "6cd925cd",
-   "sent_fingerprint": "84ca7319"
+   "jobs": [
+    "c23461c1-b2de-4de9-a0e0-20c3585022ed",
+    "d603c118-d463-4415-a0a8-d18f6759145a"
+   ],
+   "videos": [
+    "A",
+    "B"
+   ]
   },
   {
    "asset": "A44",
-   "label": "Image 2 · A44 · watermelon front - cans usa.png",
+   "label": "Videos A and B · Image 2 · A44 · watermelon front - cans usa.png",
    "file": "A44_can-ref.png",
    "image": "Image 2",
    "kind": "product",
+   "fingerprint": "0d77b463",
+   "sent_fingerprint": "d8c4df0c",
    "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\watermelon front - cans usa.png",
    "original_name": "watermelon front - cans usa.png",
    "prepared": "CELSIUS Watermelon can, sealed: A44",
    "recorded": "named",
    "job": "c23461c1-b2de-4de9-a0e0-20c3585022ed",
-   "fingerprint": "0d77b463",
-   "sent_fingerprint": "d8c4df0c"
+   "jobs": [
+    "c23461c1-b2de-4de9-a0e0-20c3585022ed",
+    "d603c118-d463-4415-a0a8-d18f6759145a"
+   ],
+   "videos": [
+    "A",
+    "B"
+   ]
   },
   {
    "asset": "",
-   "label": "Image 3 · video-05-guide.png · its original file is not recorded",
+   "label": "Videos A and B · Image 3 · video-05-guide.png · its original file is not recorded",
    "file": "video-05-guide.png",
    "image": "Image 3",
    "kind": "",
+   "fingerprint": "",
+   "sent_fingerprint": "9e3eb296",
    "original": "",
    "original_name": "",
    "prepared": "",
    "recorded": "",
    "job": "c23461c1-b2de-4de9-a0e0-20c3585022ed",
-   "fingerprint": "",
-   "sent_fingerprint": "9e3eb296"
+   "jobs": [
+    "c23461c1-b2de-4de9-a0e0-20c3585022ed",
+    "d603c118-d463-4415-a0a8-d18f6759145a"
+   ],
+   "videos": [
+    "A",
+    "B"
+   ]
   }
  ],
  "shapes": [
