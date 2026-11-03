@@ -326,7 +326,9 @@ export async function work(qs) {
   } }, 'Suggest kinds from the words');
   const model = h('input', { value: miss ? miss.model : (runInfo ? runInfo.model || '' : ''), size: 18 });
   const mode = h('input', { value: miss ? miss.mode : (runInfo ? [runInfo.mode, runInfo.submode].filter(Boolean).join('-') : ''), size: 18 });
-  const product = h('input', { value: miss ? miss.product : ((runInfo && runInfo.products && runInfo.products[0]) || ''), size: 22, placeholder: 'the product and its details: form, size, opening, natural posture' });
+  // a new report's product is the words its request gives its product images (below) or what the admin types; never a registry heading (the admin,
+  // 2026-11-03: S44 kept "Celsius products", the first heading of its run's registry, beside a Neuro carton)
+  const product = h('input', { value: miss ? miss.product : '', size: 22, placeholder: 'the product and its details: form, size, opening, natural posture' });
   let productTyped = false;      // a new report takes the product its request used (below) until the admin types one
   product.addEventListener('input', () => { productTyped = true; });
 

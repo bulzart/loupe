@@ -962,8 +962,10 @@ def product_label(ps: dict, run: str, video: str = "") -> tuple[str, dict]:
 
 def _image_entry(x: dict) -> dict:
     """One image of a sample's band, or of what its generation was sent, as meta.json keeps it: its input, asset id, the file sent, what it is, the
-    client's original (its full path, for the record) and that file's name, how it was prepared, how the record was read and the job."""
+    client's original (its full path, for the record) and that file's name, the fingerprints of the original's content (fingerprint) and of the file sent
+    (sent_fingerprint), how it was prepared, how the record was read and the job."""
     return {"asset": x.get("asset_id", ""), "label": x.get("label", ""), "file": x.get("name", ""), "image": x.get("image", ""), "kind": x.get("kind", ""),
+            "fingerprint": runs.file_fingerprint(x.get("original")), "sent_fingerprint": runs.file_fingerprint(x.get("path")),
             "original": x.get("original", ""), "original_name": x.get("original_name", ""), "prepared": x.get("prepared", ""),
             "recorded": x.get("recorded", ""), "job": x.get("job", ""), **({"jobs": x["jobs"]} if len(x.get("jobs") or []) > 1 else {})}
 

@@ -828,6 +828,31 @@ CHARACTER_FILE = re.compile(r"(?:^|[\s=/\\_:-])(?:character|identity)(?:[\s._:/\
 CHARACTER_SAID = re.compile(r"^\s*(?:[\w-]+\s+)?(?:character|identity)\b", re.I)      # what a request calls an input: 'identity C01 (A01 ...)', 'CH-M03 identity: A12 ...'
 
 
+_FINGERPRINTS: dict = {}
+
+
+def file_fingerprint(path) -> str:
+    """A short fingerprint of a file's content, the first 8 hex digits of its SHA-1, so one photo is known as one file in every run whatever asset id a
+    run gave it (the admin, 2026-11-03: the judge could not tell one run's A274 IMG_6917.jpg from another's A273 IMG_6917.jpg); '' when the file
+    cannot be read.  The toolkit computes it the same way (awl.py _pi_fingerprint)."""
+    if not path:
+        return ""
+    p = Path(str(path))
+    try:
+        stt = p.stat()
+        if not p.is_file():
+            return ""
+    except (OSError, ValueError):
+        return ""
+    key = (os.path.normcase(str(p)), stt.st_size, stt.st_mtime_ns)
+    if key not in _FINGERPRINTS:
+        try:
+            _FINGERPRINTS[key] = hashlib.sha1(p.read_bytes()).hexdigest()[:8]
+        except OSError:
+            return ""
+    return _FINGERPRINTS[key]
+
+
 def request_fingerprint(req: dict) -> str:
     """The fingerprint the pipelines' ledgers record for a request they submit (their _fingerprint): its parameters without get_cost, as sorted JSON."""
     params = dict(req.get("params", req)) if isinstance(req, dict) else {}

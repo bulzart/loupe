@@ -1326,36 +1326,69 @@ def main(with_keeper=False):
               ("Image 2", "A14", "product", "product-front.png", "padded to 9:16 on white", "Image 2 · A14 · product-front.png", "build")]
           and [x.get("file") for x in meta9.get("images_sent") or []] == ["image1-character-person.png", "image2-product-P1-front-padded.png"]
           and meta9.get("product_sample_chosen") is False, str(meta9)[:600])
+    import hashlib as _hl
+    pi9 = (meta9.get("product_samples") or [{}])[-1]
+    check("a sample keeps the fingerprint of each image's original (fingerprint) and of the file sent (sent_fingerprint), the first 8 hex digits of the SHA-1 of each "
+          "file's content, so one photo is one file in every run whatever asset id the run gave it (the admin, 2026-11-03); a file that cannot be read has none",
+          pi9.get("fingerprint") == _hl.sha1((ref9 / "product-front.png").read_bytes()).hexdigest()[:8]
+          and pi9.get("sent_fingerprint") == _hl.sha1((v9 / "image2-product-P1-front-padded.png").read_bytes()).hexdigest()[:8] and pi9["fingerprint"] != pi9["sent_fingerprint"]
+          and [x.get("fingerprint") for x in meta9.get("images_sent") or []] == [runs.file_fingerprint(ref9 / "person.png"), pi9["fingerprint"]]
+          and runs.file_fingerprint(TMP / "no-such-file.png") == "" and runs.file_fingerprint(ref9) == "" and runs.file_fingerprint("") == "" and runs.file_fingerprint(None) == "",
+          str(pi9)[:400])
     s, d, _ = req("GET", f"/api/qc/samples/S{mo9}?prompts=1", key=kq)
     smp9 = d.get("sample") or {}
     rec9 = smp9.get("record", "")
     dig9 = _pq.records_of(_pq._digest()).get(f"S{mo9}", "")
-    check("the judge reads which product images a sample's generation was given and how many, each by the client's original file: one line in the "
-          "digest, one line per image with its preparation in the full record, and the same in the sample's answer",
-          f"PRODUCT IMAGES OF S{mo9} (1): Image 2 · A14 · product-front.png" in dig9 and f"OTHER IMAGES OF S{mo9} (1): Image 1 · A28 · person.png (character)" in dig9
-          and f"  S{mo9} · Image 1 · A28 · person.png, prepared: cropped above the collar (character)" in rec9
-          and f"  S{mo9} · Image 2 · A14 · product-front.png, prepared: padded to 9:16 on white" in rec9
-          and smp9.get("product_images") == [{"image": "Image 2", "asset": "A14", "file": "product-front.png", "prepared": "padded to 9:16 on white", "recorded": True}]
+    mk_pf, mk_pe = runs.file_fingerprint(ref9 / "product-front.png"), runs.file_fingerprint(ref9 / "person.png")
+    check("the judge reads which product images a sample's generation was given and how many, each by the client's original file and the fingerprint "
+          "of its content: one line in the digest, one line per image with its preparation in the full record, and the same in the sample's answer",
+          bool(mk_pf and mk_pe) and f"PRODUCT IMAGES OF S{mo9} (1): Image 2 · A14 · product-front.png #{mk_pf}\n" in dig9
+          and f"OTHER IMAGES OF S{mo9} (1): Image 1 · A28 · person.png #{mk_pe} (character)" in dig9
+          and f"  S{mo9} · Image 1 · A28 · person.png #{mk_pe}, prepared: cropped above the collar (character)" in rec9
+          and f"  S{mo9} · Image 2 · A14 · product-front.png #{mk_pf}, prepared: padded to 9:16 on white" in rec9
+          and smp9.get("product_images") == [{"image": "Image 2", "asset": "A14", "file": "product-front.png", "fingerprint": mk_pf, "prepared": "padded to 9:16 on white",
+                                              "recorded": True}]
           and str(ref9) not in dig9 and str(ref9) not in rec9, dig9[:500] + " || " + rec9[:500])
     got9 = _pq._fulfil({"kind": "sample_origin", "id": f"S{mo9}"}, {}, TMP / "fulfil", False)
     reg9 = _pq._fulfil({"kind": "product_registry"}, {"run": "20261001-000000-07", "video": "09"}, TMP / "fulfil", False)
-    check("what the judge fetches about a sample's or a run's product images names each by its asset id and the client's original file name",
-          f"PRODUCT IMAGE 1 OF S{mo9} (product image 1, A14 · product-front.png, which the request calls " in got9.get("text", "")
-          and "product image 1 (A14 · product-front.png, which the request calls " in reg9.get("text", ""), got9.get("text", "")[-400:] + " || " + reg9.get("text", "")[-300:])
+    check("what the judge fetches about a sample's or a run's product images names each by its asset id, the client's original file name and the "
+          "fingerprint of its content",
+          f"PRODUCT IMAGE 1 OF S{mo9} (product image 1, A14 · product-front.png #{mk_pf}, which the request calls " in got9.get("text", "")
+          and f"product image 1 (A14 · product-front.png #{mk_pf}, which the request calls " in reg9.get("text", ""), got9.get("text", "")[-400:] + " || " + reg9.get("text", "")[-300:])
     old9 = TMP / "old-sample"
     old9.mkdir(exist_ok=True)
     (old9 / "meta.json").write_text(json.dumps({"product_samples": [{"asset": "", "label": "Image 2 · = image2-product-x-front-padded", "file": "image2-product-x-front-padded.png"}]}))
     ob9 = _pq.product_images_brief({"composite_path": str(old9 / "composite.png")})
     ow9 = _pq._pim_words(_pq.product_images({"composite_path": str(old9 / "composite.png")})[0], True)
     check("a sample saved before the originals were recorded keeps its image number and says its original file is not recorded",
-          ob9 == [{"image": "Image 2", "asset": "", "file": "image2-product-x-front-padded.png", "prepared": "", "recorded": False}]
+          ob9 == [{"image": "Image 2", "asset": "", "file": "image2-product-x-front-padded.png", "fingerprint": "", "prepared": "", "recorded": False}]
           and ow9 == "Image 2 · = image2-product-x-front-padded · its original file is not recorded", f"{ob9} | {ow9}")
+    old9b = TMP / "old-sample-b"
+    old9b.mkdir(exist_ok=True)
+    (old9b / "meta.json").write_text(json.dumps({"product_samples": [
+        {"asset": "", "label": "Image 2 · = image2-product-x-front-padded", "file": "image2-product-x-front-padded.png", "fingerprint": "", "sent_fingerprint": "0a1b2c3d"},
+        {"asset": "A14", "image": "Image 3", "label": "Image 3 · A14 · gone.png", "file": "image3-gone.png", "original": str(TMP / "gone.png"),
+         "original_name": "gone.png", "fingerprint": "", "sent_fingerprint": "4e5f6a7b", "prepared": "as it is"}]}))
+    nb9 = _pq.product_images_brief({"composite_path": str(old9b / "composite.png")})
+    nw9 = [_pq._pim_words(x, False) for x in _pq.product_images({"composite_path": str(old9b / "composite.png")})]
+    check("where the original's fingerprint cannot be had (the run did not record the original, or it cannot be read), the file sent's follows, never "
+          "in the original's place",
+          nw9 == ["Image 2 · = image2-product-x-front-padded · its original file is not recorded · the file sent #0a1b2c3d",
+                  "Image 3 · A14 · gone.png · the file sent #4e5f6a7b"]
+          and [(x["file"], x["fingerprint"]) for x in nb9] == [("image2-product-x-front-padded.png", "0a1b2c3d"), ("gone.png", "")], f"{nw9} | {nb9}")
     pif = _pq.product_images_from({"product_images": [{"asset": "the A82 front", "file": "client/assets/Carton-Front.png", "prepare": "", "why": "w"},
                                                      {"file": "C:\\x\\y\\Back.png"}, {"why": "neither"}, "not a dict"] + [{"asset": f"A{k}"} for k in range(100, 110)]})
     check("the judge's product images are held to their shape: an asset id or a file name (never its folder), the first six well-formed, in its order",
           pif[0] == {"asset": "A82", "file": "Carton-Front.png", "prepare": "", "why": "w"} and (pif[1]["asset"], pif[1]["file"]) == ("", "Back.png")
           and [x["asset"] for x in pif[2:]] == ["A100", "A101", "A102", "A103"] and len(pif) == _pq.PRODUCT_IMAGES_MAX == 6
           and _pq.product_images_from({"template": "x"}) == [] and _pq.product_images_from(None) == [], str(pif)[:500])
+    pmk = _pq.product_images_from({"product_images": [{"asset": "A82", "fingerprint": "#5917FD2A"}, {"asset": "A83", "fingerprint": "A82"},
+                                                     {"asset": "A84", "fingerprint": "123456789"}, {"asset": "A85"}]})
+    check("the judge's product image keeps a well-formed fingerprint (8 hex digits; a # and capitals forgiven) and drops any other",
+          [x.get("fingerprint") for x in pmk] == ["5917fd2a", None, None, None], str(pmk))
+    check("the judge is told an asset id is the run's own number and the #fingerprint is the same file in every run, and gives each product image's fingerprint",
+          "#xxxxxxxx" in _pq.LIB_HEADER and "the same for the same file in every run" in _pq.LIB_HEADER and "the file sent #xxxxxxxx" in _pq.LIB_HEADER
+          and '"fingerprint":"<the 8 characters after #' in _pq.ROLE and "match a sample's images to this run's by it" in _pq.ROLE)
     tf9 = _pq.template_from({"template": "T", "product_images": [{"asset": "A14", "file": "x/product-front.png"}]}, {})
     check("a template answer carries the judge's product images", tf9.get("product_images") == [{"asset": "A14", "file": "product-front.png", "prepare": "", "why": ""}], str(tf9)[:300])
     check("the judge is told the product images are its to decide (which and how many), how they are numbered, how to name each, and where they go in a "

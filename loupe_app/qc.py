@@ -494,7 +494,7 @@ LIB_HEADER = ("One record per sample, each from its line '=== SAMPLE S.. · gene
               "its frames are all called RIGHT, how it looks when it is right, with the correct version's prompt alone; SCENARIO OF EXAMPLES ONLY: "
               "its frames are all Examples, taken from one video, each a suggestion of what could have changed or how it could have been done another way, "
               "neither a bad generation nor a correct one); WHERE S.. CAME FROM (model, run, video, time, mode, the product when the admin named it, the "
-              "kinds; an empty kinds field, '-', means the admin did not tag the sample: judge from the words and the image); PRODUCT IMAGES OF S.. (how many product reference images its generation was given and which, as the run's records show them sent with its job (an older sample: as its picture shows them): each by the request input it was sent as, the client's asset id and the original file's name, and in a full record how it was prepared; 'its original file is not recorded' when the run kept no record of it); OTHER IMAGES OF S.. (the other images its generation was sent, such as the character, what each is in brackets); THE GENERATION MISS R.. OF S.. "
+              "kinds; an empty kinds field, '-', means the admin did not tag the sample: judge from the words and the image); PRODUCT IMAGES OF S.. (how many product reference images its generation was given and which, as the run's records show them sent with its job (an older sample: as its picture shows them): each by the request input it was sent as, the client's asset id (the run's own number: one file can carry another id in another run, and one id name another file) and the original file's name with #xxxxxxxx after it, a fingerprint of that file's content that is the same for the same file in every run, and in a full record how it was prepared; 'its original file is not recorded' when the run kept no record of it; '· the file sent #xxxxxxxx', the fingerprint of the file the generation was given, where the original's cannot be had); OTHER IMAGES OF S.. (the other images its generation was sent, such as the character, what each is in brackets, named the same way); THE GENERATION MISS R.. OF S.. "
               "(the report's title and explanation, the admin's own words); THE ADMIN'S WORDS FOR S.. (each tied to the frames it speaks of: what is wrong at "
               "the marked place of the frames called WRONG, what the frames called RIGHT show, the idea, what could have been better, what the AI agents "
               "missed, the admin's one-line note on the prompt); FRAMES OF S.. (one line per frame as its image tags it: its number, WRONG, RIGHT or EXAMPLE, "
@@ -564,21 +564,32 @@ def other_images(s: dict) -> list[dict]:
     return _generation_images(s)[1]
 
 
+def _fingerprint_of(x: dict) -> str:
+    """The fingerprint of the content of an image's original file, as its sample keeps it, else read from that file (a sample saved before the
+    fingerprints); '' when the run did not record the original or it cannot be read."""
+    if not x.get("original_name"):
+        return ""
+    return str(x.get("fingerprint") or "") or (runs.file_fingerprint(x.get("original")) if x.get("original") else "")
+
+
 def _pim_words(x: dict, long: bool) -> str:
-    """'Image 2 · A82 · Carton_Single-Front.png' (and, long, how it was prepared); a file whose original the run did not record is named
-    by the name it was picked by and says so."""
-    name = str(x.get("original_name") or "")
+    """'Image 2 · A82 · Carton_Single-Front.png #3f9a1c2b' (and, long, how it was prepared): the fingerprint of the original's content after its name,
+    the same for the same file in every run (the admin, 2026-11-03); a file whose original the run did not record is named by the name it was picked by
+    and says so; where the original's fingerprint cannot be had, the file sent's follows ('· the file sent #...')."""
+    name, fp, sent = str(x.get("original_name") or ""), _fingerprint_of(x), str(x.get("sent_fingerprint") or "")
+    tail = f" · the file sent #{sent}" if sent and not fp else ""
     if not name:
         lab = str(x.get("label") or x.get("file") or "a product image")
-        return lab if "not recorded" in lab else lab + " · its original file is not recorded"
-    words = " · ".join(v for v in (str(x.get("image") or ""), str(x.get("asset") or ""), name) if v)
+        return (lab if "not recorded" in lab else lab + " · its original file is not recorded") + tail
+    words = " · ".join(v for v in (str(x.get("image") or ""), str(x.get("asset") or ""), name) if v) + (f" #{fp}" if fp else tail)
     return words + (f", prepared: {x['prepared']}" if long and x.get("prepared") else "")
 
 
 def product_images_brief(s: dict) -> list[dict]:
-    """A sample's product images as an answer carries them: [{image, asset, file (the original file's name, or the name it was picked by), prepared, recorded}]."""
+    """A sample's product images as an answer carries them: [{image, asset, file (the original file's name, or the name it was picked by),
+    fingerprint (of that file's content), prepared, recorded}]."""
     return [{"image": str(x.get("image") or "") or (re.match(r"(?i)image \d+", str(x.get("label") or "")) or [""])[0], "asset": str(x.get("asset") or ""),
-             "file": str(x.get("original_name") or x.get("file") or ""),
+             "file": str(x.get("original_name") or x.get("file") or ""), "fingerprint": _fingerprint_of(x) if x.get("original_name") else str(x.get("sent_fingerprint") or ""),
              "prepared": _clip(x.get("prepared", ""), 300), "recorded": bool(x.get("original_name"))} for x in product_images(s)]
 
 
@@ -1082,8 +1093,11 @@ ROLE = ("You are the Loupe keeper of a video-generation pipeline. You hold a lib
         "the client's images of the product (ask product_registry for the whole registry row). Decide from what the samples show: a second view where"
         " one view left the size, the thinness or the label wrong, one view where two confused the model, the image or the preparation that worked. "
         "product_images in your answer is the whole list of the product images the request should carry, in order, each {\"asset\":\"A82\",\"file\":\"<the "
-        "original file's name>\",\"prepare\":\"<how to prepare it, when not as the draft already does; or empty>\",\"why\":\"<the samples and what they "
-        "show>\"}; an empty list keeps the draft's product images as they are. The product images ride last among the image inputs: the inputs that "
+        "original file's name>\",\"fingerprint\":\"<the 8 characters after # where a record or this request names that file>\",\"prepare\":\"<how to "
+        "prepare it, when not as the draft already does; or empty>\",\"why\":\"<the samples and what they show>\"}; an empty list keeps the draft's product "
+        "images as they are. An asset id is the run's own number: a sample from another run can give the same photo another id, and its id can name "
+        "another file in this run; the #fingerprint after a file's name is the same for the same file in every run, so match a sample's images to this "
+        "run's by it, name each image by the id this request's list gives it, and give its fingerprint. The product images ride last among the image inputs: the inputs that "
         "are not product images keep their Image numbers and your product images take the numbers after them, in your order, so your prompt names "
         "each by its final number. A must-carry line that names a product image by its number is carried with the number that image has in your list "
         "and otherwise word for word; one that names an image you leave out is no longer the request's. In a QC answer, product_images is for the "
@@ -1406,7 +1420,8 @@ def _fulfil(n: dict, ctx: dict, d: Path, plan: bool) -> dict:
                     more.append(f"THE NEWEST REQUEST PROMPT OF THAT VIDEO, FROM ITS RUN (the admin saved no prompt for {sid}; which generation made which frame is "
                                 "not told here, so it is neither the flawed nor the correct version's prompt until you tie it to the frames): " + pr)
                 for k, ps in enumerate(runs.product_samples(s["run"], s["video"])[:2], 1):
-                    more.append(f"PRODUCT IMAGE {k} OF {sid} (product image {k}, {ps['asset_id']} · {ps['name']}, which the request calls {ps['label']}): "
+                    mk = runs.file_fingerprint(ps["path"])
+                    more.append(f"PRODUCT IMAGE {k} OF {sid} (product image {k}, {ps['asset_id']} · {ps['name']}{' #' + mk if mk else ''}, which the request calls {ps['label']}): "
                                 f"{_copy_in(Path(ps['path']), d, f'{sid}-product-{k}')}")
             else:
                 more.append(f"ITS RUN FOLDER is not available (run {s.get('run') or 'none recorded'})")
@@ -1427,7 +1442,9 @@ def _fulfil(n: dict, ctx: dict, d: Path, plan: bool) -> dict:
             if reg:
                 lines.append("the run's asset registry (first 3500 characters):\n" + reg)
             for k, ps in enumerate(runs.product_samples(run, video)[:2], 1):
-                lines.append(f"product image {k} ({ps['asset_id']} · {ps['name']}, which the request calls {ps['label']}): {_copy_in(Path(ps['path']), d, f'product-{k}')}")
+                mk = runs.file_fingerprint(ps["path"])
+                lines.append(f"product image {k} ({ps['asset_id']} · {ps['name']}{' #' + mk if mk else ''}, which the request calls {ps['label']}): "
+                             f"{_copy_in(Path(ps['path']), d, f'product-{k}')}")
             return {"ok": True, "text": "\n".join(lines), "why_not": ""} if lines else no("this run has no registry or product image")
         if kind == "video_frame":
             if plan:
@@ -1618,7 +1635,9 @@ def product_images_from(parsed) -> list[dict]:
         name = Path(str(x.get("file") or "").replace("\\", "/")).name.strip()[:200]
         if not (m or name):
             continue
-        out.append({"asset": m.group(0) if m else "", "file": name, "prepare": _clip(x.get("prepare", ""), 600), "why": _clip(x.get("why", ""), 400)})
+        mk = re.sub(r"[^0-9a-f]", "", str(x.get("fingerprint") or "").lower())
+        out.append({"asset": m.group(0) if m else "", "file": name, **({"fingerprint": mk} if len(mk) == 8 else {}),
+                    "prepare": _clip(x.get("prepare", ""), 600), "why": _clip(x.get("why", ""), 400)})
     return out
 
 
