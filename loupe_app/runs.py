@@ -100,17 +100,35 @@ def is_video_request(req) -> bool:
     return not (re.fullmatch(r"\d+k", str(prm.get("resolution") or "").lower()) or prm.get("quality"))
 
 
-def video_request_files(rd: Path, video: str) -> list[Path]:
-    """The request files of a video that asked for a video, by name (the stills asked for beside it are left out)."""
-    rq = rd / "50-requests"
+REQUEST_ATTEMPT_LAST = re.compile(r"^(?P<head>video-.+?)-request-(?P<att>a\d+)\.json$", re.I)
+
+
+def request_canon(name: str) -> str:
+    """A request file's name in the usual form: a run that wrote the attempt last (video-06-request-a2.json, video-04-c1-request-a2.json; the
+    admin, 2026-11-03: its take a2 offered no image) is read as video-06-a2-request.json.  The file keeps its own name; only how it is read
+    changes.  The toolkit reads names the same way (awl.py _cf_req_canon)."""
+    m = REQUEST_ATTEMPT_LAST.match(str(name))
+    return f"{m.group('head')}-{m.group('att')}-request.json" if m else str(name)
+
+
+def request_files_named(rq: Path, prefix: str) -> list[Path]:
+    """The request files of a folder whose name starts with `prefix`, in both forms (…-request.json and …-request-aN.json), ordered by their
+    usual-form name; a kept copy (….pre-product-images.json, a draft) is not one."""
     if not rq.is_dir():
         return []
-    return [f for f in sorted(rq.glob(f"video-{core.nn(video)}*request.json")) if is_video_request(_json(f))]
+    files = list(rq.glob(f"{prefix}*request.json")) + [f for f in rq.glob(f"{prefix}*request-a*.json") if REQUEST_ATTEMPT_LAST.match(f.name)]
+    return sorted(set(files), key=lambda f: request_canon(f.name))
+
+
+def video_request_files(rd: Path, video: str) -> list[Path]:
+    """The request files of a video that asked for a video, by name (the stills asked for beside it are left out)."""
+    return [f for f in request_files_named(rd / "50-requests", f"video-{core.nn(video)}") if is_video_request(_json(f))]
 
 
 def _attempt_in_name(name: str) -> int:
-    """The attempt a request file is for: video-03-a2-request.json is the second, a name with no attempt tag is the first."""
-    m = re.search(r"-a(\d+)-", name)
+    """The attempt a request file is for: video-03-a2-request.json (or video-03-request-a2.json) is the second, a name with no attempt tag is
+    the first."""
+    m = re.search(r"-a(\d+)-", request_canon(name))
     return int(m.group(1)) if m else 1
 
 
@@ -313,6 +331,7 @@ def _clip_file(rd: Path, clip: str) -> Path | None:
 def _request_tag(name: str, nn: str) -> str:
     """The generation a request file is for, from its name: video-03-c1-a2-request.json is c1-a2; a name with no attempt in it is the first attempt
     (video-03-request.json is a1, video-03-c1-request.json is c1-a1)."""
+    name = request_canon(name)
     t = name[len(f"video-{nn}"):] if name.startswith(f"video-{nn}") else name
     t = (t[:-len("request.json")] if t.endswith("request.json") else t).strip("-")
     return t if re.search(r"(?:^|-)a\d+", t) else (t + "-a1" if t else "a1")
@@ -1428,7 +1447,7 @@ def _clip_request(rd: Path, nn: str, clip: str, attempt: int) -> Path | None:
     """The video request of one clip and attempt: video-NN-cK-aJ-request.json, or video-NN-cK-request.json for the first attempt; a request whose own
     record names the clip is taken when its name does not."""
     files = video_request_files(rd, nn)
-    own = [f for f in files if re.fullmatch(rf"video-{re.escape(nn)}-{re.escape(clip)}(?:-a\d+)?-request", f.stem, re.I)]
+    own = [f for f in files if re.fullmatch(rf"video-{re.escape(nn)}-{re.escape(clip)}(?:-a\d+)?-request", Path(request_canon(f.name)).stem, re.I)]
     if not own:
         own = [f for f in files if str((_json(f) or {}).get("clip") or "").lower() == clip.lower()]
     if not own:
@@ -1540,7 +1559,7 @@ def request_prompt_for(run: str, video: str, hint: str = "") -> dict:
 
 # ------------------------------------------------------------------ usage index (which input went into which request, and what happened)
 ROLE_LABEL = {"image_references": "Image", "video_references": "Video", "audio_references": "Audio"}
-USAGE_INDEX_VERSION = 2      # bumped when the index reads the request files differently: every run is then indexed again once
+USAGE_INDEX_VERSION = 3      # bumped when the index reads the request files differently: every run is then indexed again once
 
 
 def _uploads(rd: Path) -> dict:
@@ -1617,11 +1636,11 @@ def index_usage(force: bool = False, budget: float | None = None) -> int:
             subs = {Path(str(s.get("request_file", ""))).name: s for s in (st.get("submissions") or []) if isinstance(s, dict)}
             rows = []
             rq = d / "50-requests"
-            for rf in sorted(rq.glob("video-*request.json")) if rq.is_dir() else []:
+            for rf in request_files_named(rq, "video-"):
                 req = _json(rf)
                 if not isinstance(req, dict):
                     continue
-                m = re.match(r"^video-(\d+)(?:-([a-z]\d+))?", rf.name)
+                m = re.match(r"^video-(\d+)(?:-([a-z]\d+))?", request_canon(rf.name))
                 video, attempt = (m.group(1), m.group(2) or ("a1" if is_video_request(req) else "image")) if m else ("", "")
                 sub = subs.get(rf.name, {})
                 prm = req.get("params") if isinstance(req.get("params"), dict) else req

@@ -1599,6 +1599,20 @@ def main(with_keeper=False):
     check("a template answered again after the final prompts round keeps what it decided for the other samples when its new answer leaves that out",
           p2j.get("template") == "T2" and p2j.get("avoided") == first_j["avoided"] and p2j.get("set_aside") == first_j["set_aside"] and sent_j == ["S1"],
           str(p2j)[:300])
+    # the admin, 2026-11-03: a request written with the attempt last (video-06-request-a2.json) is the take a2's own, read like video-06-a2-request.json
+    rq_n = TMP / "attempt-last" / "50-requests"
+    rq_n.mkdir(parents=True, exist_ok=True)
+    for _n, _p in (("video-06-request.json", "first"), ("video-06-request-a2.json", "second"), ("video-06-request-a2.pre-product-images.json", "kept copy"),
+                   ("video-04-c1-request.json", "c1 first"), ("video-04-c1-request-a2.json", "c1 second")):
+        (rq_n / _n).write_text(json.dumps({"params": {"model": "wan3_0_prime", "duration": 5, "prompt": _p}}))
+    rd_n = rq_n.parent
+    got_n = ([f.name for f in runs.video_request_files(rd_n, "06")], [f.name for f in runs._request_files(rd_n, "06", 2)][:1],
+             [f.name for f in runs._request_files(rd_n, "06", 1)][:1], runs._attempt_in_name("video-06-request-a2.json"),
+             runs._request_tag("video-04-c1-request-a2.json", "04"), runs.request_canon("video-04-c1-request-a2.json"))
+    check("a request named with the attempt last (video-06-request-a2.json, video-04-c1-request-a2.json) is the take a2's own, read like "
+          "video-06-a2-request.json; a kept copy is not a request",
+          got_n == (["video-06-request-a2.json", "video-06-request.json"], ["video-06-request-a2.json"], ["video-06-request.json"], 2, "c1-a2",
+                    "video-04-c1-a2-request.json"), str(got_n))
     print("\n[cleanup]")
     httpd.shutdown()
     shutil.rmtree(TMP, ignore_errors=True)
