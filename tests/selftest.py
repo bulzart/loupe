@@ -1065,6 +1065,9 @@ def main(with_keeper=False):
                                               "cause": "first cause", "template_fix": "first fix"}), "total_cost_usd": 0}
             return {"result": "ready", "total_cost_usd": 0}
         _qc._run_claude = judge
+        s_x, d_x, _ = req("POST", f"/api/misses/{mid0}/moments", {"frames": [{"src": "wrong", "role": "wrong", "t": 1.0}],
+                                                             "details": "A second moment of the same miss, which the template answer names in none of its lists."})
+        mo_x = d_x["moment"]["moment_id"] if s_x == 200 else 0
         s, d, _ = req("POST", "/api/qc/consult", {"purpose": "template", "run": "r", "video": "05", "model": "wan3_0_prime",
                                                   "question": "BRIEF-MARK video 05: he sets the can on the desk; the goal is the can's true size.",
                                                   "structure": "STRUCTURE-MARK Shot 1: ... Shot 2: ...", "video_model": {"id": "wan3_0_prime", "name": "MODEL-MARK"}}, key=kq)
@@ -1078,6 +1081,12 @@ def main(with_keeper=False):
               and d.get("prompts_judged") == [sid0] and bool(d["basis"][0].get("prompt_sides")), str(d)[:300])
         s, d, _ = req("GET", "/api/qc/keeper")
         check("the consult log keeps the template request under its own purpose", s == 200 and any(c["purpose"] == "template" for c in d["consults"]))
+        tcj = next((c for c in d["consults"] if c["purpose"] == "template"), {}) if s == 200 else {}
+        want_unj = [x["id"] for x in _qc.library() if x["id"] != sid0]
+        check("the samples a template answer left unjudged are kept with the consult as a gap the Keeper page shows",
+              want_unj == [f"S{mo_x}"] and ((tcj.get("asks") or {}).get("unjudged") or []) == want_unj, f"{(tcj.get('asks') or {}).get('unjudged')} vs {want_unj}")
+        if mo_x:
+            req("DELETE", f"/api/moments/{mo_x}")
         seen.clear()
         s, d, _ = req("POST", "/api/qc/consult", {"run": "r", "video": "05", "model": "wan3_0_prime", "question": "the can is smaller than the mug at 2 s",
                                                   "request_prompt": "USED-PROMPT the can on the desk.", "template": "TEMPLATE-MARK", "brief": "BRIEF-MARK",
@@ -1525,6 +1534,36 @@ def main(with_keeper=False):
           and s == 200 and [len(a["paths"]) for a in d.get("assets", [])] == [1, 2] and d["assets"][1]["source"] == "sent with jobs job-8A1, job-8B1",
           str(meta8.get("images_sent"))[:400] + " | " + str(d)[:300])
     req("DELETE", f"/api/misses/{m8}")
+    print("\n[a template accounts for every sample of the library (the admin, 2026-11-03)]")
+    from loupe_app import qc as _qj
+    libj = {f"S{i}": {"id": f"S{i}", "title": f"title {i}"} for i in range(1, 15)}
+    tj = _qj.template_from({"template": "T", "basis": [{"id": f"S{i}", "worked": "w", "failed": "f", "where": "shot 1"} for i in range(1, 13)],
+                            "avoided": [{"id": "S11", "mechanism": "a hand meets a rigid body", "why": "he grips the carton", "where": "shot 2"},
+                                        {"id": "S1", "mechanism": "already in basis"}, {"id": "S99", "mechanism": "no such sample"}],
+                            "set_aside": [{"id": "S12", "why": "nothing is opened"}, {"id": "S11", "why": "already avoided"}, "not a dict"]}, libj)
+    check("a template answer keeps what the judge decided for every sample: basis (up to the ten whose prompts it may read), avoided (mechanism, why, "
+          "where) and set aside (why), each sample once and only samples that exist, and lists those it named in none of them",
+          [b["id"] for b in tj["basis"]] == [f"S{i}" for i in range(1, 11)]
+          and tj["avoided"] == [{"id": "S11", "mechanism": "a hand meets a rigid body", "why": "he grips the carton", "where": "shot 2", "title": "title 11"}]
+          and tj["set_aside"] == [{"id": "S12", "why": "nothing is opened", "title": "title 12"}] and tj["unjudged"] == ["S13", "S14"]
+          and _qj.template_from(None, libj)["unjudged"] == [], str({k: tj[k] for k in ("avoided", "set_aside", "unjudged")})[:400])
+    check("the judge is told to go through every sample of its library, read or not and whatever its product, by the same mechanism, to design each miss "
+          "that applies out of its prompt and to say what it decided for each (basis, avoided, set aside)",
+          "Then go through EVERY sample of your library" in _qj.ROLE and "every sample of your library stays in view for step 2" in _qj.ROLE
+          and '"avoided":[{"id":"S13","mechanism":' in _qj.ROLE and '"set_aside":[{"id":"S30","why":' in _qj.ROLE
+          and "every sample of your library is in exactly one of the three" in _qj.ROLE and "a sealed can opened with one finger" in _qj.ROLE)
+    saved_j = (_qj._run_claude, _qj.library, _qj._prompts_text)
+    try:
+        _qj.library = lambda: [{"id": "S1", "prompts": "pair"}]
+        _qj._prompts_text = lambda sid, s: f"PROMPTS OF {sid}"
+        _qj._run_claude = lambda msg, *a, **k: {"result": json.dumps({"template": "T2", "basis": [{"id": "S1", "worked": "w2"}]}), "total_cost_usd": 0}
+        first_j = {"template": "T1", "basis": [{"id": "S1"}], "avoided": [{"id": "S2", "mechanism": "m"}], "set_aside": [{"id": "S3", "why": "w"}]}
+        p2j, _cj, turns_j, sent_j = _qj._prompts_round(first_j, {"session_id": "x", "model": "m"}, "basis", [], ())
+    finally:
+        _qj._run_claude, _qj.library, _qj._prompts_text = saved_j
+    check("a template answered again after the final prompts round keeps what it decided for the other samples when its new answer leaves that out",
+          p2j.get("template") == "T2" and p2j.get("avoided") == first_j["avoided"] and p2j.get("set_aside") == first_j["set_aside"] and sent_j == ["S1"],
+          str(p2j)[:300])
     print("\n[cleanup]")
     httpd.shutdown()
     shutil.rmtree(TMP, ignore_errors=True)

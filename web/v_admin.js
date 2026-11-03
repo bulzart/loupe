@@ -80,13 +80,14 @@ function asksLines(a) {
 // The open gaps across the recent consultations: what the keeper could not get and what the library does not cover. The admin closes a gap by adding a
 // sample (Generation misses) or by answering in a report's words; nothing here changes the library.
 function gapsCard(cons) {
-  const rows = cons.filter((c) => c.asks && ((c.asks.needs_unmet || []).length || c.asks.not_covered || (c.asks.flags || []).length));
+  const rows = cons.filter((c) => c.asks && ((c.asks.needs_unmet || []).length || c.asks.not_covered || (c.asks.flags || []).length || (c.asks.unjudged || []).length));
   return h('div', { class: 'card', style: 'margin-top:14px' }, h('h2', {}, 'What the keeper is missing'),
-    h('p', { class: 'muted small' }, 'From the last 50 consultations: what the keeper asked for and could not get, what it flagged as missing or ambiguous in a sample’s record, and what it said the library does not cover. A new or corrected sample in Generation misses is how a gap gets closed.'),
+    h('p', { class: 'muted small' }, 'From the last 50 consultations: what the keeper asked for and could not get, what it flagged as missing or ambiguous in a sample’s record, what it said the library does not cover, and the samples a prompt template left unjudged. A new or corrected sample in Generation misses is how a gap gets closed.'),
     rows.length ? rows.map((c) => h('div', { class: 'card', style: 'margin-top:6px' }, h('div', { class: 'muted small' }, `${fmtDate(c.ts)} · ${c.purpose === 'plan' ? 'planning' : c.purpose === 'template' ? 'prompt template' : 'QC'} · ${c.run || ''} ${c.video || ''}`),
       (c.asks.needs_unmet || []).map((n) => h('div', {}, `could not get ${n.kind}${n.question ? ': ' + n.question : ''}${n.reason ? ' (' + n.reason + ')' : ''}`)),
       c.asks.not_covered ? h('div', {}, 'not covered: ' + c.asks.not_covered) : null,
-      (c.asks.flags || []).map((f) => h('div', {}, `flagged ${f.id || 'the library'}: ${f.what}${f.effect ? ' (' + f.effect + ')' : ''}`)))) : h('div', { class: 'empty' }, 'Nothing missing in the recent consultations.'));
+      (c.asks.flags || []).map((f) => h('div', {}, `flagged ${f.id || 'the library'}: ${f.what}${f.effect ? ' (' + f.effect + ')' : ''}`)),
+      (c.asks.unjudged || []).length ? h('div', {}, `left unjudged: ${c.asks.unjudged.join(', ')} (the template named them as neither read, designed out nor set aside)`) : null)) : h('div', { class: 'empty' }, 'Nothing missing in the recent consultations.'));
 }
 
 // What a data collector saw in each sample's picture: collected once by a session that opened it (no verdict, never the prompts), kept as one JSON file per

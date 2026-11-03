@@ -1038,7 +1038,9 @@ ROLE = ("You are the Loupe keeper of a video-generation pipeline. You hold a lib
         "generated from, so it starts from what already worked and what failed in earlier generations: the pipeline puts your prompt in the request word for "
         "word and does not rewrite it. Step 1: answer ONE JSON object "
         '{"read":["S12"],"needs":[<optional>]} naming the samples (at most ' + str(TEMPLATE_READ) + ', best first) whose saved prompts you need: those whose record says PROMPTS ... SAVED '
-        "and whose product detail and scene mechanism match a part of this brief; an empty list when none does. Loupe sends the prompts of each, whole. Step 2: read the prompts of each "
+        "and whose product detail and scene mechanism match a part of this brief; an empty list when none does. Loupe sends the prompts of each, whole. The prompts "
+        "only show how a version was prompted: every sample of your library stays in view for step 2 from its record, whether you read its prompts or not. "
+        "Step 2: read the prompts of each "
         "yourself, judge what the correct version's prompt (the generations the frames called RIGHT come from) did that worked and what the flawed version's prompt "
         "(the generations the frames called WRONG come from, which generated the flawed version) did that failed; a sample with one of them only gives that one "
         "(a prompt named an example prompt is the prompt of an example: a suggestion of what could have changed or been done another way, neither a bad "
@@ -1049,12 +1051,24 @@ ROLE = ("You are the Loupe keeper of a video-generation pipeline. You hold a lib
         "made a correct version work wherever the situation is the same, adapted "
         "to this product and scene (never another video's nouns); design each failure out in positive words (the right state written as what the right version "
         "shows, the wrong behaviour never named, no list of negatives, at most one targeted exclusion for the product); and put [SLOT: <what goes here>] only "
-        "for a value the brief does not give. When no sample applies, the final prompt is the checked draft, changed only where the structure requires, and "
-        "basis is empty. The request names the video model the prompt is for: write for that model, carry a sample's wording only "
+        "for a value the brief does not give. When no sample applies, the final prompt is the checked draft, changed only where the structure requires, "
+        "basis and avoided are empty and every sample is set aside. The request names the video model the prompt is for: write for that model, carry a sample's wording only "
         "from a sample generated with the same model (or one whose mechanism you name as model-independent), and say each basis sample's model in worked. "
+        "Then go through EVERY sample of your library (the admin, 2026-11-03), not only those whose prompts you read, and whatever its product or brand: its "
+        "miss can happen in this video when the same mechanism is at work, judged from its record alone (the miss, the admin's words, its frames and what its "
+        "picture shows): the product's physics (a rigid or a soft body, sealed or open, its size and weight, how it is held and opened) and the scene's action "
+        "(a hand on it, one object meeting or passing another, an opening, a pour, a cut). A hand passing through a rigid can applies to any rigid product a "
+        "hand meets in this video; a sealed can opened with one finger in a split second applies to any sealed product opened here. Design every miss that "
+        "applies out of the final prompt as you design those you read (the right state in positive words at the beat it concerns, never the wrong behaviour "
+        "named, within the prompt limit), and record what you decided for each sample: basis (the samples whose prompts you read and used), avoided (every "
+        "other sample whose miss could happen here: the mechanism it shares with this video, why it applies to this product and scene, and where your prompt "
+        "handles it) and set_aside (every remaining sample, with why its miss cannot happen here); every sample of your library is in exactly one of the "
+        "three. The pipeline keeps them in a file for this video, not in its conversation: be exact and short. "
         "Answer ONE JSON object and no other text: "
         '{"template":"<the whole final prompt>","basis":[{"id":"S12","worked":"<what the correct version\'s prompt did that worked>","failed":"<what the flawed version\'s '
-        'prompt did that failed>","where":"<which part of the prompt carries it>"}],"notes":"<at most 120 words: what you changed from the draft and why>",'
+        'prompt did that failed>","where":"<which part of the prompt carries it>"}],"avoided":[{"id":"S13","mechanism":"<what this video shares with that '
+        'miss>","why":"<why it can happen to this product in this scene>","where":"<which part of your prompt designs it out>"}],"set_aside":[{"id":"S30",'
+        '"why":"<why its miss cannot happen here>"}],"notes":"<at most 120 words: what you changed from the draft and why>",'
         '"changes":[{"what":"<a part of the plan that earlier generations say should change, already carried in your prompt>","why":"<the sample and the mechanism>","id":"S12"}],'
         '"not_covered":"<what in the brief the library does not cover, or empty>","product_images":[<see PRODUCT IMAGES; [] keeps the draft\'s>],'
         '"needs":[<optional, see ASK, DO NOT GUESS>],"flags":[<optional, see FLAG, DO NOT PAPER OVER>]}. '
@@ -1536,6 +1550,10 @@ def _prompts_round(parsed, st: dict, key: str, asked: list, done=()):
     st["chars"] = st.get("chars", 0) + _carried(msg, res)
     p2 = _json_of(res.get("result", ""))
     ok = isinstance(p2, dict) and isinstance(p2.get(key), list) and (key != "basis" or isinstance(p2.get("template"), str))
+    if ok and key == "basis":        # a template answered again keeps what it decided for every other sample when it leaves that out
+        for k in ("avoided", "set_aside"):
+            if not isinstance(p2.get(k), list) and isinstance(parsed.get(k), list):
+                p2[k] = parsed[k]
     return (p2 if ok else parsed), float(res.get("total_cost_usd") or 0), 1, todo
 
 
@@ -1578,8 +1596,8 @@ def _template_round(parsed, st: dict, ctx: dict):
            + (f" Files Loupe fetched are in {d} (Read them)." if d else "")
            + ("\n\n" + "\n\n".join(parts) if parts else "")
            + "\n\nNow write the final prompt: answer with the TEMPLATE JSON object only (template = the whole final prompt, every must-carry line word for word; "
-             "basis, notes, changes, not_covered, and flags for what is missing or ambiguous in a record you used); add needs only for what Loupe could still "
-             "fetch and you cannot write it without.")
+             "basis, then avoided and set_aside, so that every sample of your library is in one of the three; notes, changes, not_covered, and flags for what "
+             "is missing or ambiguous in a record you used); add needs only for what Loupe could still fetch and you cannot write it without.")
     res = _run_claude(msg, st["session_id"], True, st["model"])
     st["chars"] = st.get("chars", 0) + _carried(msg, res)
     return _json_of(res.get("result", "")), read, float(res.get("total_cost_usd") or 0), 1, asked
@@ -1605,10 +1623,14 @@ def product_images_from(parsed) -> list[dict]:
 
 
 def template_from(parsed, lib: dict) -> dict:
-    """The keeper's template answer, held to its shape: the template whole (a video generation prompt, never cut), basis only for samples that exist, short fields."""
+    """The keeper's template answer, held to its shape: the template whole (a video generation prompt, never cut), basis only for samples that exist
+    (up to TEMPLATE_READ, the samples whose prompts it may read), short fields; and what it decided for every other sample of the library (the admin,
+    2026-11-03): avoided (a miss that could happen in this video through the same mechanism, designed out of the prompt, with that mechanism, why it
+    applies and where the prompt handles it) and set_aside (with why it cannot happen here), each sample once (basis first, then avoided), and
+    unjudged: the library's samples the answer named in none of the three."""
     p = parsed if isinstance(parsed, dict) else {}
     basis = []
-    for b in (p.get("basis") or [])[:8]:
+    for b in (p.get("basis") or [])[:TEMPLATE_READ]:
         if isinstance(b, dict) and b.get("id") in lib:
             s = lib[b["id"]]
             basis.append({"id": s["id"], "worked": _clip(b.get("worked", ""), 600), "failed": _clip(b.get("failed", ""), 600), "where": _clip(b.get("where", ""), 300),
@@ -1617,7 +1639,16 @@ def template_from(parsed, lib: dict) -> dict:
     changes = [{"what": _clip(c.get("what", ""), 400), "why": _clip(c.get("why", ""), 400), "id": str(c.get("id") or "")[:12]}
                for c in (p.get("changes") or [])[:5] if isinstance(c, dict) and str(c.get("what") or "").strip()]
     tpl = str(p.get("template") or "").strip()
-    return {"template": tpl, "basis": basis, "notes": _clip(p.get("notes", ""), 900), "product_images": product_images_from(p),
+    seen = {b["id"] for b in basis}
+    avoided, set_aside = [], []
+    for k, out, fields in (("avoided", avoided, (("mechanism", 400), ("why", 400), ("where", 300))), ("set_aside", set_aside, (("why", 300),))):
+        for x in (p.get(k) or []) if isinstance(p.get(k), list) else []:
+            sid = str(x.get("id") or "").strip() if isinstance(x, dict) else ""
+            if sid in lib and sid not in seen:
+                seen.add(sid)
+                out.append({"id": sid, **{f: _clip(x.get(f, ""), n) for f, n in fields}, "title": _clip(lib[sid].get("title", ""), 200)})
+    return {"template": tpl, "basis": basis, "avoided": avoided, "set_aside": set_aside, "unjudged": [sid for sid in lib if sid not in seen] if p else [],
+            "notes": _clip(p.get("notes", ""), 900), "product_images": product_images_from(p),
             "changes": changes, "not_covered": _clip(p.get("not_covered", ""), 500),
             "none_reason": "" if tpl else ("the keeper gave no template" if p else "the keeper's answer was not a JSON object")}
 
@@ -1792,7 +1823,7 @@ def consult(key_name: str, ctx: dict, question: str, purpose: str = "qc") -> dic
     if lib_now:
         res["library_read"] = library_read()          # which samples the keeper holds from their pictures; the rest it judged from the admin's words alone
     ids_used = ",".join(x["id"] for x in (res.get("hints") if plan else res.get("basis") if tmpl else res.get("relevant", res.get("samples", []))) or [])
-    asks = {k: res[k] for k in ("needs_asked", "needs_unmet", "not_covered", "none_reason", "held_back_why", "keeper_error", "flags") if res.get(k)}
+    asks = {k: res[k] for k in ("needs_asked", "needs_unmet", "not_covered", "none_reason", "held_back_why", "keeper_error", "flags", "unjudged") if res.get(k)}
     if lib_now and res.get("library_read", {}).get("not_read"):
         asks["not_read"] = res["library_read"]["not_read"]
     con = core.db()
