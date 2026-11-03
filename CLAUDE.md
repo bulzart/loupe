@@ -24,6 +24,6 @@ After every edit to Loupe (code, routes, UI, hooks, keys, the `atp.py`, `atg.py`
 ## Conventions
 
 - Many files use CRLF line endings: preserve each file's own endings when editing.
-- No niche, brand or product names in code: they are data that the pipeline's agents collect and decide. Scripts gather and record; the agents decide.
+- Scripts gather and record; the agents decide. Brand and product names may stand in code, docs and tests where they belong (the admin, 2026-11-03).
 - No `innerHTML` anywhere in the UI: every value reaches the page as a text node or an attribute.
 - Never leave backup copies inside this folder.
