@@ -39,6 +39,118 @@
   }
  ],
  "product_sample_chosen": false,
+ "images_sent": [
+  {
+   "asset": "A25",
+   "label": "c1, c2 · Image 1 · A25 · download (18).jpg",
+   "file": "image1-character-C-CEL-13-head.jpg",
+   "image": "c1, c2 · Image 1",
+   "kind": "character",
+   "fingerprint": "cd3e5267",
+   "sent_fingerprint": "400a06b1",
+   "original": "C:/Users/Glaresquare1/Documents/celsius/celsius_assets/download (18).jpg",
+   "original_name": "download (18).jpg",
+   "prepared": "head-and-neck crop (above the collar) on neutral grey RGB 128, face about half the image width; the grey printed t-shirt, the tattooed arms, the hanging rug and the gold frame cut away; not mirrored",
+   "recorded": "source",
+   "job": "3d6098e3-c034-48cd-a1f6-9f652cc304c2",
+   "jobs": [
+    "3d6098e3-c034-48cd-a1f6-9f652cc304c2",
+    "3366be81-bde3-4317-874f-ad2ca0482e8b"
+   ]
+  },
+  {
+   "asset": "A45",
+   "label": "c1, c2 · Image 2 · A45 · 🌞.jpg",
+   "file": "image2-character-C-CEL-20-head.jpg",
+   "image": "c1, c2 · Image 2",
+   "kind": "character",
+   "fingerprint": "b0234c28",
+   "sent_fingerprint": "d790bd04",
+   "original": "C:/Users/Glaresquare1/Documents/celsius/celsius_assets/🌞.jpg",
+   "original_name": "🌞.jpg",
+   "prepared": "head-and-neck crop (above the collar) on neutral grey RGB 128, face about half the image width; the navy t-shirt and the textured wall cut away; not mirrored",
+   "recorded": "source",
+   "job": "3d6098e3-c034-48cd-a1f6-9f652cc304c2",
+   "jobs": [
+    "3d6098e3-c034-48cd-a1f6-9f652cc304c2",
+    "3366be81-bde3-4317-874f-ad2ca0482e8b"
+   ]
+  },
+  {
+   "asset": "A42",
+   "label": "c1, c2 · Image 3 · A42 · watermelon front - cans usa.png",
+   "file": "image3-product-P-CEL-WATERMELON-front-padded.png",
+   "image": "c1, c2 · Image 3",
+   "kind": "product",
+   "fingerprint": "0d77b463",
+   "sent_fingerprint": "f5f52e42",
+   "original": "C:/Users/Glaresquare1/Documents/celsius/celsius_assets/watermelon front - cans usa.png",
+   "original_name": "watermelon front - cans usa.png",
+   "prepared": "the can (1700x5013 RGBA, transparent margin trimmed) scaled to about 205x604 px, centred on a 1440x1440 light-grey field RGB 236 (the delivered video 01 recipe); black lid and flat tab as the render shows",
+   "recorded": "source",
+   "job": "3d6098e3-c034-48cd-a1f6-9f652cc304c2",
+   "jobs": [
+    "3d6098e3-c034-48cd-a1f6-9f652cc304c2",
+    "3366be81-bde3-4317-874f-ad2ca0482e8b"
+   ]
+  }
+ ],
+ "product_samples": [
+  {
+   "asset": "A25",
+   "label": "c1, c2 · Image 1 · A25 · download (18).jpg",
+   "file": "image1-character-C-CEL-13-head.jpg",
+   "image": "c1, c2 · Image 1",
+   "kind": "character",
+   "fingerprint": "cd3e5267",
+   "sent_fingerprint": "400a06b1",
+   "original": "C:/Users/Glaresquare1/Documents/celsius/celsius_assets/download (18).jpg",
+   "original_name": "download (18).jpg",
+   "prepared": "head-and-neck crop (above the collar) on neutral grey RGB 128, face about half the image width; the grey printed t-shirt, the tattooed arms, the hanging rug and the gold frame cut away; not mirrored",
+   "recorded": "source",
+   "job": "3d6098e3-c034-48cd-a1f6-9f652cc304c2",
+   "jobs": [
+    "3d6098e3-c034-48cd-a1f6-9f652cc304c2",
+    "3366be81-bde3-4317-874f-ad2ca0482e8b"
+   ]
+  },
+  {
+   "asset": "A45",
+   "label": "c1, c2 · Image 2 · A45 · 🌞.jpg",
+   "file": "image2-character-C-CEL-20-head.jpg",
+   "image": "c1, c2 · Image 2",
+   "kind": "character",
+   "fingerprint": "b0234c28",
+   "sent_fingerprint": "d790bd04",
+   "original": "C:/Users/Glaresquare1/Documents/celsius/celsius_assets/🌞.jpg",
+   "original_name": "🌞.jpg",
+   "prepared": "head-and-neck crop (above the collar) on neutral grey RGB 128, face about half the image width; the navy t-shirt and the textured wall cut away; not mirrored",
+   "recorded": "source",
+   "job": "3d6098e3-c034-48cd-a1f6-9f652cc304c2",
+   "jobs": [
+    "3d6098e3-c034-48cd-a1f6-9f652cc304c2",
+    "3366be81-bde3-4317-874f-ad2ca0482e8b"
+   ]
+  },
+  {
+   "asset": "A42",
+   "label": "c1, c2 · Image 3 · A42 · watermelon front - cans usa.png",
+   "file": "image3-product-P-CEL-WATERMELON-front-padded.png",
+   "image": "c1, c2 · Image 3",
+   "kind": "product",
+   "fingerprint": "0d77b463",
+   "sent_fingerprint": "f5f52e42",
+   "original": "C:/Users/Glaresquare1/Documents/celsius/celsius_assets/watermelon front - cans usa.png",
+   "original_name": "watermelon front - cans usa.png",
+   "prepared": "the can (1700x5013 RGBA, transparent margin trimmed) scaled to about 205x604 px, centred on a 1440x1440 light-grey field RGB 236 (the delivered video 01 recipe); black lid and flat tab as the render shows",
+   "recorded": "source",
+   "job": "3d6098e3-c034-48cd-a1f6-9f652cc304c2",
+   "jobs": [
+    "3d6098e3-c034-48cd-a1f6-9f652cc304c2",
+    "3366be81-bde3-4317-874f-ad2ca0482e8b"
+   ]
+  }
+ ],
  "shapes": [
   {
    "type": "rect",
