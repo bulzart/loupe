@@ -373,9 +373,9 @@ def video_originals(rd: Path, nn: str) -> list[dict]:
     led = _json(rd / "50-requests" / f"video-{nn}-uploads.json") or {}       # the video's uploads record: what each label was uploaded from
     for key, u in (led.get("uploads") or {}).items() if isinstance(led, dict) and isinstance(led.get("uploads"), dict) else []:
         m = re.match(r"^\s*(?:(\S+)\s+)?@?video\s*1\b", str(key), re.I)          # the first video input: "Video 1", "a1 Video 1: original reference"
-        f = u.get("file") if isinstance(u, dict) else None
-        if m and isinstance(f, str) and f and Path(f).is_file():
-            sent.append((Path(f), m.group(1) or "", False))
+        f = run_file(rd, u.get("file")) if isinstance(u, dict) and isinstance(u.get("file"), str) else None
+        if m and f and f.is_file():
+            sent.append((f, m.group(1) or "", False))
     for p in st.get("recreate_picks") or []:
         if isinstance(p, dict) and core.nn(p.get("n") if p.get("n") is not None else p.get("video")) == nn:
             clip_in(p.get("ref"))
@@ -702,7 +702,8 @@ def input_sources(rd: Path, video: str) -> dict:
     st = _json(rd / "state.json") or {}
     inv, names = _inventory(rd)
     led = (_json(rd / "50-requests" / f"video-{nn}-uploads.json") or {}).get("uploads")
-    by_mid = {str(v.get("media_id")): str(v.get("file") or "") for v in (led.values() if isinstance(led, dict) else []) if isinstance(v, dict) and v.get("media_id")}
+    by_mid = {str(v.get("media_id")): str(run_file(rd, v.get("file")) or "") for v in (led.values() if isinstance(led, dict) else [])
+              if isinstance(v, dict) and v.get("media_id")}
     ups = _uploads(rd)
     out: dict = {}
     rq = rd / "50-requests"
@@ -726,7 +727,7 @@ def input_sources(rd: Path, video: str) -> dict:
             mid = str(m.get("value") or "")
             for k in (m.get("file"), by_mid.get(mid), (ups.get(mid) or {}).get("file")):
                 if k:
-                    out.setdefault(_file_key(k), rec)
+                    out.setdefault(_file_key(run_file(rd, k)), rec)
             if mid and not mid.startswith("<"):
                 out.setdefault(mid, rec)
     return out
@@ -886,6 +887,30 @@ def _upload_file(v: dict) -> str:
     return next((v[k].strip() for k in UPLOAD_FILE_KEYS if isinstance(v.get(k), str) and v[k].strip()), "")
 
 
+def run_file(rd: Path | None, f) -> Path | None:
+    """A file a run's records name, as a path (None for no name): an absolute one as it is; a relative one inside the run (55-references/...); else,
+    when it names the run's own folder ('runs/<run>/55-references/...', as an agent working from the pipeline's home recorded it: the admin,
+    2026-11-03, the takes of four runs offered no image), what follows that folder; else from the pipeline's home.  Returned whether or not the file
+    exists (inside the run when none of them does)."""
+    s = str(f or "").strip()
+    if not s:
+        return None
+    p = Path(s)
+    if p.is_absolute() or rd is None:
+        return p
+    inside = rd / p
+    if inside.exists():
+        return inside
+    parts = p.parts
+    for i in range(len(parts) - 1):
+        if parts[i] == rd.name:
+            q = rd.joinpath(*parts[i + 1:])
+            if q.exists():
+                return q
+    home = rd.parent.parent / p
+    return home if home.exists() else inside
+
+
 def _uploaded_files(rd: Path, nn: str) -> dict:
     """media id -> (the local file the run uploaded under it, the words its record files it under), from the records the run wrote when it uploaded, in
     every form runs wrote them: the video's uploads records (video-NN*-uploads.json, of any shape: an entry with its media_id, or id, beside its file
@@ -897,7 +922,7 @@ def _uploaded_files(rd: Path, nn: str) -> dict:
         if isinstance(v, dict):
             mid, f = v.get("media_id") or v.get("id"), _upload_file(v)
             if isinstance(mid, str) and mid and f:
-                res.setdefault(mid, (f, " ".join(str(x) for x in (key, v.get("who") or "", v.get("role") or "") if x)))
+                res.setdefault(mid, (str(run_file(rd, f)), " ".join(str(x) for x in (key, v.get("who") or "", v.get("role") or "") if x)))
             for k, x in v.items():
                 walk(x, k if isinstance(x, (dict, list)) else key)
         elif isinstance(v, list):
@@ -1075,9 +1100,7 @@ def sent_images(run: str, video: str, wrong: str = "", path: str = "") -> list[d
             img = f"Image {counts[role]}" if role == "image_references" else SENT_ROLES[role]
             f, filed = uploaded.get(mid) or (str(m.get("file") or "") or str(files_said.get(img) or "")
                                              or str(_request_built(rd, str(meaning.get(img) or ""), built) or ""), "")
-            p = Path(f) if f else None
-            if p and not p.is_absolute():
-                p = rd / p
+            p = run_file(rd, f) if f else None
             if not (p and p.is_file() and p.suffix.lower() in IMAGE_EXT):
                 continue
             pk = _file_key(p)
@@ -1646,7 +1669,7 @@ def _uploads(rd: Path) -> dict:
                 continue
             mid = (v.get("media_id") or v.get("id")) if isinstance(v, dict) else v
             if isinstance(mid, str) and mid.strip() and not re.search(r"\s", mid.strip()) and mid not in res:
-                res[mid] = {"name": name, "file": _upload_file(v) if isinstance(v, dict) else ""}
+                res[mid] = {"name": name, "file": str(run_file(rd, _upload_file(v)) or "") if isinstance(v, dict) else ""}
     return res
 
 

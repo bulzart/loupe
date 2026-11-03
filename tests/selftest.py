@@ -1671,6 +1671,11 @@ def main(with_keeper=False):
           and smp21.get("product_images") == [{"image": "Image 2", "asset": "A14", "file": "product-front.png", "fingerprint": mk_f21,
                                                "prepared": "padded to 9:16 on white", "recorded": True, "video": "A and B"}]
           and "Videos A and B for one sent with both" in _pq.LIB_HEADER, dig21[:700] + " || " + smp21.get("record", "")[:700])
+    got21 = _pq._fulfil({"kind": "sample_origin", "id": f"S{mo21}"}, {}, TMP / "fulfil", False)
+    check("what the judge fetches about a sample of two videos hands it the product images its generations were sent, from the client's originals, "
+          "each with the video it was sent with",
+          f"PRODUCT IMAGE 1 OF S{mo21} (product image 1, A14 · product-front.png #{mk_f21}, which the request calls Image 2, sent with Videos A and B): "
+          in got21.get("text", "") and "PRODUCT IMAGE 2 OF" not in got21.get("text", ""), got21.get("text", "")[-600:])
     s, d, _ = req("PATCH", f"/api/misses/{pm21}", {"sample_files": [str(v21 / "a2" / "image1-character-woman.png")]})
     meta21c, meta21d = m21(mo21), m21(mo21b)
     s2, d2, _ = req("PATCH", f"/api/misses/{pm21}", {"sample_files": [str(v21 / "a1" / "image1-character-man.png")]})
@@ -1688,6 +1693,24 @@ def main(with_keeper=False):
     one21 = runs.videos_sent_images("20261001-000000-07", "21", [("A", str(take21["a1"]), str(take21["a1"])), ("B", str(clean21), str(clean21))])
     check("two files of one generation (a take and a copy made from it) read as that one generation: its images, named as before",
           one21["two"] is False and [x["label"] for x in one21["images"]] == ["Image 1 · A28 · person.png", "Image 2 · A14 · product-front.png"], str(one21)[:500])
+    v22 = atp_run / "55-references" / "video-22" / "a1"
+    v22.mkdir(parents=True, exist_ok=True)
+    _PI.new("RGB", (300, 400), (90, 90, 200)).save(v22 / "image1-product-P1-front-padded.png")
+    take22 = atp_run / "60-outputs" / "video-22" / "a1" / "raw.mp4"
+    mkvideo(take22, "0x203050", "white")
+    (atp_run / "50-requests" / "video-22-request.json").write_text(json.dumps({"params": {"model": "wan3_0_prime", "duration": 5,
+        "prompt": "Video twenty-two: the can of Image 1.",
+        "medias": [{"role": "image_references", "value": "m221", "build": f"from {ref9 / 'product-front.png'} (A14): padded to 9:16 on white"}]}}))
+    home_rel = f"runs/{atp_run.name}/55-references/video-22/a1/image1-product-P1-front-padded.png"      # as an agent working from the pipeline's home wrote it
+    (atp_run / "50-requests" / "video-22-uploads.json").write_text(json.dumps({"video": "22", "schema": 1, "uploads": {
+        "a1 Image 1: P1 front padded": {"media_id": "m221", "file": home_rel, "role": "image_references"}}}))
+    ledger_add("video-22-request.json", "job-2201")
+    s22 = runs.sent_images("20261001-000000-07", "22", str(take22), path=str(take22))
+    pf22 = v22 / "image1-product-P1-front-padded.png"
+    check("a file an uploads record names relative to the pipeline's home (runs/<run>/...) is found in the run, as one named inside the run or in full",
+          [x["name"] for x in s22] == ["image1-product-P1-front-padded.png"] and runs.run_file(atp_run, home_rel) == pf22
+          and runs.run_file(atp_run, "55-references/video-22/a1/image1-product-P1-front-padded.png") == pf22 and runs.run_file(atp_run, str(pf22)) == pf22
+          and runs.run_file(atp_run, "") is None and runs.run_file(atp_run, "nowhere/x.png") == atp_run / "nowhere" / "x.png", str(s22)[:300])
     req("DELETE", f"/api/misses/{pm21}")
     # the admin, 2026-11-03: a request written with the attempt last (video-06-request-a2.json) is the take a2's own, read like video-06-a2-request.json
     rq_n = TMP / "attempt-last" / "50-requests"

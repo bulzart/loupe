@@ -352,7 +352,10 @@ export async function work(qs) {
       const anyChosen = d.assets.some(isChosen);
       if (chosen.size && !anyChosen) assetsTouched = true;      // ticked for another take: this take's automatic pick stands until you tick
       const ticked = (a) => (anyChosen ? isChosen(a) : a.suggested);
-      if (!miss && !productTyped) { const w = [...new Set(d.assets.filter((a) => a.kind === 'product' && a.words).map((a) => a.words))]; if (w.length) product.value = w.join(' + '); }
+      if (!miss && !productTyped) {      // a new report's product: the words of Video A's product images (Video B's when Video A was sent none)
+        const pa = d.assets.filter((a) => a.kind === 'product' && a.words), own = pa.filter((a) => !(a.videos || []).length || a.videos.includes('A'));
+        const w = [...new Set((own.length ? own : pa).map((a) => a.words))]; if (w.length) product.value = w.join(' + ');
+      }
       assetBoxes = [];
       if (!d.assets.length) { sampleBox.replaceChildren(h('span', { class: 'muted' }, (fl ? 'No image sent with the generation of either video is recorded in its run' : 'No image sent with this generation is recorded in its run') + ' (its request is not in the ledger or changed since it was submitted, its uploads name no file, or which attempt this version is cannot be told), so the description takes the full width of the bottom band.')); return; }
       const cells = d.assets.map((a) => {

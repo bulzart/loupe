@@ -19,6 +19,7 @@ let tickOnCopy = false;      // the report's tick was saved on another copy of t
 let withSegs = false;        // the picked take was joined from two generations (clips)
 let withSavedSegs = false;   // the report was saved with the flawed version's box written from a take of two generations
 let withTwo = false;         // the report's Video B was made by another generation: the images sent with each, each naming its video
+let withTwoNew = false;      // a new report whose two videos were sent different product images
 const savedMoment = { moment_id: 5, id: 'S5', image_url: '/x?a=5', updated: 'u', details: 'the pack is right early', correct_note: 'c', has_right: true,
   frames: [{ src: 'wrong', role: 'right', t: 0.5, desc: 'as generated' }, { src: 'wrong', role: 'wrong', t: 3.0, desc: 'as generated' }, { src: 'fixed', role: 'right', t: 3.25, desc: 'correct version' }],
   shapes: [{ type: 'rect', frame: 1, x1: 0.1, y1: 0.1, x2: 0.4, y2: 0.4 }] };
@@ -80,7 +81,10 @@ const api = async (method, url, body) => {
     { path: 'H.png', name: 'h.png', label: 'Image 1 · C04 head', source: 'sent with job job-1', kind: 'character', words: 'the man', asset_id: '', request: 'video-03-request.json', suggested: true, image_url: '/h.png' }]
     : (withTwo && url.includes('&fixed=')) ? [
       { path: 'P.png', name: 'p.png', label: 'Videos A and B · Image 2 · A14 · front.png', videos: ['A', 'B'], source: 'sent with jobs job-1, job-2', kind: 'product', words: 'the can', asset_id: 'A14', request: 'video-03-request.json', suggested: true, image_url: '/p.png' },
-      { path: 'W.png', name: 'w.png', label: 'Video B · Image 1 · A29 · woman.png', videos: ['B'], source: 'sent with job job-2', kind: 'character', words: 'the woman', asset_id: 'A29', request: 'video-03-a2-request.json', suggested: true, image_url: '/w.png' }] : [] };
+      { path: 'W.png', name: 'w.png', label: 'Video B · Image 1 · A29 · woman.png', videos: ['B'], source: 'sent with job job-2', kind: 'character', words: 'the woman', asset_id: 'A29', request: 'video-03-a2-request.json', suggested: true, image_url: '/w.png' }]
+    : withTwoNew ? [
+      { path: 'PA.png', name: 'pa.png', label: 'Video A · Image 2 · A14 · front.png', videos: ['A'], source: 'sent with job job-1', kind: 'product', words: 'the can as Video A was sent it', asset_id: 'A14', request: 'video-03-request.json', suggested: true, image_url: '/pa.png' },
+      { path: 'PB.png', name: 'pb.png', label: 'Video B · Image 2 · A15 · upright.png', videos: ['B'], source: 'sent with job job-2', kind: 'product', words: 'the can upright', asset_id: 'A15', request: 'video-03-a2-request.json', suggested: true, image_url: '/pb.png' }] : [] };
   return {};
 };
 const code = read('v_misses.js').replace(/^import .*$/gm, '').replace(/^export (async )?function/gm, '$1function') + '\nreturn { work, pick };';
@@ -260,6 +264,13 @@ const ok = (name, cond, info = '') => { console.log((cond ? '  ok   ' : '  FAIL 
     && walk(root8c, (e) => e.tag === 'img' && e.attrs.alt === 'Video B · Image 1 · A29 · woman.png').length === 1
     && walk(root8c, (e) => e.tag === 'div' && (e.text || '').startsWith('The images each video’s generation was sent')).length === 1, JSON.stringify(ga8c));
   withTwo = false;
+  // a new report takes the product words of Video A's product images when the two videos were sent different ones
+  withTwoNew = true; withMoment = false; noRight = false;
+  const root8d = await work({ run: 'R', video: '03' });
+  await new Promise((r) => setTimeout(r, 0));
+  const prod8d = walk(root8d, (e) => e.tag === 'input' && (e.attrs.placeholder || '').startsWith('the product and its details'))[0];
+  ok('a new report takes the product words of Video A\'s product images when the two videos were sent different ones', prod8d && prod8d.value === 'the can as Video A was sent it', prod8d && prod8d.value);
+  withTwoNew = false;
   // a sample opened from the list (&moment=) comes back as it stands, with nothing to click
   withMoment = true; noRight = false; sent.length = 0;
   const root9 = await work({ run: 'R', video: '03', miss: '1', moment: '5' });

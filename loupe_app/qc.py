@@ -576,6 +576,21 @@ def _fingerprint_of(x: dict) -> str:
     return str(x.get("fingerprint") or "") or (runs.file_fingerprint(x.get("original")) if x.get("original") else "")
 
 
+def _video_words(x: dict) -> str:
+    """'Video A', 'Video B' or 'Videos A and B': the video(s) of its report an image was sent with, for a sample whose frames come from two videos
+    made by different generations (runs.videos_sent_images); '' otherwise."""
+    return runs.VIDEO_WORDS.get(tuple(str(v) for v in x.get("videos") or [] if v in ("A", "B")), "")
+
+
+def _asset_words(x: dict) -> str:
+    """An image's asset id, or each video's where the two runs gave the one picture different ids ('A14 of Video A, A07 of Video B')."""
+    aids = x.get("assets") if isinstance(x.get("assets"), dict) else {}
+    return ", ".join(f"{a} of Video {k}" for k, a in aids.items() if a) if len(set(aids.values())) > 1 else str(x.get("asset") or "")
+
+
+PRODUCT_FETCH_MAX = 4       # the product image files sample_origin copies for the judge
+
+
 def _pim_words(x: dict, long: bool) -> str:
     """'Image 2 · A82 · Carton_Single-Front.png #3f9a1c2b' (and, long, how it was prepared): the fingerprint of the original's content after its name,
     the same for the same file in every run (the admin, 2026-11-03); a file whose original the run did not record is named by the name it was picked by
@@ -583,15 +598,12 @@ def _pim_words(x: dict, long: bool) -> str:
     from two videos made by different generations starts with the video it was sent with ('Video B · ', 'Videos A and B · ': the admin, 2026-11-03)."""
     name, fp, sent = str(x.get("original_name") or ""), _fingerprint_of(x), str(x.get("sent_fingerprint") or "")
     tail = f" · the file sent #{sent}" if sent and not fp else ""
-    vids = tuple(str(v) for v in x.get("videos") or [] if v in ("A", "B"))
-    pre = runs.VIDEO_WORDS[vids] + " · " if vids in runs.VIDEO_WORDS else ""
+    pre = _video_words(x) + " · " if _video_words(x) else ""
     if not name:
         lab = str(x.get("label") or x.get("file") or "a product image")
         lab = lab if not pre or lab.startswith(pre) else pre + lab
         return (lab if "not recorded" in lab else lab + " · its original file is not recorded") + tail
-    aids = x.get("assets") if isinstance(x.get("assets"), dict) else {}
-    aid = ", ".join(f"{a} of Video {k}" for k, a in aids.items() if a) if len(set(aids.values())) > 1 else str(x.get("asset") or "")
-    words = pre + " · ".join(v for v in (str(x.get("image") or ""), aid, name) if v) + (f" #{fp}" if fp else tail)
+    words = pre + " · ".join(v for v in (str(x.get("image") or ""), _asset_words(x), name) if v) + (f" #{fp}" if fp else tail)
     return words + (f", prepared: {x['prepared']}" if long and x.get("prepared") else "")
 
 
@@ -1431,7 +1443,16 @@ def _fulfil(n: dict, ctx: dict, d: Path, plan: bool) -> dict:
                 if pr:
                     more.append(f"THE NEWEST REQUEST PROMPT OF THAT VIDEO, FROM ITS RUN (the admin saved no prompt for {sid}; which generation made which frame is "
                                 "not told here, so it is neither the flawed nor the correct version's prompt until you tie it to the frames): " + pr)
-                for k, ps in enumerate(runs.product_samples(s["run"], s["video"])[:2], 1):
+                # the product images the sample's generation was sent, as its record keeps them, from the client's original files (each video's when its
+                # frames come from two videos made by different generations: the admin, 2026-11-03); a sample whose record names none: the video's request's
+                own = [(x, Path(str(x["original"]))) for x in product_images(s) if x.get("original") and Path(str(x["original"])).is_file()]
+                for k, (x, p) in enumerate(own[:PRODUCT_FETCH_MAX], 1):
+                    mk = _fingerprint_of(x) or runs.file_fingerprint(p)
+                    vw = _video_words(x)
+                    more.append(f"PRODUCT IMAGE {k} OF {sid} (product image {k}, " + " · ".join(v for v in (_asset_words(x), str(x.get("original_name") or p.name)) if v)
+                                + (f" #{mk}" if mk else "") + f", which the request calls {x.get('image') or 'it'}" + (f", sent with {vw}" if vw else "")
+                                + f"): {_copy_in(p, d, f'{sid}-product-{k}')}")
+                for k, ps in enumerate(runs.product_samples(s["run"], s["video"])[:2] if not own else [], 1):
                     mk = runs.file_fingerprint(ps["path"])
                     more.append(f"PRODUCT IMAGE {k} OF {sid} (product image {k}, {ps['asset_id']} · {ps['name']}{' #' + mk if mk else ''}, which the request calls {ps['label']}): "
                                 f"{_copy_in(Path(ps['path']), d, f'{sid}-product-{k}')}")
