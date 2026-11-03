@@ -37,7 +37,7 @@
    "prepared": "Image 1: C04 identity (A10 ce6a267c...jpg, tight ellipse crop of the face and hair on grey, the hood edges excluded): facial identity only (the photo grins: expression excluded in the prompt)",
    "recorded": "named",
    "job": "96515abe-4752-4441-9d37-e729a50fd21c",
-   "fingerprint": "",
+   "fingerprint": "f5ef009d",
    "sent_fingerprint": "9e92ca40"
   },
   {
@@ -51,7 +51,7 @@
    "prepared": "Image 2: the sealed CELSIUS Cherry Cola can (A14 front, tab flat), padded small in a 2200x2200 white field: structure, proportions, material, colours, printed label",
    "recorded": "named",
    "job": "96515abe-4752-4441-9d37-e729a50fd21c",
-   "fingerprint": "",
+   "fingerprint": "5c33608c",
    "sent_fingerprint": "3d6eeaba"
   }
  ],
@@ -67,7 +67,7 @@
    "prepared": "Image 1: C04 identity (A10 ce6a267c...jpg, tight ellipse crop of the face and hair on grey, the hood edges excluded): facial identity only (the photo grins: expression excluded in the prompt)",
    "recorded": "named",
    "job": "96515abe-4752-4441-9d37-e729a50fd21c",
-   "fingerprint": "",
+   "fingerprint": "f5ef009d",
    "sent_fingerprint": "9e92ca40"
   },
   {
@@ -81,7 +81,7 @@
    "prepared": "Image 2: the sealed CELSIUS Cherry Cola can (A14 front, tab flat), padded small in a 2200x2200 white field: structure, proportions, material, colours, printed label",
    "recorded": "named",
    "job": "96515abe-4752-4441-9d37-e729a50fd21c",
-   "fingerprint": "",
+   "fingerprint": "5c33608c",
    "sent_fingerprint": "3d6eeaba"
   }
  ],
