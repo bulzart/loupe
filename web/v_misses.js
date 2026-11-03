@@ -368,7 +368,7 @@ export async function work(qs) {
         });
         return h('label', { class: 'card', style: 'padding:6px;width:150px;margin:0;cursor:pointer', title: `${a.kind ? a.kind + ' · ' : ''}${a.source} · the file sent: ${a.name}${a.original_name ? ' · made from ' + a.original_name : ' · its original file is not recorded'}${a.prepared ? ' · prepared: ' + a.prepared : ''}${a.request ? ' · ' + a.request : ''}` },
           h('img', { src: a.image_url, alt: a.label, style: 'width:100%;height:110px;object-fit:contain;border-radius:6px;background:#cdd0d6' }),
-          h('div', { class: 'row', style: 'gap:4px;margin-top:4px;align-items:flex-start;flex-wrap:nowrap' }, cb, h('span', { class: 'small' }, a.label)),
+          h('div', { class: 'row', style: 'gap:4px;margin-top:4px;align-items:flex-start;flex-wrap:nowrap' }, cb, h('span', { class: 'small', style: 'overflow-wrap:anywhere;min-width:0' }, a.label)),      // a long file name wraps inside its tile
           h('div', { class: 'muted small' }, (a.kind ? a.kind + ' · ' : '') + a.source));
       });
       sampleBox.replaceChildren(h('div', {},
