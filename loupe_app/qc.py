@@ -1061,13 +1061,13 @@ ROLE = ("You are the Loupe keeper of a video-generation pipeline. You hold a lib
         "hand meets in this video; a sealed can opened with one finger in a split second applies to any sealed product opened here. Design every miss that "
         "applies out of the final prompt as you design those you read (the right state in positive words at the beat it concerns, never the wrong behaviour "
         "named, within the prompt limit), and record what you decided for each sample: basis (the samples whose prompts you read and used), avoided (every "
-        "other sample whose miss could happen here: the mechanism it shares with this video, why it applies to this product and scene, and where your prompt "
-        "handles it) and set_aside (every remaining sample, with why its miss cannot happen here); every sample of your library is in exactly one of the "
+        "other sample whose miss could happen here: in mechanism, the miss and what this video shares with it; in where, which part of your prompt designs it "
+        "out, as in basis) and set_aside (every remaining sample, with why its miss cannot happen here); every sample of your library is in exactly one of the "
         "three. The pipeline keeps them in a file for this video, not in its conversation: be exact and short. "
         "Answer ONE JSON object and no other text: "
         '{"template":"<the whole final prompt>","basis":[{"id":"S12","worked":"<what the correct version\'s prompt did that worked>","failed":"<what the flawed version\'s '
-        'prompt did that failed>","where":"<which part of the prompt carries it>"}],"avoided":[{"id":"S13","mechanism":"<what this video shares with that '
-        'miss>","why":"<why it can happen to this product in this scene>","where":"<which part of your prompt designs it out>"}],"set_aside":[{"id":"S30",'
+        'prompt did that failed>","where":"<which part of the prompt carries it>"}],"avoided":[{"id":"S13","mechanism":"<the miss and what this video '
+        'shares with it, so it could happen here>","where":"<which part of your prompt designs it out>"}],"set_aside":[{"id":"S30",'
         '"why":"<why its miss cannot happen here>"}],"notes":"<at most 120 words: what you changed from the draft and why>",'
         '"changes":[{"what":"<a part of the plan that earlier generations say should change, already carried in your prompt>","why":"<the sample and the mechanism>","id":"S12"}],'
         '"not_covered":"<what in the brief the library does not cover, or empty>","product_images":[<see PRODUCT IMAGES; [] keeps the draft\'s>],'
@@ -1625,9 +1625,9 @@ def product_images_from(parsed) -> list[dict]:
 def template_from(parsed, lib: dict) -> dict:
     """The keeper's template answer, held to its shape: the template whole (a video generation prompt, never cut), basis only for samples that exist
     (up to TEMPLATE_READ, the samples whose prompts it may read), short fields; and what it decided for every other sample of the library (the admin,
-    2026-11-03): avoided (a miss that could happen in this video through the same mechanism, designed out of the prompt, with that mechanism, why it
-    applies and where the prompt handles it) and set_aside (with why it cannot happen here), each sample once (basis first, then avoided), and
-    unjudged: the library's samples the answer named in none of the three."""
+    2026-11-03): avoided (a miss that could happen in this video through the same mechanism, designed out of the prompt: the miss and what this video
+    shares with it, and where the prompt designs it out; an older answer's why is read as its mechanism) and set_aside (with why it cannot happen
+    here), each sample once (basis first, then avoided), and unjudged: the library's samples the answer named in none of the three."""
     p = parsed if isinstance(parsed, dict) else {}
     basis = []
     for b in (p.get("basis") or [])[:TEMPLATE_READ]:
@@ -1641,11 +1641,13 @@ def template_from(parsed, lib: dict) -> dict:
     tpl = str(p.get("template") or "").strip()
     seen = {b["id"] for b in basis}
     avoided, set_aside = [], []
-    for k, out, fields in (("avoided", avoided, (("mechanism", 400), ("why", 400), ("where", 300))), ("set_aside", set_aside, (("why", 300),))):
+    for k, out, fields in (("avoided", avoided, (("mechanism", 600), ("where", 300))), ("set_aside", set_aside, (("why", 300),))):
         for x in (p.get(k) or []) if isinstance(p.get(k), list) else []:
             sid = str(x.get("id") or "").strip() if isinstance(x, dict) else ""
             if sid in lib and sid not in seen:
                 seen.add(sid)
+                if k == "avoided" and not str(x.get("mechanism") or "").strip():
+                    x = {**x, "mechanism": x.get("why", "")}      # an answer that put the miss and its mechanism under why
                 out.append({"id": sid, **{f: _clip(x.get(f, ""), n) for f, n in fields}, "title": _clip(lib[sid].get("title", ""), 200)})
     return {"template": tpl, "basis": basis, "avoided": avoided, "set_aside": set_aside, "unjudged": [sid for sid in lib if sid not in seen] if p else [],
             "notes": _clip(p.get("notes", ""), 900), "product_images": product_images_from(p),

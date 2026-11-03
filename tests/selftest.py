@@ -1538,19 +1538,21 @@ def main(with_keeper=False):
     from loupe_app import qc as _qj
     libj = {f"S{i}": {"id": f"S{i}", "title": f"title {i}"} for i in range(1, 15)}
     tj = _qj.template_from({"template": "T", "basis": [{"id": f"S{i}", "worked": "w", "failed": "f", "where": "shot 1"} for i in range(1, 13)],
-                            "avoided": [{"id": "S11", "mechanism": "a hand meets a rigid body", "why": "he grips the carton", "where": "shot 2"},
+                            "avoided": [{"id": "S11", "mechanism": "a hand meets a rigid body", "where": "shot 2"}, {"id": "S13", "why": "an older answer's why"},
                                         {"id": "S1", "mechanism": "already in basis"}, {"id": "S99", "mechanism": "no such sample"}],
                             "set_aside": [{"id": "S12", "why": "nothing is opened"}, {"id": "S11", "why": "already avoided"}, "not a dict"]}, libj)
-    check("a template answer keeps what the judge decided for every sample: basis (up to the ten whose prompts it may read), avoided (mechanism, why, "
-          "where) and set aside (why), each sample once and only samples that exist, and lists those it named in none of them",
+    check("a template answer keeps what the judge decided for every sample: basis (up to the ten whose prompts it may read), avoided (mechanism and "
+          "where; an older answer's why read as its mechanism) and set aside (why), each sample once and only samples that exist, and lists those it named "
+          "in none of them",
           [b["id"] for b in tj["basis"]] == [f"S{i}" for i in range(1, 11)]
-          and tj["avoided"] == [{"id": "S11", "mechanism": "a hand meets a rigid body", "why": "he grips the carton", "where": "shot 2", "title": "title 11"}]
-          and tj["set_aside"] == [{"id": "S12", "why": "nothing is opened", "title": "title 12"}] and tj["unjudged"] == ["S13", "S14"]
+          and tj["avoided"] == [{"id": "S11", "mechanism": "a hand meets a rigid body", "where": "shot 2", "title": "title 11"},
+                                {"id": "S13", "mechanism": "an older answer's why", "where": "", "title": "title 13"}]
+          and tj["set_aside"] == [{"id": "S12", "why": "nothing is opened", "title": "title 12"}] and tj["unjudged"] == ["S14"]
           and _qj.template_from(None, libj)["unjudged"] == [], str({k: tj[k] for k in ("avoided", "set_aside", "unjudged")})[:400])
     check("the judge is told to go through every sample of its library, read or not and whatever its product, by the same mechanism, to design each miss "
           "that applies out of its prompt and to say what it decided for each (basis, avoided, set aside)",
           "Then go through EVERY sample of your library" in _qj.ROLE and "every sample of your library stays in view for step 2" in _qj.ROLE
-          and '"avoided":[{"id":"S13","mechanism":' in _qj.ROLE and '"set_aside":[{"id":"S30","why":' in _qj.ROLE
+          and '"avoided":[{"id":"S13","mechanism":' in _qj.ROLE and '"where":"<which part of your prompt designs it out>"}],"set_aside":[{"id":"S30","why":' in _qj.ROLE
           and "every sample of your library is in exactly one of the three" in _qj.ROLE and "a sealed can opened with one finger" in _qj.ROLE)
     saved_j = (_qj._run_claude, _qj.library, _qj._prompts_text)
     try:
