@@ -1587,6 +1587,11 @@ def main(with_keeper=False):
           "Then go through EVERY sample of your library" in _qj.ROLE and "every sample of your library stays in view for step 2" in _qj.ROLE
           and '"avoided":[{"id":"S13","mechanism":' in _qj.ROLE and '"where":"<which part of your prompt designs it out>"}],"set_aside":[{"id":"S30","why":' in _qj.ROLE
           and "every sample of your library is in exactly one of the three" in _qj.ROLE and "a sealed can opened with one finger" in _qj.ROLE)
+    check("in a Recreate video the judge keeps every action line of the draft with all its details: it may reword one to prevent a mistake, never "
+          "shorten it (the admin, 2026-11-04)",
+          "in a Recreate video (its mode says recreate: it edits an original video" in _qj.ROLE
+          and "keeps all its details (who does it, with which hand and grip, what is touched, switched on or opened" in _qj.ROLE
+          and "you may reword such a line to prevent a mistake, never shorten it;" in _qj.ROLE)
     saved_j = (_qj._run_claude, _qj.library, _qj._prompts_text)
     try:
         _qj.library = lambda: [{"id": "S1", "prompts": "pair"}]
