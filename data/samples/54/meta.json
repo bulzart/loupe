@@ -1,0 +1,299 @@
+{
+ "moment": 54,
+ "miss": 38,
+ "title": "The wrong frame the package is wayyyy thicker, even though the size is correct just the depth is way off, the right sample's depth is correct (thin)",
+ "model": "wan3_0_prime",
+ "run": "20261102-233733-02",
+ "video": "19",
+ "t_wrong": 0.0,
+ "t_fixed": 1.667,
+ "sample": "S54",
+ "frames": [
+  {
+   "n": 1,
+   "role": "wrong",
+   "from": "as generated",
+   "video": "A",
+   "t": 0.0
+  },
+  {
+   "n": 2,
+   "role": "right",
+   "from": "correct version · run 20261029-231113-recreate-celsius-neurogum video 14",
+   "video": "B",
+   "t": 1.667,
+   "generation": {
+    "gen": 1,
+    "of": 1,
+    "clip": "c1",
+    "t_from": 0.0,
+    "t_to": 3.0
+   }
+  }
+ ],
+ "product_sample_chosen": false,
+ "images_sent": [
+  {
+   "asset": "A54",
+   "label": "Video A · Image 1 · A54 · 7077b329913794f1a27fa3c9fa077eaf.jpg",
+   "file": "image1-character-A54-head.jpg",
+   "image": "Image 1",
+   "kind": "character",
+   "fingerprint": "63c87373",
+   "sent_fingerprint": "3e06f50a",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\7077b329913794f1a27fa3c9fa077eaf.jpg",
+   "original_name": "7077b329913794f1a27fa3c9fa077eaf.jpg",
+   "prepared": "head-and-neck crop above the collar on neutral grey RGB 128, face about half the image width",
+   "recorded": "source",
+   "job": "6927f0aa-92da-4e74-a6ec-efe6bff8319b",
+   "videos": [
+    "A"
+   ]
+  },
+  {
+   "asset": "A91",
+   "label": "Video A · Image 2 · A91 · EF_Gum_6 piece_Spearmint_Single-Front.png",
+   "file": "image2-product-NG-EF6-SM-front-padded.png",
+   "image": "Image 2",
+   "kind": "product",
+   "fingerprint": "5bdd2c5c",
+   "sent_fingerprint": "f5e761bf",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\product_samples_and_designs\\Gum - Energy & Focus\\Carton 6 pieces - Spearmint\\EF_Gum_6 piece_Spearmint_Single-Front.png",
+   "original_name": "EF_Gum_6 piece_Spearmint_Single-Front.png",
+   "prepared": "alpha flattened, centred on a 1440x1440 light-grey field RGB 236, carton about 28-30 % of the field width (padded small)",
+   "recorded": "source",
+   "job": "6927f0aa-92da-4e74-a6ec-efe6bff8319b",
+   "videos": [
+    "A"
+   ]
+  },
+  {
+   "asset": "A90",
+   "label": "Video A · Image 3 · A90 · EF_Gum_6 piece_Spearmint_Single-Front-Angled.png",
+   "file": "image3-product-NG-EF6-SM-angled-padded.png",
+   "image": "Image 3",
+   "kind": "product",
+   "fingerprint": "46d663cf",
+   "sent_fingerprint": "834e14ef",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\product_samples_and_designs\\Gum - Energy & Focus\\Carton 6 pieces - Spearmint\\EF_Gum_6 piece_Spearmint_Single-Front-Angled.png",
+   "original_name": "EF_Gum_6 piece_Spearmint_Single-Front-Angled.png",
+   "prepared": "alpha flattened, centred on a 1440x1440 light-grey field RGB 236, carton about 28-30 % of the field width (padded small), like Image 2",
+   "recorded": "source",
+   "job": "6927f0aa-92da-4e74-a6ec-efe6bff8319b",
+   "videos": [
+    "A"
+   ]
+  },
+  {
+   "asset": "A53",
+   "label": "Video B · Image 1 · A53 · 7077b329913794f1a27fa3c9fa077eaf.jpg",
+   "file": "image1-character-C-NG-07-head.jpg",
+   "image": "Image 1",
+   "kind": "character",
+   "fingerprint": "63c87373",
+   "sent_fingerprint": "0fff11f1",
+   "original": "C:/Users/Glaresquare1/Documents/neurogum/assets/7077b329913794f1a27fa3c9fa077eaf.jpg",
+   "original_name": "7077b329913794f1a27fa3c9fa077eaf.jpg",
+   "prepared": "head-and-neck crop on neutral grey RGB 128, face about half the image width; the beige zip hoodie, white tee, car interior and the bottom thumbnail strip cut away",
+   "recorded": "source",
+   "job": "24f59161-b7b0-40f6-abde-c4d6ed175ddd",
+   "videos": [
+    "B"
+   ]
+  },
+  {
+   "asset": "A64",
+   "label": "Video B · Image 2 · A64 · d35ef9219d15c3c4b38eeda7e6d0deaf.jpg",
+   "file": "image2-character-C-NG-14-head.jpg",
+   "image": "Image 2",
+   "kind": "character",
+   "fingerprint": "9225a528",
+   "sent_fingerprint": "0d7caf7d",
+   "original": "C:/Users/Glaresquare1/Documents/neurogum/assets/d35ef9219d15c3c4b38eeda7e6d0deaf.jpg",
+   "original_name": "d35ef9219d15c3c4b38eeda7e6d0deaf.jpg",
+   "prepared": "head-and-neck crop on neutral grey RGB 128, face about half the image width; the red printed t-shirt, room and clothes rack cut away",
+   "recorded": "source",
+   "job": "24f59161-b7b0-40f6-abde-c4d6ed175ddd",
+   "videos": [
+    "B"
+   ]
+  },
+  {
+   "asset": "A131",
+   "label": "Video B · Image 3 · A131 · EF_Gum_Spearmint_Single-Front.png",
+   "file": "image3-product-EF9-SM-front-padded.png",
+   "image": "Image 3",
+   "kind": "product",
+   "fingerprint": "dc00960a",
+   "sent_fingerprint": "34949df7",
+   "original": "C:/Users/Glaresquare1/Documents/neurogum/assets/product_samples_and_designs/Gum - Energy & Focus/Carton 9 pieces - Spearmint/EF_Gum_Spearmint_Single-Front.png",
+   "original_name": "EF_Gum_Spearmint_Single-Front.png",
+   "prepared": "the carton (transparent margin and cast shadow trimmed) centred on a 1440x1440 light-grey field RGB 236, about 28-30 % of the width",
+   "recorded": "source",
+   "job": "24f59161-b7b0-40f6-abde-c4d6ed175ddd",
+   "videos": [
+    "B"
+   ]
+  },
+  {
+   "asset": "A273",
+   "label": "Video B · Image 4 · A273 · IMG_6917.jpg",
+   "file": "image4-product-flat-real-cutout.png",
+   "image": "Image 4",
+   "kind": "product",
+   "fingerprint": "846e6464",
+   "sent_fingerprint": "5892347a",
+   "original": "C:/Users/Glaresquare1/Documents/neurogum/assets/product_samples_and_designs/product_comparison_and_reference/IMG_6917.jpg",
+   "original_name": "IMG_6917.jpg",
+   "prepared": "the real carton alone cut out (no phone, keyboard, monitor or desk), lying flat, on a 1440x1440 light-grey field RGB 237, about a third of the width, soft shadow under it; never the whole photo",
+   "recorded": "source",
+   "job": "24f59161-b7b0-40f6-abde-c4d6ed175ddd",
+   "videos": [
+    "B"
+   ]
+  }
+ ],
+ "images_videos": [
+  "A",
+  "B"
+ ],
+ "product_samples": [
+  {
+   "asset": "A54",
+   "label": "Video A · Image 1 · A54 · 7077b329913794f1a27fa3c9fa077eaf.jpg",
+   "file": "image1-character-A54-head.jpg",
+   "image": "Image 1",
+   "kind": "character",
+   "fingerprint": "63c87373",
+   "sent_fingerprint": "3e06f50a",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\7077b329913794f1a27fa3c9fa077eaf.jpg",
+   "original_name": "7077b329913794f1a27fa3c9fa077eaf.jpg",
+   "prepared": "head-and-neck crop above the collar on neutral grey RGB 128, face about half the image width",
+   "recorded": "source",
+   "job": "6927f0aa-92da-4e74-a6ec-efe6bff8319b",
+   "videos": [
+    "A"
+   ]
+  },
+  {
+   "asset": "A91",
+   "label": "Video A · Image 2 · A91 · EF_Gum_6 piece_Spearmint_Single-Front.png",
+   "file": "image2-product-NG-EF6-SM-front-padded.png",
+   "image": "Image 2",
+   "kind": "product",
+   "fingerprint": "5bdd2c5c",
+   "sent_fingerprint": "f5e761bf",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\product_samples_and_designs\\Gum - Energy & Focus\\Carton 6 pieces - Spearmint\\EF_Gum_6 piece_Spearmint_Single-Front.png",
+   "original_name": "EF_Gum_6 piece_Spearmint_Single-Front.png",
+   "prepared": "alpha flattened, centred on a 1440x1440 light-grey field RGB 236, carton about 28-30 % of the field width (padded small)",
+   "recorded": "source",
+   "job": "6927f0aa-92da-4e74-a6ec-efe6bff8319b",
+   "videos": [
+    "A"
+   ]
+  },
+  {
+   "asset": "A90",
+   "label": "Video A · Image 3 · A90 · EF_Gum_6 piece_Spearmint_Single-Front-Angled.png",
+   "file": "image3-product-NG-EF6-SM-angled-padded.png",
+   "image": "Image 3",
+   "kind": "product",
+   "fingerprint": "46d663cf",
+   "sent_fingerprint": "834e14ef",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\product_samples_and_designs\\Gum - Energy & Focus\\Carton 6 pieces - Spearmint\\EF_Gum_6 piece_Spearmint_Single-Front-Angled.png",
+   "original_name": "EF_Gum_6 piece_Spearmint_Single-Front-Angled.png",
+   "prepared": "alpha flattened, centred on a 1440x1440 light-grey field RGB 236, carton about 28-30 % of the field width (padded small), like Image 2",
+   "recorded": "source",
+   "job": "6927f0aa-92da-4e74-a6ec-efe6bff8319b",
+   "videos": [
+    "A"
+   ]
+  },
+  {
+   "asset": "A53",
+   "label": "Video B · Image 1 · A53 · 7077b329913794f1a27fa3c9fa077eaf.jpg",
+   "file": "image1-character-C-NG-07-head.jpg",
+   "image": "Image 1",
+   "kind": "character",
+   "fingerprint": "63c87373",
+   "sent_fingerprint": "0fff11f1",
+   "original": "C:/Users/Glaresquare1/Documents/neurogum/assets/7077b329913794f1a27fa3c9fa077eaf.jpg",
+   "original_name": "7077b329913794f1a27fa3c9fa077eaf.jpg",
+   "prepared": "head-and-neck crop on neutral grey RGB 128, face about half the image width; the beige zip hoodie, white tee, car interior and the bottom thumbnail strip cut away",
+   "recorded": "source",
+   "job": "24f59161-b7b0-40f6-abde-c4d6ed175ddd",
+   "videos": [
+    "B"
+   ]
+  },
+  {
+   "asset": "A64",
+   "label": "Video B · Image 2 · A64 · d35ef9219d15c3c4b38eeda7e6d0deaf.jpg",
+   "file": "image2-character-C-NG-14-head.jpg",
+   "image": "Image 2",
+   "kind": "character",
+   "fingerprint": "9225a528",
+   "sent_fingerprint": "0d7caf7d",
+   "original": "C:/Users/Glaresquare1/Documents/neurogum/assets/d35ef9219d15c3c4b38eeda7e6d0deaf.jpg",
+   "original_name": "d35ef9219d15c3c4b38eeda7e6d0deaf.jpg",
+   "prepared": "head-and-neck crop on neutral grey RGB 128, face about half the image width; the red printed t-shirt, room and clothes rack cut away",
+   "recorded": "source",
+   "job": "24f59161-b7b0-40f6-abde-c4d6ed175ddd",
+   "videos": [
+    "B"
+   ]
+  },
+  {
+   "asset": "A131",
+   "label": "Video B · Image 3 · A131 · EF_Gum_Spearmint_Single-Front.png",
+   "file": "image3-product-EF9-SM-front-padded.png",
+   "image": "Image 3",
+   "kind": "product",
+   "fingerprint": "dc00960a",
+   "sent_fingerprint": "34949df7",
+   "original": "C:/Users/Glaresquare1/Documents/neurogum/assets/product_samples_and_designs/Gum - Energy & Focus/Carton 9 pieces - Spearmint/EF_Gum_Spearmint_Single-Front.png",
+   "original_name": "EF_Gum_Spearmint_Single-Front.png",
+   "prepared": "the carton (transparent margin and cast shadow trimmed) centred on a 1440x1440 light-grey field RGB 236, about 28-30 % of the width",
+   "recorded": "source",
+   "job": "24f59161-b7b0-40f6-abde-c4d6ed175ddd",
+   "videos": [
+    "B"
+   ]
+  },
+  {
+   "asset": "A273",
+   "label": "Video B · Image 4 · A273 · IMG_6917.jpg",
+   "file": "image4-product-flat-real-cutout.png",
+   "image": "Image 4",
+   "kind": "product",
+   "fingerprint": "846e6464",
+   "sent_fingerprint": "5892347a",
+   "original": "C:/Users/Glaresquare1/Documents/neurogum/assets/product_samples_and_designs/product_comparison_and_reference/IMG_6917.jpg",
+   "original_name": "IMG_6917.jpg",
+   "prepared": "the real carton alone cut out (no phone, keyboard, monitor or desk), lying flat, on a 1440x1440 light-grey field RGB 237, about a third of the width, soft shadow under it; never the whole photo",
+   "recorded": "source",
+   "job": "24f59161-b7b0-40f6-abde-c4d6ed175ddd",
+   "videos": [
+    "B"
+   ]
+  }
+ ],
+ "shapes": [
+  {
+   "type": "rect",
+   "frame": 0,
+   "x1": 0.1990503155095909,
+   "y1": 0.8315132272277657,
+   "x2": 0.7249733707169294,
+   "y2": 1.0
+  },
+  {
+   "type": "rect",
+   "frame": 1,
+   "x1": 0.27829419621537727,
+   "y1": 0.5218414262919167,
+   "x2": 0.7088746244229545,
+   "y2": 0.6688921690670331
+  }
+ ]
+}

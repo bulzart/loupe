@@ -1,0 +1,258 @@
+{
+ "moment": 51,
+ "miss": 37,
+ "title": "The wrong sample the Neurogum's packages size is thicker and bigger which is not correct for the product, and on the right frame sample it is correct",
+ "model": "wan3_0_prime",
+ "run": "20261102-233733-02",
+ "video": "12",
+ "t_wrong": 0.0,
+ "t_fixed": 0.0,
+ "sample": "S51",
+ "frames": [
+  {
+   "n": 1,
+   "role": "wrong",
+   "from": "as generated",
+   "video": "A",
+   "t": 0.0
+  },
+  {
+   "n": 2,
+   "role": "right",
+   "from": "correct version · run 20261029-231113-recreate-celsius-neurogum video 23",
+   "video": "B",
+   "t": 0.0
+  }
+ ],
+ "product_sample_chosen": false,
+ "images_sent": [
+  {
+   "asset": "A48",
+   "label": "Video A · Image 1 · A48 · 01fe120e49c9a74245d806f4f64df7d9.jpg",
+   "file": "image1-character-A48-head.jpg",
+   "image": "Image 1",
+   "kind": "character",
+   "fingerprint": "8930d488",
+   "sent_fingerprint": "4eaee3f0",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\01fe120e49c9a74245d806f4f64df7d9.jpg",
+   "original_name": "01fe120e49c9a74245d806f4f64df7d9.jpg",
+   "prepared": "head-and-neck crop above the collar on neutral grey RGB 128, face about half the image width",
+   "recorded": "source",
+   "job": "85b3ef5d-6589-42e7-b158-a71e49d36af0",
+   "videos": [
+    "A"
+   ]
+  },
+  {
+   "asset": "A83",
+   "label": "Video A · Image 2 · A83 · EF_Gum_6 piece_Peppermint_Single-Front.png",
+   "file": "image2-product-NG-EF6-PM-front-padded.png",
+   "image": "Image 2",
+   "kind": "product",
+   "fingerprint": "d58ed62a",
+   "sent_fingerprint": "01df16c2",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\product_samples_and_designs\\Gum - Energy & Focus\\Carton 6 pieces - Peppermint\\EF_Gum_6 piece_Peppermint_Single-Front.png",
+   "original_name": "EF_Gum_6 piece_Peppermint_Single-Front.png",
+   "prepared": "alpha flattened, centred on a 1440x1440 light-grey field RGB 236, carton about 28-30 % of the field width (padded small)",
+   "recorded": "source",
+   "job": "85b3ef5d-6589-42e7-b158-a71e49d36af0",
+   "videos": [
+    "A"
+   ]
+  },
+  {
+   "asset": "A274",
+   "label": "Video A · Image 3 · A274 · IMG_6917.jpg",
+   "file": "image3-product-NG-EF6-PM-real-flat-cutout.png",
+   "image": "Image 3",
+   "kind": "product",
+   "fingerprint": "846e6464",
+   "sent_fingerprint": "6dfdd131",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\product_samples_and_designs\\product_comparison_and_reference\\IMG_6917.jpg",
+   "original_name": "IMG_6917.jpg",
+   "prepared": "the carton cut out alone (phone, keyboard, monitor and desk removed), placed on a 1440x1440 light-grey field RGB 237, about a third of the field width, a soft shadow under it",
+   "recorded": "source",
+   "job": "85b3ef5d-6589-42e7-b158-a71e49d36af0",
+   "videos": [
+    "A"
+   ]
+  },
+  {
+   "asset": "A47",
+   "label": "Video B · Image 1 · A47 · 01fe120e49c9a74245d806f4f64df7d9.jpg",
+   "file": "image1-character-C-NG-01-head.jpg",
+   "image": "Image 1",
+   "kind": "character",
+   "fingerprint": "8930d488",
+   "sent_fingerprint": "3f63202d",
+   "original": "C:/Users/Glaresquare1/Documents/neurogum/assets/01fe120e49c9a74245d806f4f64df7d9.jpg",
+   "original_name": "01fe120e49c9a74245d806f4f64df7d9.jpg",
+   "prepared": "head-and-neck crop ending above the black t-shirt's collar (no black fabric, no cyan 'GEN-' print, no round 'FUTURE EDITION' mark, no car interior), on neutral grey RGB 128, the face about half the image width; not mirrored",
+   "recorded": "build",
+   "job": "34955dbb-be9a-482b-90ca-3fddb48f024e",
+   "videos": [
+    "B"
+   ]
+  },
+  {
+   "asset": "A82",
+   "label": "Video B · Image 2 · A82 · EF_Gum_6 piece_Peppermint_Single-Front.png",
+   "file": "image2-product-EF6-PM-front-padded.png",
+   "image": "Image 2",
+   "kind": "product",
+   "fingerprint": "d58ed62a",
+   "sent_fingerprint": "f096b99b",
+   "original": "C:/Users/Glaresquare1/Documents/neurogum/assets/product_samples_and_designs/Gum - Energy & Focus/Carton 6 pieces - Peppermint/EF_Gum_6 piece_Peppermint_Single-Front.png",
+   "original_name": "EF_Gum_6 piece_Peppermint_Single-Front.png",
+   "prepared": "the carton upright, centred on a 1440x1440 light-grey field RGB 236, about 28-30 % of the width (about 410-430 px), no shadow, nothing else",
+   "recorded": "build",
+   "job": "34955dbb-be9a-482b-90ca-3fddb48f024e",
+   "videos": [
+    "B"
+   ]
+  },
+  {
+   "asset": "A273",
+   "label": "Video B · Image 3 · A273 · IMG_6917.jpg",
+   "file": "image3-product-EF6-PM-flat-real-cutout.png",
+   "image": "Image 3",
+   "kind": "product",
+   "fingerprint": "846e6464",
+   "sent_fingerprint": "20be7a14",
+   "original": "C:/Users/Glaresquare1/Documents/neurogum/assets/product_samples_and_designs/product_comparison_and_reference/IMG_6917.jpg",
+   "original_name": "IMG_6917.jpg",
+   "prepared": "the sky-blue Energy & Focus carton alone, cut out (about x 2060-3860, y 1540-2180 of the 4032x3024 photo; no phone, keyboard, monitor or desk wood), on a 1440x1440 field RGB 237, about a third of the width (about 480 px), soft shadow under it (video 15 a1 recipe)",
+   "recorded": "build",
+   "job": "34955dbb-be9a-482b-90ca-3fddb48f024e",
+   "videos": [
+    "B"
+   ]
+  }
+ ],
+ "images_videos": [
+  "A",
+  "B"
+ ],
+ "product_samples": [
+  {
+   "asset": "A48",
+   "label": "Video A · Image 1 · A48 · 01fe120e49c9a74245d806f4f64df7d9.jpg",
+   "file": "image1-character-A48-head.jpg",
+   "image": "Image 1",
+   "kind": "character",
+   "fingerprint": "8930d488",
+   "sent_fingerprint": "4eaee3f0",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\01fe120e49c9a74245d806f4f64df7d9.jpg",
+   "original_name": "01fe120e49c9a74245d806f4f64df7d9.jpg",
+   "prepared": "head-and-neck crop above the collar on neutral grey RGB 128, face about half the image width",
+   "recorded": "source",
+   "job": "85b3ef5d-6589-42e7-b158-a71e49d36af0",
+   "videos": [
+    "A"
+   ]
+  },
+  {
+   "asset": "A83",
+   "label": "Video A · Image 2 · A83 · EF_Gum_6 piece_Peppermint_Single-Front.png",
+   "file": "image2-product-NG-EF6-PM-front-padded.png",
+   "image": "Image 2",
+   "kind": "product",
+   "fingerprint": "d58ed62a",
+   "sent_fingerprint": "01df16c2",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\product_samples_and_designs\\Gum - Energy & Focus\\Carton 6 pieces - Peppermint\\EF_Gum_6 piece_Peppermint_Single-Front.png",
+   "original_name": "EF_Gum_6 piece_Peppermint_Single-Front.png",
+   "prepared": "alpha flattened, centred on a 1440x1440 light-grey field RGB 236, carton about 28-30 % of the field width (padded small)",
+   "recorded": "source",
+   "job": "85b3ef5d-6589-42e7-b158-a71e49d36af0",
+   "videos": [
+    "A"
+   ]
+  },
+  {
+   "asset": "A274",
+   "label": "Video A · Image 3 · A274 · IMG_6917.jpg",
+   "file": "image3-product-NG-EF6-PM-real-flat-cutout.png",
+   "image": "Image 3",
+   "kind": "product",
+   "fingerprint": "846e6464",
+   "sent_fingerprint": "6dfdd131",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\product_samples_and_designs\\product_comparison_and_reference\\IMG_6917.jpg",
+   "original_name": "IMG_6917.jpg",
+   "prepared": "the carton cut out alone (phone, keyboard, monitor and desk removed), placed on a 1440x1440 light-grey field RGB 237, about a third of the field width, a soft shadow under it",
+   "recorded": "source",
+   "job": "85b3ef5d-6589-42e7-b158-a71e49d36af0",
+   "videos": [
+    "A"
+   ]
+  },
+  {
+   "asset": "A47",
+   "label": "Video B · Image 1 · A47 · 01fe120e49c9a74245d806f4f64df7d9.jpg",
+   "file": "image1-character-C-NG-01-head.jpg",
+   "image": "Image 1",
+   "kind": "character",
+   "fingerprint": "8930d488",
+   "sent_fingerprint": "3f63202d",
+   "original": "C:/Users/Glaresquare1/Documents/neurogum/assets/01fe120e49c9a74245d806f4f64df7d9.jpg",
+   "original_name": "01fe120e49c9a74245d806f4f64df7d9.jpg",
+   "prepared": "head-and-neck crop ending above the black t-shirt's collar (no black fabric, no cyan 'GEN-' print, no round 'FUTURE EDITION' mark, no car interior), on neutral grey RGB 128, the face about half the image width; not mirrored",
+   "recorded": "build",
+   "job": "34955dbb-be9a-482b-90ca-3fddb48f024e",
+   "videos": [
+    "B"
+   ]
+  },
+  {
+   "asset": "A82",
+   "label": "Video B · Image 2 · A82 · EF_Gum_6 piece_Peppermint_Single-Front.png",
+   "file": "image2-product-EF6-PM-front-padded.png",
+   "image": "Image 2",
+   "kind": "product",
+   "fingerprint": "d58ed62a",
+   "sent_fingerprint": "f096b99b",
+   "original": "C:/Users/Glaresquare1/Documents/neurogum/assets/product_samples_and_designs/Gum - Energy & Focus/Carton 6 pieces - Peppermint/EF_Gum_6 piece_Peppermint_Single-Front.png",
+   "original_name": "EF_Gum_6 piece_Peppermint_Single-Front.png",
+   "prepared": "the carton upright, centred on a 1440x1440 light-grey field RGB 236, about 28-30 % of the width (about 410-430 px), no shadow, nothing else",
+   "recorded": "build",
+   "job": "34955dbb-be9a-482b-90ca-3fddb48f024e",
+   "videos": [
+    "B"
+   ]
+  },
+  {
+   "asset": "A273",
+   "label": "Video B · Image 3 · A273 · IMG_6917.jpg",
+   "file": "image3-product-EF6-PM-flat-real-cutout.png",
+   "image": "Image 3",
+   "kind": "product",
+   "fingerprint": "846e6464",
+   "sent_fingerprint": "20be7a14",
+   "original": "C:/Users/Glaresquare1/Documents/neurogum/assets/product_samples_and_designs/product_comparison_and_reference/IMG_6917.jpg",
+   "original_name": "IMG_6917.jpg",
+   "prepared": "the sky-blue Energy & Focus carton alone, cut out (about x 2060-3860, y 1540-2180 of the 4032x3024 photo; no phone, keyboard, monitor or desk wood), on a 1440x1440 field RGB 237, about a third of the width (about 480 px), soft shadow under it (video 15 a1 recipe)",
+   "recorded": "build",
+   "job": "34955dbb-be9a-482b-90ca-3fddb48f024e",
+   "videos": [
+    "B"
+   ]
+  }
+ ],
+ "shapes": [
+  {
+   "type": "rect",
+   "frame": 0,
+   "x1": 0.2667129453448345,
+   "y1": 0.7409039691389461,
+   "x2": 0.8664496372323702,
+   "y2": 0.9813754018876477
+  },
+  {
+   "type": "rect",
+   "frame": 1,
+   "x1": 0.2413875333293537,
+   "y1": 0.794534284269229,
+   "x2": 0.779612757680675,
+   "y2": 1.0
+  }
+ ]
+}
