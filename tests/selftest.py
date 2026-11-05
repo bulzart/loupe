@@ -1389,6 +1389,16 @@ def main(with_keeper=False):
     check("the judge is told an asset id is the run's own number and the #fingerprint is the same file in every run, and gives each product image's fingerprint",
           "#xxxxxxxx" in _pq.LIB_HEADER and "the same for the same file in every run" in _pq.LIB_HEADER and "the file sent #xxxxxxxx" in _pq.LIB_HEADER
           and '"fingerprint":"<the 8 characters after #' in _pq.ROLE and "match a sample's images to this run's by it" in _pq.ROLE)
+    check("the judge is told to give a second view where the correct versions had one: this variant's own view first, else the file that worked as a "
+          "look reference whose print is not copied (the admin, 2026-11-05, any product)",
+          "SECOND VIEW (the admin, 2026-11-05; any product, any brand)" in _pq.ROLE and "Look for it first among this variant's own images" in _pq.ROLE
+          and "its printed design belongs to another variant and is not copied" in _pq.ROLE
+          and "the run's other images of the client's products under the same registry heading" in _pq.ROLE)
+    check("the judge is told a brief's claim that no sample shows does not outweigh what the correct versions used, and that a video named without "
+          "its run is the brief's own run's (the admin, 2026-11-05)",
+          "CLAIMS ARE NOT SAMPLES (the admin, 2026-11-05; any product)" in _pq.ROLE and "That is a claim, not evidence" in _pq.ROLE
+          and "A video named without its run is a video of the brief's own run" in _pq.ROLE
+          and _pq.ROLE.index("CLAIMS ARE NOT SAMPLES") < _pq.ROLE.index("SOURCE OF TRUTH"))
     tf9 = _pq.template_from({"template": "T", "product_images": [{"asset": "A14", "file": "x/product-front.png"}]}, {})
     check("a template answer carries the judge's product images", tf9.get("product_images") == [{"asset": "A14", "file": "product-front.png", "prepare": "", "why": ""}], str(tf9)[:300])
     check("the judge is told the product images are its to decide (which and how many), how they are numbered, how to name each, and where they go in a "
