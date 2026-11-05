@@ -1141,11 +1141,13 @@ ROLE = ("You are the Loupe keeper of a video-generation pipeline. You hold a lib
         "how the video under QC looks at a time the question does not show, where a sample came from or the prompts it keeps (the flawed version's, "
         "the correct version's or its example prompt, whichever boxes its frames speak through), or what the QC agent itself sees), put a needs list (at most 3) "
         "in your JSON object instead of guessing (writing the gap in not_covered is not asking: when what is missing is one of the kinds below, ask for it), each item "
-        '{"kind":"video_frame|video_plan|request_prompt|product_registry|sample_origin|ask_agent","t":<seconds, video_frame only>,"id":"S12, sample_origin only",'
+        '{"kind":"video_frame|video_plan|request_prompt|product_registry|sample_origin|asset_image|ask_agent","t":<seconds, video_frame only>,"id":"S12 for sample_origin; an asset id or #fingerprint for asset_image",'
         '"question":"<ask_agent only: what the QC agent can answer by looking at its own video>","why":"<what you cannot judge without it>"}'
         ". Loupe fetches what is listed from the run (read-only, capped), puts the files in a folder for you to Read and asks you again. You may ask at most twice, "
         "only when the answer would change your judgement, and never for the same thing twice. Planning questions and template requests may ask for video_plan, "
-        "request_prompt, product_registry, sample_origin and ask_agent only, because no video exists yet. "
+        "request_prompt, product_registry, sample_origin, asset_image and ask_agent only, because no video exists yet; asset_image fetches one of the run's "
+        "client images (from the template request's lists, by its asset id or #fingerprint) for you to view, so you compare a candidate view with a sample's "
+        "images before choosing it (SECOND VIEW). "
         "FLAG, DO NOT PAPER OVER. Each sample comes as its own record; when something in a record your answer rests on is missing, contradictory or "
         "ambiguous and asking cannot settle it (a frame whose prompt was not saved or that comes after the last generation, a prompt box the samples of one "
         "generation miss share while their frames differ, the admin's words that do not fit the frames or the picture, an older sample that took its Examples "
@@ -1405,6 +1407,17 @@ def _ctx_dir(tag: str) -> Path:
     return d
 
 
+def _registry_tables(rd: Path, n: int = 12000) -> str:
+    """The run's asset registry for the keeper: every heading and every table row, its prose (an affordance sheet) left out, so that no brand's rows
+    fall beyond the cap (the admin, 2026-11-05: a registry whose second brand's rows began after the old 3500-character cut); capped at n."""
+    try:
+        text = (rd / "30-assets" / "registry.md").read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return ""
+    keep = [ln.rstrip() for ln in text.splitlines() if ln.lstrip().startswith(("#", "|")) and not re.fullmatch(r"\s*\|[\s|:-]*\|\s*", ln)]
+    return _clip("\n".join(keep), n)
+
+
 def _read_text(p: Path, n: int) -> str:
     try:
         return _clip(p.read_bytes().decode("utf-8", "replace"), n)
@@ -1488,14 +1501,29 @@ def _fulfil(n: dict, ctx: dict, d: Path, plan: bool) -> dict:
             return {"ok": True, "text": "the request prompt of this video: " + txt, "why_not": ""} if txt else no("this video has no request file")
         if kind == "product_registry":
             lines = []
-            reg = _read_text(rd / "30-assets" / "registry.md", 3500)
+            reg = _registry_tables(rd)
             if reg:
-                lines.append("the run's asset registry (first 3500 characters):\n" + reg)
+                lines.append("the run's asset registry (every heading and table row; its prose left out):\n" + reg)
             for k, ps in enumerate(runs.product_samples(run, video)[:2], 1):
                 mk = runs.file_fingerprint(ps["path"])
                 lines.append(f"product image {k} ({ps['asset_id']} · {ps['name']}{' #' + mk if mk else ''}, which the request calls {ps['label']}): "
                              f"{_copy_in(Path(ps['path']), d, f'product-{k}')}")
             return {"ok": True, "text": "\n".join(lines), "why_not": ""} if lines else no("this run has no registry or product image")
+        if kind == "asset_image":
+            key = str(n.get("id") or "").strip().lstrip("#")
+            if not key:
+                return no("name the image: its asset id (A271) or its #fingerprint")
+            inv, _names = runs._inventory(rd)
+            it = inv.get(key) or next((x for x in inv.values() if x.get("path") and runs.file_fingerprint(Path(str(x["path"]))) == key.lower()), None)
+            if not it or not it.get("path") or not Path(str(it["path"])).is_file():
+                return no(f"no image of the run's asset inventory is {key[:24]}")
+            src = Path(str(it["path"]))
+            if src.suffix.lower() not in runs.IMAGE_EXT:
+                return no(f"{src.name} is not an image")
+            mk = runs.file_fingerprint(src)
+            tag = f" #{mk}" if mk else ""
+            return {"ok": True, "text": f"the client's image {it['id']} · {src.name}{tag} (as the run holds it, unprepared): {_copy_in(src, d, 'asset-' + str(it['id']))}",
+                    "why_not": ""}
         if kind == "video_frame":
             if plan:
                 return no("the video has not been generated yet")

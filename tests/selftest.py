@@ -1445,6 +1445,23 @@ def main(with_keeper=False):
                                                       "| CH12 | character | the employee | A16 |\n| P-CAN | the can | A14 |\n", encoding="utf-8")
     check("a registry's product rows are read in either form runs write (an id starting with P-, or a type cell that says product), never a character's",
           runs._registry_product_rows(reg_rd) == [("NG-EF6-SPE", ["A44", "A45"]), ("P-CAN", ["A14"])], str(runs._registry_product_rows(reg_rd)))
+    prose = "- parts: " + "x" * 3600 + "." + "\n"       # an affordance sheet longer than the old 3500-character cut, before the second brand
+    (reg_rd / "30-assets" / "registry.md").write_text("# Registry\n\n## Brand one\n\n| id | type | role | files |\n|---|---|---|---|\n| P-CAN | the can | A14 |\n\n" + prose
+                                                      + "\n## Brand two\n\n| id | type | role | files |\n|---|---|---|---|\n| NG-EF6-SPE | product | the carton | A44, A45 front-angled |\n", encoding="utf-8")
+    tbl = _pq._registry_tables(reg_rd)
+    check("the registry the judge fetches holds every heading and table row and leaves the prose out, so the second brand's rows never fall beyond the cap "
+          "(the admin, 2026-11-05)",
+          "## Brand one" in tbl and "## Brand two" in tbl and "| NG-EF6-SPE | product | the carton | A44, A45 front-angled |" in tbl and "| P-CAN |" in tbl
+          and "parts:" not in tbl and "|---|" not in tbl and len(tbl) < 400, tbl[:300])
+    ai1 = _pq._fulfil({"kind": "asset_image", "id": "A14"}, {"run": "20261001-000000-07", "video": "09"}, TMP / "fulfil", True)
+    ai2 = _pq._fulfil({"kind": "asset_image", "id": "#" + runs.file_fingerprint(TMP / "fulfil" / "asset-A14.png")}, {"run": "20261001-000000-07", "video": "09"}, TMP / "fulfil", True)
+    ai3 = _pq._fulfil({"kind": "asset_image", "id": "A999"}, {"run": "20261001-000000-07", "video": "09"}, TMP / "fulfil", True)
+    check("the judge may ask asset_image for one of the run's client images, by asset id or #fingerprint, and gets a copy to view, named by its id, file and "
+          "fingerprint; an id the inventory lacks is refused (the admin, 2026-11-05)",
+          ai1.get("ok") and ai2.get("ok") and not ai3.get("ok") and "the client's image A14 · product-front.png #" in ai1.get("text", "")
+          and (TMP / "fulfil" / "asset-A14.png").is_file() and ai1["text"].endswith(str(TMP / "fulfil" / "asset-A14.png"))
+          and "no image of the run's asset inventory is A999" in ai3.get("why_not", "")
+          and "asset_image" in _pq.ROLE and "compare a candidate view with a sample" in _pq.ROLE, str(ai1)[:200] + " || " + str(ai3)[:120])
     req("DELETE", f"/api/misses/{pm9}")
     print("\n[every sample: the images its generation was sent, read from what older runs recorded (the admin, 2026-10-30: let them all have their "
           "verified used video generation assets)]")
