@@ -1399,31 +1399,6 @@ def main(with_keeper=False):
           "CLAIMS ARE NOT SAMPLES (the admin, 2026-11-05; any product)" in _pq.ROLE and "That is a claim, not evidence" in _pq.ROLE
           and "A video named without its run is a video of the brief's own run" in _pq.ROLE
           and _pq.ROLE.index("CLAIMS ARE NOT SAMPLES") < _pq.ROLE.index("SOURCE OF TRUTH"))
-    check("the keeper's role is four parts, whole as before, and each call carries only the rules it needs: a QC question the QC rules, a planning or template "
-          "question the planning rules (the admin, 2026-11-06)",
-          _pq.ROLE == _pq.ROLE_HEAD + _pq.ROLE_QC + _pq.ROLE_PLAN + _pq.ROLE_TAIL
-          and "QC QUESTION" in _pq.role_for("qc") and "PLANNING QUESTION" not in _pq.role_for("qc")
-          and "PLANNING QUESTION" in _pq.role_for("template") and "QC QUESTION" not in _pq.role_for("template")
-          and "SECOND VIEW" in _pq.role_for("qc") and "SECOND VIEW" in _pq.role_for("template") and _pq.rules_placement() == "system"
-          and _pq.boot_rules("system") == "" and "PLANNING QUESTION" not in _pq.role_for("template", "boot") and "PLANNING QUESTION" in _pq.boot_rules("boot"),
-          f"qc {len(_pq.role_for('qc'))} template {len(_pq.role_for('template'))} boot {len(_pq.role_for('template', 'boot'))}")
-    stw = {"session_id": "s", "turns": 1, "chars": 0, "model": "m", "header": _pq.HEADER_SIG, "rules": "boot"}
-    boot_seen = []
-    real_run_b = _pq._run_claude
-    _pq._run_claude = lambda prompt, sid, resume, model, **k: (boot_seen.append((prompt, k.get("role") or "")), {"result": "ready", "total_cost_usd": 0})[1]
-    try:
-        core.setting_set(_pq.RULES_KEY, {"planning": "boot"})
-        stb, _cb = _pq._boot(1, "sig-b", "m")
-    finally:
-        _pq._run_claude = real_run_b
-        core.setting_set(_pq.RULES_KEY, {})
-    check("with the planning rules placed in the boot (python loupe.py keeper-rules boot) a fresh session is told them once after the library, the boot "
-          "call's system prompt leaves them out, the session records the placement, and a session of the other placement is worn out",
-          _pq.rules_placement() == "system" and stb.get("rules") == "boot" and len(boot_seen) == 1
-          and "RULES FOR EVERY PLANNING QUESTION AND TEMPLATE REQUEST OF THIS SESSION" in boot_seen[0][0] and "PLANNING QUESTION (the video has NOT" in boot_seen[0][0]
-          and boot_seen[0][0].rstrip().endswith("You now hold this library and these rules. Reply with the single word: ready.")
-          and "PLANNING QUESTION" not in boot_seen[0][1] and "You are the Loupe keeper" in boot_seen[0][1]
-          and _pq._worn(stw, "m") and not _pq._worn({**stw, "rules": "system"}, "m"), str(stb)[:200])
     tf9 = _pq.template_from({"template": "T", "product_images": [{"asset": "A14", "file": "x/product-front.png"}]}, {})
     check("a template answer carries the judge's product images", tf9.get("product_images") == [{"asset": "A14", "file": "product-front.png", "prepare": "", "why": ""}], str(tf9)[:300])
     check("the judge is told the product images are its to decide (which and how many), how they are numbered, how to name each, and where they go in a "

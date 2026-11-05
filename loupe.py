@@ -34,9 +34,6 @@ def main():
     s = sp.add_parser("keeper", help="understand: read the samples that have no current reading of their picture now (only new or changed ones; --ids S3,S7 re-reads those); status: the readings and the counts")
     s.add_argument("action", choices=["understand", "status"])
     s.add_argument("--ids", default="")
-    s = sp.add_parser("keeper-rules", help="where the keeper's planning rules go: system (the system prompt of every planning call, the default) or boot "
-                      "(once, in the message that starts a keeper session, after the library); no argument prints the current placement")
-    s.add_argument("placement", nargs="?", choices=["system", "boot"])
     s = sp.add_parser("seed", help="export: write data/seed/loupe-seed.db (misses, moments, flags; no secrets) for a clone; import: start an empty data folder from it")
     s.add_argument("action", choices=["export", "import"])
     a = ap.parse_args()
@@ -70,12 +67,6 @@ def main():
             print(json.dumps(qc.sync_understanding("cli", only), indent=1, ensure_ascii=False))
         else:
             print(json.dumps({"status": qc.understanding_status(), "readings": qc.readings()}, indent=1, ensure_ascii=False))
-    elif a.cmd == "keeper-rules":
-        from loupe_app import qc
-        if a.placement:
-            core.setting_set(qc.RULES_KEY, {"planning": a.placement})
-        print(json.dumps({"planning_rules": qc.rules_placement(), "planning_call_chars": len(qc.role_for("template")), "qc_call_chars": len(qc.role_for("qc")),
-                          "boot_adds_chars": len(qc.boot_rules()), "note": "a changed placement starts a fresh keeper session at the next call"}, indent=1))
     elif a.cmd == "import-flags":
         from loupe_app import flags
         print("imported", flags.import_legacy(Path(a.path)), "entries")
