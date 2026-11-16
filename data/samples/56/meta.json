@@ -1,0 +1,251 @@
+{
+ "moment": 56,
+ "miss": 40,
+ "title": "On the Video A version (wrong one) the package is rendered correctly but it moves without any logical means, whether by character moving it or something else, and on the Video B version (correct one) the package stays in the same place persistently and is correct.",
+ "model": "wan3_0_prime",
+ "run": "20261104-225639-04",
+ "video": "06",
+ "t_wrong": 0.0,
+ "t_fixed": 0.0,
+ "sample": "S56",
+ "frames": [
+  {
+   "n": 1,
+   "role": "wrong",
+   "from": "as generated",
+   "video": "A",
+   "t": 0.0,
+   "generation": {
+    "gen": 1,
+    "of": 2,
+    "clip": "c1",
+    "t_from": 0.0,
+    "t_to": 2.9
+   }
+  },
+  {
+   "n": 2,
+   "role": "wrong",
+   "from": "as generated",
+   "video": "A",
+   "t": 3.8,
+   "generation": {
+    "gen": 2,
+    "of": 2,
+    "clip": "c2",
+    "t_from": 2.9,
+    "t_to": 15.8
+   }
+  },
+  {
+   "n": 3,
+   "role": "right",
+   "from": "correct version",
+   "video": "B",
+   "t": 0.0,
+   "generation": {
+    "gen": 1,
+    "of": 2,
+    "clip": "c1",
+    "t_from": 0.0,
+    "t_to": 13.433
+   }
+  },
+  {
+   "n": 4,
+   "role": "right",
+   "from": "correct version",
+   "video": "B",
+   "t": 3.8,
+   "generation": {
+    "gen": 1,
+    "of": 2,
+    "clip": "c1",
+    "t_from": 0.0,
+    "t_to": 13.433
+   }
+  }
+ ],
+ "product_sample_chosen": false,
+ "images_sent": [
+  {
+   "asset": "A49",
+   "label": "Videos A and B · c1, c2 · Image 1 of Video A, c1 · Image 1 of Video B · A49 · 53017485-bf47-40e4-b893-c18397357dde.png",
+   "file": "image1-character-A49-head.png",
+   "image": "c1, c2 · Image 1 of Video A, c1 · Image 1 of Video B",
+   "kind": "character",
+   "fingerprint": "ea138c7c",
+   "sent_fingerprint": "de8ec35b",
+   "original": "C:/Users/Glaresquare1/Documents/neurogum/assets/53017485-bf47-40e4-b893-c18397357dde.png",
+   "original_name": "53017485-bf47-40e4-b893-c18397357dde.png",
+   "prepared": "head-and-neck crop on neutral grey RGB 128 above the collar, face about half the width; the grey marled t-shirt, the necklace chain and the black wall with the painting cut away",
+   "recorded": "source",
+   "job": "223d093c-689a-4923-b200-6a7eee2d6a1c",
+   "jobs": [
+    "223d093c-689a-4923-b200-6a7eee2d6a1c",
+    "e3945d57-3916-41b8-87eb-3b9ee2fc0e8c",
+    "946221d5-8b8c-4b3f-b563-d2026407dec1"
+   ],
+   "videos": [
+    "A",
+    "B"
+   ]
+  },
+  {
+   "asset": "A165",
+   "label": "Videos A and B · c1, c2 · Image 2 of Video A, c1 · Image 2 of Video B · A165 · EX_EF_Gum_9 piece_Peppermint_Single-Front.png",
+   "file": "image2-product-NG-ES9-PM-front.png",
+   "image": "c1, c2 · Image 2 of Video A, c1 · Image 2 of Video B",
+   "kind": "product",
+   "fingerprint": "b293c10c",
+   "sent_fingerprint": "60310584",
+   "original": "C:/Users/Glaresquare1/Documents/neurogum/assets/product_samples_and_designs/Gum - Extra Strength/Carton 9 pieces - Peppermint/EX_EF_Gum_9 piece_Peppermint_Single-Front.png",
+   "original_name": "EX_EF_Gum_9 piece_Peppermint_Single-Front.png",
+   "prepared": "front render centred on a 1440 x 1440 light-grey field (RGB 236), the carton about 28-30 % of the field's width (README Generation notes §3)",
+   "recorded": "source",
+   "job": "223d093c-689a-4923-b200-6a7eee2d6a1c",
+   "jobs": [
+    "223d093c-689a-4923-b200-6a7eee2d6a1c",
+    "e3945d57-3916-41b8-87eb-3b9ee2fc0e8c",
+    "946221d5-8b8c-4b3f-b563-d2026407dec1"
+   ],
+   "videos": [
+    "A",
+    "B"
+   ]
+  },
+  {
+   "asset": "A271",
+   "label": "Videos A and B · c1, c2 · Image 3 of Video A, c1 · Image 3 of Video B · A271 · IMG_6917.jpg",
+   "file": "image3-product-NG-real-flat-cutout.png",
+   "image": "c1, c2 · Image 3 of Video A, c1 · Image 3 of Video B",
+   "kind": "product",
+   "fingerprint": "846e6464",
+   "sent_fingerprint": "701f6953",
+   "original": "C:/Users/Glaresquare1/Documents/neurogum/assets/product_samples_and_designs/product_comparison_and_reference/IMG_6917.jpg",
+   "original_name": "IMG_6917.jpg",
+   "prepared": "the carton alone cut out (no phone, keyboard, monitor or desk) and placed on a 1440 x 1440 light-grey field (RGB 237), about a third of the width, with a soft shadow under it (README §3); never the whole photo",
+   "recorded": "source",
+   "job": "223d093c-689a-4923-b200-6a7eee2d6a1c",
+   "jobs": [
+    "223d093c-689a-4923-b200-6a7eee2d6a1c",
+    "e3945d57-3916-41b8-87eb-3b9ee2fc0e8c",
+    "946221d5-8b8c-4b3f-b563-d2026407dec1"
+   ],
+   "videos": [
+    "A",
+    "B"
+   ]
+  },
+  {
+   "asset": "",
+   "label": "Video B · c2 · Start frame · start-image-handoff-c1a2-frame402.png · its original file is not recorded",
+   "file": "start-image-handoff-c1a2-frame402.png",
+   "image": "c2 · Start frame",
+   "kind": "",
+   "fingerprint": "",
+   "sent_fingerprint": "67825cef",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "9e42ec9c-bddb-4372-9d45-59f6261c866c",
+   "videos": [
+    "B"
+   ]
+  }
+ ],
+ "images_videos": [
+  "A",
+  "B"
+ ],
+ "product_samples": [
+  {
+   "asset": "A49",
+   "label": "Videos A and B · c1, c2 · Image 1 of Video A, c1 · Image 1 of Video B · A49 · 53017485-bf47-40e4-b893-c18397357dde.png",
+   "file": "image1-character-A49-head.png",
+   "image": "c1, c2 · Image 1 of Video A, c1 · Image 1 of Video B",
+   "kind": "character",
+   "fingerprint": "ea138c7c",
+   "sent_fingerprint": "de8ec35b",
+   "original": "C:/Users/Glaresquare1/Documents/neurogum/assets/53017485-bf47-40e4-b893-c18397357dde.png",
+   "original_name": "53017485-bf47-40e4-b893-c18397357dde.png",
+   "prepared": "head-and-neck crop on neutral grey RGB 128 above the collar, face about half the width; the grey marled t-shirt, the necklace chain and the black wall with the painting cut away",
+   "recorded": "source",
+   "job": "223d093c-689a-4923-b200-6a7eee2d6a1c",
+   "jobs": [
+    "223d093c-689a-4923-b200-6a7eee2d6a1c",
+    "e3945d57-3916-41b8-87eb-3b9ee2fc0e8c",
+    "946221d5-8b8c-4b3f-b563-d2026407dec1"
+   ],
+   "videos": [
+    "A",
+    "B"
+   ]
+  },
+  {
+   "asset": "A165",
+   "label": "Videos A and B · c1, c2 · Image 2 of Video A, c1 · Image 2 of Video B · A165 · EX_EF_Gum_9 piece_Peppermint_Single-Front.png",
+   "file": "image2-product-NG-ES9-PM-front.png",
+   "image": "c1, c2 · Image 2 of Video A, c1 · Image 2 of Video B",
+   "kind": "product",
+   "fingerprint": "b293c10c",
+   "sent_fingerprint": "60310584",
+   "original": "C:/Users/Glaresquare1/Documents/neurogum/assets/product_samples_and_designs/Gum - Extra Strength/Carton 9 pieces - Peppermint/EX_EF_Gum_9 piece_Peppermint_Single-Front.png",
+   "original_name": "EX_EF_Gum_9 piece_Peppermint_Single-Front.png",
+   "prepared": "front render centred on a 1440 x 1440 light-grey field (RGB 236), the carton about 28-30 % of the field's width (README Generation notes §3)",
+   "recorded": "source",
+   "job": "223d093c-689a-4923-b200-6a7eee2d6a1c",
+   "jobs": [
+    "223d093c-689a-4923-b200-6a7eee2d6a1c",
+    "e3945d57-3916-41b8-87eb-3b9ee2fc0e8c",
+    "946221d5-8b8c-4b3f-b563-d2026407dec1"
+   ],
+   "videos": [
+    "A",
+    "B"
+   ]
+  },
+  {
+   "asset": "A271",
+   "label": "Videos A and B · c1, c2 · Image 3 of Video A, c1 · Image 3 of Video B · A271 · IMG_6917.jpg",
+   "file": "image3-product-NG-real-flat-cutout.png",
+   "image": "c1, c2 · Image 3 of Video A, c1 · Image 3 of Video B",
+   "kind": "product",
+   "fingerprint": "846e6464",
+   "sent_fingerprint": "701f6953",
+   "original": "C:/Users/Glaresquare1/Documents/neurogum/assets/product_samples_and_designs/product_comparison_and_reference/IMG_6917.jpg",
+   "original_name": "IMG_6917.jpg",
+   "prepared": "the carton alone cut out (no phone, keyboard, monitor or desk) and placed on a 1440 x 1440 light-grey field (RGB 237), about a third of the width, with a soft shadow under it (README §3); never the whole photo",
+   "recorded": "source",
+   "job": "223d093c-689a-4923-b200-6a7eee2d6a1c",
+   "jobs": [
+    "223d093c-689a-4923-b200-6a7eee2d6a1c",
+    "e3945d57-3916-41b8-87eb-3b9ee2fc0e8c",
+    "946221d5-8b8c-4b3f-b563-d2026407dec1"
+   ],
+   "videos": [
+    "A",
+    "B"
+   ]
+  },
+  {
+   "asset": "",
+   "label": "Video B · c2 · Start frame · start-image-handoff-c1a2-frame402.png · its original file is not recorded",
+   "file": "start-image-handoff-c1a2-frame402.png",
+   "image": "c2 · Start frame",
+   "kind": "",
+   "fingerprint": "",
+   "sent_fingerprint": "67825cef",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "9e42ec9c-bddb-4372-9d45-59f6261c866c",
+   "videos": [
+    "B"
+   ]
+  }
+ ],
+ "shapes": []
+}

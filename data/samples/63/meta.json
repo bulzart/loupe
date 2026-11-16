@@ -1,0 +1,243 @@
+{
+ "moment": 63,
+ "miss": 44,
+ "title": "The drawer opens sideways while it's a forward-facing drawer, and the sheet of paper that drags off the bed in the end seems to snap into two separate sheets with one appearing from under the bed!",
+ "model": "seedance_2_5",
+ "run": "20261109-205907-neurogum-sleep-recharge-anim",
+ "video": "01",
+ "t_wrong": 0.967,
+ "t_fixed": 0.967,
+ "sample": "S63",
+ "frames": [
+  {
+   "n": 1,
+   "role": "wrong",
+   "from": "as generated",
+   "video": "A",
+   "t": 0.967,
+   "generation": {
+    "gen": 1,
+    "of": 2,
+    "clip": "c1",
+    "t_from": 0.0,
+    "t_to": 20.042
+   }
+  },
+  {
+   "n": 2,
+   "role": "wrong",
+   "from": "as generated",
+   "video": "A",
+   "t": 22.867,
+   "generation": {
+    "gen": 2,
+    "of": 2,
+    "clip": "c2",
+    "t_from": 20.042,
+    "t_to": 39.042
+   }
+  },
+  {
+   "n": 3,
+   "role": "wrong",
+   "from": "as generated",
+   "video": "A",
+   "t": 33.067,
+   "generation": {
+    "gen": 2,
+    "of": 2,
+    "clip": "c2",
+    "t_from": 20.042,
+    "t_to": 39.042
+   }
+  },
+  {
+   "n": 4,
+   "role": "wrong",
+   "from": "as generated",
+   "video": "A",
+   "t": 33.267,
+   "generation": {
+    "gen": 2,
+    "of": 2,
+    "clip": "c2",
+    "t_from": 20.042,
+    "t_to": 39.042
+   }
+  }
+ ],
+ "product_sample_chosen": false,
+ "images_sent": [
+  {
+   "asset": "",
+   "label": "c1 · Image 1 · v01-first-frame-a2.png · its original file is not recorded",
+   "file": "v01-first-frame-a2.png",
+   "image": "c1 · Image 1",
+   "kind": "",
+   "fingerprint": "",
+   "sent_fingerprint": "c8c2c8f9",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "99e4012d-a2b3-4bdc-8a2d-d7b7811080cc"
+  },
+  {
+   "asset": "",
+   "label": "c1 · Image 2 · image2-character-face.png · its original file is not recorded",
+   "file": "image2-character-face.png",
+   "image": "c1 · Image 2",
+   "kind": "character",
+   "fingerprint": "",
+   "sent_fingerprint": "4d73feda",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "99e4012d-a2b3-4bdc-8a2d-d7b7811080cc"
+  },
+  {
+   "asset": "",
+   "label": "c1 · Image 3 · image3-character-full.png · its original file is not recorded",
+   "file": "image3-character-full.png",
+   "image": "c1 · Image 3",
+   "kind": "character",
+   "fingerprint": "",
+   "sent_fingerprint": "144d668e",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "99e4012d-a2b3-4bdc-8a2d-d7b7811080cc"
+  },
+  {
+   "asset": "",
+   "label": "c1 · Image 4 · image4-character-mini.png · its original file is not recorded",
+   "file": "image4-character-mini.png",
+   "image": "c1 · Image 4",
+   "kind": "character",
+   "fingerprint": "",
+   "sent_fingerprint": "be4e65fb",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "99e4012d-a2b3-4bdc-8a2d-d7b7811080cc"
+  },
+  {
+   "asset": "A01",
+   "label": "c1 · Image 5 · A01 · 40_aaade3aa-d154-49ea-a33e-dbaa910c3624.jpg",
+   "file": "image5-product-clay-front-padded-1920.png",
+   "image": "c1 · Image 5",
+   "kind": "product",
+   "fingerprint": "b46762c3",
+   "sent_fingerprint": "6d5917c6",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\product_samples_and_designs\\Sleep & Recharge\\40_aaade3aa-d154-49ea-a33e-dbaa910c3624.jpg",
+   "original_name": "40_aaade3aa-d154-49ea-a33e-dbaa910c3624.jpg",
+   "prepared": "re-made as a matte claymation carton with gpt_image_2_6 (high) from A01's carton front (A02's PNG copy 30-assets/converted/42.png for sharper type; bottom line kept as '12 Meltaway Mints | Dietary Supplement'), standing, slight three-quarter turn, padded small on a plain mid-grey field [U: product re-made in the animation style, design unchanged]",
+   "recorded": "source",
+   "job": "99e4012d-a2b3-4bdc-8a2d-d7b7811080cc"
+  },
+  {
+   "asset": "A05",
+   "label": "c1 · Image 6 · A05 · sample.jpg",
+   "file": "a05-carton-depth-cutout.png",
+   "image": "c1 · Image 6",
+   "kind": "product",
+   "fingerprint": "05296a42",
+   "sent_fingerprint": "2a50c92e",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\product_samples_and_designs\\Sleep & Recharge\\sample.jpg",
+   "original_name": "sample.jpg",
+   "prepared": "Cut the carton out alone (no marble ledge, no wall). Rotate it so its label reads level, top end up. Centre it on the same plain mid-grey field as Image 5, at about a third of the field's width, no shadow, colours untouched.",
+   "recorded": "source",
+   "job": "99e4012d-a2b3-4bdc-8a2d-d7b7811080cc"
+  }
+ ],
+ "product_samples": [
+  {
+   "asset": "",
+   "label": "c1 · Image 1 · v01-first-frame-a2.png · its original file is not recorded",
+   "file": "v01-first-frame-a2.png",
+   "image": "c1 · Image 1",
+   "kind": "",
+   "fingerprint": "",
+   "sent_fingerprint": "c8c2c8f9",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "99e4012d-a2b3-4bdc-8a2d-d7b7811080cc"
+  },
+  {
+   "asset": "",
+   "label": "c1 · Image 2 · image2-character-face.png · its original file is not recorded",
+   "file": "image2-character-face.png",
+   "image": "c1 · Image 2",
+   "kind": "character",
+   "fingerprint": "",
+   "sent_fingerprint": "4d73feda",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "99e4012d-a2b3-4bdc-8a2d-d7b7811080cc"
+  },
+  {
+   "asset": "",
+   "label": "c1 · Image 3 · image3-character-full.png · its original file is not recorded",
+   "file": "image3-character-full.png",
+   "image": "c1 · Image 3",
+   "kind": "character",
+   "fingerprint": "",
+   "sent_fingerprint": "144d668e",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "99e4012d-a2b3-4bdc-8a2d-d7b7811080cc"
+  },
+  {
+   "asset": "",
+   "label": "c1 · Image 4 · image4-character-mini.png · its original file is not recorded",
+   "file": "image4-character-mini.png",
+   "image": "c1 · Image 4",
+   "kind": "character",
+   "fingerprint": "",
+   "sent_fingerprint": "be4e65fb",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "99e4012d-a2b3-4bdc-8a2d-d7b7811080cc"
+  },
+  {
+   "asset": "A01",
+   "label": "c1 · Image 5 · A01 · 40_aaade3aa-d154-49ea-a33e-dbaa910c3624.jpg",
+   "file": "image5-product-clay-front-padded-1920.png",
+   "image": "c1 · Image 5",
+   "kind": "product",
+   "fingerprint": "b46762c3",
+   "sent_fingerprint": "6d5917c6",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\product_samples_and_designs\\Sleep & Recharge\\40_aaade3aa-d154-49ea-a33e-dbaa910c3624.jpg",
+   "original_name": "40_aaade3aa-d154-49ea-a33e-dbaa910c3624.jpg",
+   "prepared": "re-made as a matte claymation carton with gpt_image_2_6 (high) from A01's carton front (A02's PNG copy 30-assets/converted/42.png for sharper type; bottom line kept as '12 Meltaway Mints | Dietary Supplement'), standing, slight three-quarter turn, padded small on a plain mid-grey field [U: product re-made in the animation style, design unchanged]",
+   "recorded": "source",
+   "job": "99e4012d-a2b3-4bdc-8a2d-d7b7811080cc"
+  },
+  {
+   "asset": "A05",
+   "label": "c1 · Image 6 · A05 · sample.jpg",
+   "file": "a05-carton-depth-cutout.png",
+   "image": "c1 · Image 6",
+   "kind": "product",
+   "fingerprint": "05296a42",
+   "sent_fingerprint": "2a50c92e",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\product_samples_and_designs\\Sleep & Recharge\\sample.jpg",
+   "original_name": "sample.jpg",
+   "prepared": "Cut the carton out alone (no marble ledge, no wall). Rotate it so its label reads level, top end up. Centre it on the same plain mid-grey field as Image 5, at about a third of the field's width, no shadow, colours untouched.",
+   "recorded": "source",
+   "job": "99e4012d-a2b3-4bdc-8a2d-d7b7811080cc"
+  }
+ ],
+ "shapes": []
+}

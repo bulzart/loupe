@@ -1,0 +1,200 @@
+{
+ "moment": 59,
+ "miss": 42,
+ "title": "the guy uses the celsius can like if it was a bottle by uncaping it and rotating the hand around it, better place a celsius in the table instead (like we did with Video B, right sample)",
+ "model": "wan3_0_prime",
+ "run": "20261104-225639-04",
+ "video": "41",
+ "t_wrong": 0.867,
+ "t_fixed": 0.5,
+ "sample": "S59",
+ "frames": [
+  {
+   "n": 1,
+   "role": "wrong",
+   "from": "as generated",
+   "video": "A",
+   "t": 0.867
+  },
+  {
+   "n": 2,
+   "role": "wrong",
+   "from": "as generated",
+   "video": "A",
+   "t": 0.3
+  },
+  {
+   "n": 3,
+   "role": "right",
+   "from": "correct version",
+   "video": "B",
+   "t": 0.5
+  }
+ ],
+ "product_sample_chosen": false,
+ "images_sent": [
+  {
+   "asset": "A44",
+   "label": "Video A · Image 1 · A44 · 🕊️.jpg",
+   "file": "image1-character-A44-head.jpg",
+   "image": "Image 1",
+   "kind": "character",
+   "fingerprint": "982dda1e",
+   "sent_fingerprint": "0247bb60",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\🕊️.jpg",
+   "original_name": "🕊️.jpg",
+   "prepared": "head-and-neck crop above the sweatshirt and the white tee collar on neutral grey RGB 128, face about half the image width; the dark crew-neck sweatshirt, white tee and car interior cut away; used as is, not flipped (no lettering in the photo; the car door and window on frame-right = his left side, the driver's side of a US car, reads as an un-mirrored front-camera selfie)",
+   "recorded": "source",
+   "job": "f2a39e42-bf7b-4d56-8438-b6d938072a8c",
+   "videos": [
+    "A"
+   ]
+  },
+  {
+   "asset": "A35",
+   "label": "Videos A and B · Image 2 · A35 · peach vibe front - cans usa.png",
+   "file": "image2-product-CEL-PV-front-padded.png",
+   "image": "Image 2",
+   "kind": "product",
+   "fingerprint": "6bccec7a",
+   "sent_fingerprint": "0984d838",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\peach vibe front - cans usa.png",
+   "original_name": "peach vibe front - cans usa.png",
+   "prepared": "alpha flattened, centred on a 1440x1440 light-grey field RGB 236, the can about 40 % of the field height (padded small)",
+   "recorded": "source",
+   "job": "f2a39e42-bf7b-4d56-8438-b6d938072a8c",
+   "jobs": [
+    "f2a39e42-bf7b-4d56-8438-b6d938072a8c",
+    "0b3001cc-be32-4afb-bd79-b4e82c8696be"
+   ],
+   "videos": [
+    "A",
+    "B"
+   ]
+  },
+  {
+   "asset": "A34",
+   "label": "Videos A and B · Image 3 · A34 · peach vibe angled - cans usa.png",
+   "file": "image3-product-CEL-PV-angled-padded.png",
+   "image": "Image 3",
+   "kind": "product",
+   "fingerprint": "97a57aad",
+   "sent_fingerprint": "e4c704fe",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\peach vibe angled - cans usa.png",
+   "original_name": "peach vibe angled - cans usa.png",
+   "prepared": "alpha flattened, centred on a 1440x1440 light-grey field RGB 236, the can about 40 % of the field width (padded small)",
+   "recorded": "source",
+   "job": "f2a39e42-bf7b-4d56-8438-b6d938072a8c",
+   "jobs": [
+    "f2a39e42-bf7b-4d56-8438-b6d938072a8c",
+    "0b3001cc-be32-4afb-bd79-b4e82c8696be"
+   ],
+   "videos": [
+    "A",
+    "B"
+   ]
+  },
+  {
+   "asset": "A27",
+   "label": "Video B · Image 1 · A27 · download (8).jpg",
+   "file": "image1-character-A27-head.jpg",
+   "image": "Image 1",
+   "kind": "character",
+   "fingerprint": "9f2276bf",
+   "sent_fingerprint": "369e10f3",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\download (8).jpg",
+   "original_name": "download (8).jpg",
+   "prepared": "flipped true first (a mirrored front-camera selfie: the red sign behind him reads mirrored, flipped it reads as a word); head and neck cut out with GrabCut onto neutral grey RGB 128, 600x660 crop of the 735x955 photo, face about 290 px wide (half the width), no upscaling; the black t-shirt and the background removed",
+   "recorded": "source",
+   "job": "0b3001cc-be32-4afb-bd79-b4e82c8696be",
+   "videos": [
+    "B"
+   ]
+  }
+ ],
+ "images_videos": [
+  "A",
+  "B"
+ ],
+ "product_samples": [
+  {
+   "asset": "A44",
+   "label": "Video A · Image 1 · A44 · 🕊️.jpg",
+   "file": "image1-character-A44-head.jpg",
+   "image": "Image 1",
+   "kind": "character",
+   "fingerprint": "982dda1e",
+   "sent_fingerprint": "0247bb60",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\🕊️.jpg",
+   "original_name": "🕊️.jpg",
+   "prepared": "head-and-neck crop above the sweatshirt and the white tee collar on neutral grey RGB 128, face about half the image width; the dark crew-neck sweatshirt, white tee and car interior cut away; used as is, not flipped (no lettering in the photo; the car door and window on frame-right = his left side, the driver's side of a US car, reads as an un-mirrored front-camera selfie)",
+   "recorded": "source",
+   "job": "f2a39e42-bf7b-4d56-8438-b6d938072a8c",
+   "videos": [
+    "A"
+   ]
+  },
+  {
+   "asset": "A35",
+   "label": "Videos A and B · Image 2 · A35 · peach vibe front - cans usa.png",
+   "file": "image2-product-CEL-PV-front-padded.png",
+   "image": "Image 2",
+   "kind": "product",
+   "fingerprint": "6bccec7a",
+   "sent_fingerprint": "0984d838",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\peach vibe front - cans usa.png",
+   "original_name": "peach vibe front - cans usa.png",
+   "prepared": "alpha flattened, centred on a 1440x1440 light-grey field RGB 236, the can about 40 % of the field height (padded small)",
+   "recorded": "source",
+   "job": "f2a39e42-bf7b-4d56-8438-b6d938072a8c",
+   "jobs": [
+    "f2a39e42-bf7b-4d56-8438-b6d938072a8c",
+    "0b3001cc-be32-4afb-bd79-b4e82c8696be"
+   ],
+   "videos": [
+    "A",
+    "B"
+   ]
+  },
+  {
+   "asset": "A34",
+   "label": "Videos A and B · Image 3 · A34 · peach vibe angled - cans usa.png",
+   "file": "image3-product-CEL-PV-angled-padded.png",
+   "image": "Image 3",
+   "kind": "product",
+   "fingerprint": "97a57aad",
+   "sent_fingerprint": "e4c704fe",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\peach vibe angled - cans usa.png",
+   "original_name": "peach vibe angled - cans usa.png",
+   "prepared": "alpha flattened, centred on a 1440x1440 light-grey field RGB 236, the can about 40 % of the field width (padded small)",
+   "recorded": "source",
+   "job": "f2a39e42-bf7b-4d56-8438-b6d938072a8c",
+   "jobs": [
+    "f2a39e42-bf7b-4d56-8438-b6d938072a8c",
+    "0b3001cc-be32-4afb-bd79-b4e82c8696be"
+   ],
+   "videos": [
+    "A",
+    "B"
+   ]
+  },
+  {
+   "asset": "A27",
+   "label": "Video B · Image 1 · A27 · download (8).jpg",
+   "file": "image1-character-A27-head.jpg",
+   "image": "Image 1",
+   "kind": "character",
+   "fingerprint": "9f2276bf",
+   "sent_fingerprint": "369e10f3",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\download (8).jpg",
+   "original_name": "download (8).jpg",
+   "prepared": "flipped true first (a mirrored front-camera selfie: the red sign behind him reads mirrored, flipped it reads as a word); head and neck cut out with GrabCut onto neutral grey RGB 128, 600x660 crop of the 735x955 photo, face about 290 px wide (half the width), no upscaling; the black t-shirt and the background removed",
+   "recorded": "source",
+   "job": "0b3001cc-be32-4afb-bd79-b4e82c8696be",
+   "videos": [
+    "B"
+   ]
+  }
+ ],
+ "shapes": []
+}

@@ -1,0 +1,110 @@
+{
+ "moment": 65,
+ "miss": 46,
+ "title": "perfect neurogum product render",
+ "model": "wan3_0_prime",
+ "run": "20261110-190823-celsius-neurogum-recreate",
+ "video": "26",
+ "t_wrong": 0.0,
+ "t_fixed": 0.0,
+ "sample": "S65",
+ "frames": [
+  {
+   "n": 1,
+   "role": "right",
+   "from": "as generated",
+   "video": "A",
+   "t": 0.0
+  }
+ ],
+ "product_sample_chosen": false,
+ "images_sent": [
+  {
+   "asset": "A51",
+   "label": "Image 1 · A51 · 8c6af80fe7cdbf74ca5bbfd6474b4bb3.jpg",
+   "file": "image1-character-CH28-head.png",
+   "image": "Image 1",
+   "kind": "character",
+   "fingerprint": "4d94c9ee",
+   "sent_fingerprint": "e3e48daa",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\8c6af80fe7cdbf74ca5bbfd6474b4bb3.jpg",
+   "original_name": "8c6af80fe7cdbf74ca5bbfd6474b4bb3.jpg",
+   "prepared": "head-and-neck crop above the collar on neutral grey RGB 128, face about half the image width (face about 260 px wide in the 1080x1665 photo: no upscale); a mirror selfie: no lettering on the head or neck to read, the face itself is not turned",
+   "recorded": "source",
+   "job": "fe9d4ff8-7fc6-49ad-9a5a-35e4a3c0ea1f"
+  },
+  {
+   "asset": "A163",
+   "label": "Image 2 · A163 · NG_XE_SM01_Front.png",
+   "file": "image2-product-NEU-XE9-SM-front-padded.png",
+   "image": "Image 2",
+   "kind": "product",
+   "fingerprint": "4dcf2610",
+   "sent_fingerprint": "81ceb597",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\product_samples_and_designs\\Gum - Extra Strength\\Carton 9 pieces - Spearmint\\NG_XE_SM01_Front.png",
+   "original_name": "NG_XE_SM01_Front.png",
+   "prepared": "RGBA render flattened onto light grey RGB 236, the whole 4000 px canvas scaled to 847 px and centred on a 1440 x 1440 field (carton about 432 px wide, 30 %); nothing else changed",
+   "recorded": "source",
+   "job": "fe9d4ff8-7fc6-49ad-9a5a-35e4a3c0ea1f"
+  },
+  {
+   "asset": "A269",
+   "label": "Image 3 · A269 · IMG_6917.jpg",
+   "file": "image3-product-NEU-flat-cutout-padded.png",
+   "image": "Image 3",
+   "kind": "product",
+   "fingerprint": "846e6464",
+   "sent_fingerprint": "8751dc00",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\product_samples_and_designs\\product_comparison_and_reference\\IMG_6917.jpg",
+   "original_name": "IMG_6917.jpg",
+   "prepared": "hand-traced polygon cut-out of the carton alone from IMG_6917 (4032x3024), feathered 3 px, scaled to 480 px wide on a 1440 x 1440 light-grey field RGB 237 with a soft shadow under it",
+   "recorded": "source",
+   "job": "fe9d4ff8-7fc6-49ad-9a5a-35e4a3c0ea1f"
+  }
+ ],
+ "product_samples": [
+  {
+   "asset": "A51",
+   "label": "Image 1 · A51 · 8c6af80fe7cdbf74ca5bbfd6474b4bb3.jpg",
+   "file": "image1-character-CH28-head.png",
+   "image": "Image 1",
+   "kind": "character",
+   "fingerprint": "4d94c9ee",
+   "sent_fingerprint": "e3e48daa",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\8c6af80fe7cdbf74ca5bbfd6474b4bb3.jpg",
+   "original_name": "8c6af80fe7cdbf74ca5bbfd6474b4bb3.jpg",
+   "prepared": "head-and-neck crop above the collar on neutral grey RGB 128, face about half the image width (face about 260 px wide in the 1080x1665 photo: no upscale); a mirror selfie: no lettering on the head or neck to read, the face itself is not turned",
+   "recorded": "source",
+   "job": "fe9d4ff8-7fc6-49ad-9a5a-35e4a3c0ea1f"
+  },
+  {
+   "asset": "A163",
+   "label": "Image 2 · A163 · NG_XE_SM01_Front.png",
+   "file": "image2-product-NEU-XE9-SM-front-padded.png",
+   "image": "Image 2",
+   "kind": "product",
+   "fingerprint": "4dcf2610",
+   "sent_fingerprint": "81ceb597",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\product_samples_and_designs\\Gum - Extra Strength\\Carton 9 pieces - Spearmint\\NG_XE_SM01_Front.png",
+   "original_name": "NG_XE_SM01_Front.png",
+   "prepared": "RGBA render flattened onto light grey RGB 236, the whole 4000 px canvas scaled to 847 px and centred on a 1440 x 1440 field (carton about 432 px wide, 30 %); nothing else changed",
+   "recorded": "source",
+   "job": "fe9d4ff8-7fc6-49ad-9a5a-35e4a3c0ea1f"
+  },
+  {
+   "asset": "A269",
+   "label": "Image 3 · A269 · IMG_6917.jpg",
+   "file": "image3-product-NEU-flat-cutout-padded.png",
+   "image": "Image 3",
+   "kind": "product",
+   "fingerprint": "846e6464",
+   "sent_fingerprint": "8751dc00",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\product_samples_and_designs\\product_comparison_and_reference\\IMG_6917.jpg",
+   "original_name": "IMG_6917.jpg",
+   "prepared": "hand-traced polygon cut-out of the carton alone from IMG_6917 (4032x3024), feathered 3 px, scaled to 480 px wide on a 1440 x 1440 light-grey field RGB 237 with a soft shadow under it",
+   "recorded": "source",
+   "job": "fe9d4ff8-7fc6-49ad-9a5a-35e4a3c0ea1f"
+  }
+ ],
+ "shapes": []
+}

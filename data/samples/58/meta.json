@@ -1,0 +1,232 @@
+{
+ "moment": 58,
+ "miss": 41,
+ "title": "the face swap on Video A (wrong sample) looks fake and off, the right version is correct.",
+ "model": "wan3_0_prime",
+ "run": "20261104-225639-04",
+ "video": "20",
+ "t_wrong": 0.0,
+ "t_fixed": 0.0,
+ "sample": "S58",
+ "frames": [
+  {
+   "n": 1,
+   "role": "wrong",
+   "from": "as generated",
+   "video": "A",
+   "t": 0.0,
+   "generation": {
+    "gen": 1,
+    "of": 2,
+    "clip": "c1",
+    "t_from": 0.0,
+    "t_to": 2.533
+   }
+  },
+  {
+   "n": 2,
+   "role": "right",
+   "from": "correct version",
+   "video": "B",
+   "t": 0.0
+  }
+ ],
+ "product_sample_chosen": false,
+ "images_sent": [
+  {
+   "asset": "A60",
+   "label": "Video A · c1, c2 · Image 1 · A60 · ce6a267c5acfdeb4aa855f22dc8c85e8.jpg",
+   "file": "image1-character-A60-head.png",
+   "image": "c1, c2 · Image 1",
+   "kind": "character",
+   "fingerprint": "f5ef009d",
+   "sent_fingerprint": "fa59b7cf",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\ce6a267c5acfdeb4aa855f22dc8c85e8.jpg",
+   "original_name": "ce6a267c5acfdeb4aa855f22dc8c85e8.jpg",
+   "prepared": "head-and-neck crop above the hoodie collar on neutral grey RGB 128, face about half the image width; a lying-down selfie with no lettering: not flipped",
+   "recorded": "source",
+   "job": "9771d4f4-cb54-4494-b8dd-a6cabf229f06",
+   "jobs": [
+    "9771d4f4-cb54-4494-b8dd-a6cabf229f06",
+    "ac4c6fe8-6b4e-4e12-a127-4891ff048390"
+   ],
+   "videos": [
+    "A"
+   ]
+  },
+  {
+   "asset": "A170",
+   "label": "Videos A and B · c2 · Image 2 of Video A, Image 2 of Video B · A170 · NG_XE_SM01_Front.png",
+   "file": "image2-product-NG-ES9-SM-front-padded.png",
+   "image": "c2 · Image 2 of Video A, Image 2 of Video B",
+   "kind": "product",
+   "fingerprint": "4dcf2610",
+   "sent_fingerprint": "d924b3bb",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\product_samples_and_designs\\Gum - Extra Strength\\Carton 9 pieces - Spearmint\\NG_XE_SM01_Front.png",
+   "original_name": "NG_XE_SM01_Front.png",
+   "prepared": "alpha flattened, centred on a 1440x1440 light-grey field RGB 236, the carton about 28-30 % of the field width",
+   "recorded": "source",
+   "job": "ac4c6fe8-6b4e-4e12-a127-4891ff048390",
+   "jobs": [
+    "ac4c6fe8-6b4e-4e12-a127-4891ff048390",
+    "c26bdfd3-0973-4981-91a9-47fc28752f1c"
+   ],
+   "videos": [
+    "A",
+    "B"
+   ]
+  },
+  {
+   "asset": "A173",
+   "label": "Video A · c2 · Image 3 · A173 · NG_XE_SM01_Right-Angled.png",
+   "file": "image3-product-NG-ES9-SM-right-angled-padded.png",
+   "image": "c2 · Image 3",
+   "kind": "product",
+   "fingerprint": "c9feaf77",
+   "sent_fingerprint": "d8a1f4a2",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\product_samples_and_designs\\Gum - Extra Strength\\Carton 9 pieces - Spearmint\\NG_XE_SM01_Right-Angled.png",
+   "original_name": "NG_XE_SM01_Right-Angled.png",
+   "prepared": "alpha flattened, centred on a 1440x1440 light-grey field RGB 236, the carton about 28-30 % of the field width (the same padding as Image 2)",
+   "recorded": "source",
+   "job": "ac4c6fe8-6b4e-4e12-a127-4891ff048390",
+   "videos": [
+    "A"
+   ]
+  },
+  {
+   "asset": "A50",
+   "label": "Video B · Image 1 · A50 · 5566f9f81d216f8d70bc88f7995d3893.jpg",
+   "file": "image1-character-A50-head.png",
+   "image": "Image 1",
+   "kind": "character",
+   "fingerprint": "ccd8b753",
+   "sent_fingerprint": "7cc9d01d",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\5566f9f81d216f8d70bc88f7995d3893.jpg",
+   "original_name": "5566f9f81d216f8d70bc88f7995d3893.jpg",
+   "prepared": "head-and-neck crop (GrabCut cut-out) on neutral grey RGB 128, 720x900, face about half the image width; the white collared shirt, water and rocks cut away; no lettering in the photo: not flipped",
+   "recorded": "source",
+   "job": "c26bdfd3-0973-4981-91a9-47fc28752f1c",
+   "videos": [
+    "B"
+   ]
+  },
+  {
+   "asset": "A271",
+   "label": "Video B · Image 3 · A271 · IMG_6917.jpg",
+   "file": "image3-product-NG-REAL-A271-flat-cutout.png",
+   "image": "Image 3",
+   "kind": "product",
+   "fingerprint": "846e6464",
+   "sent_fingerprint": "e4a38119",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\product_samples_and_designs\\product_comparison_and_reference\\IMG_6917.jpg",
+   "original_name": "IMG_6917.jpg",
+   "prepared": "the real carton alone cut out by GrabCut (no phone, keyboard, monitor or desk), lying flat, centred on a 1440x1440 light-grey field RGB 237, about a third of the width (480 px), a soft shadow under it; never the whole photo",
+   "recorded": "source",
+   "job": "c26bdfd3-0973-4981-91a9-47fc28752f1c",
+   "videos": [
+    "B"
+   ]
+  }
+ ],
+ "images_videos": [
+  "A",
+  "B"
+ ],
+ "product_samples": [
+  {
+   "asset": "A60",
+   "label": "Video A · c1, c2 · Image 1 · A60 · ce6a267c5acfdeb4aa855f22dc8c85e8.jpg",
+   "file": "image1-character-A60-head.png",
+   "image": "c1, c2 · Image 1",
+   "kind": "character",
+   "fingerprint": "f5ef009d",
+   "sent_fingerprint": "fa59b7cf",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\ce6a267c5acfdeb4aa855f22dc8c85e8.jpg",
+   "original_name": "ce6a267c5acfdeb4aa855f22dc8c85e8.jpg",
+   "prepared": "head-and-neck crop above the hoodie collar on neutral grey RGB 128, face about half the image width; a lying-down selfie with no lettering: not flipped",
+   "recorded": "source",
+   "job": "9771d4f4-cb54-4494-b8dd-a6cabf229f06",
+   "jobs": [
+    "9771d4f4-cb54-4494-b8dd-a6cabf229f06",
+    "ac4c6fe8-6b4e-4e12-a127-4891ff048390"
+   ],
+   "videos": [
+    "A"
+   ]
+  },
+  {
+   "asset": "A170",
+   "label": "Videos A and B · c2 · Image 2 of Video A, Image 2 of Video B · A170 · NG_XE_SM01_Front.png",
+   "file": "image2-product-NG-ES9-SM-front-padded.png",
+   "image": "c2 · Image 2 of Video A, Image 2 of Video B",
+   "kind": "product",
+   "fingerprint": "4dcf2610",
+   "sent_fingerprint": "d924b3bb",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\product_samples_and_designs\\Gum - Extra Strength\\Carton 9 pieces - Spearmint\\NG_XE_SM01_Front.png",
+   "original_name": "NG_XE_SM01_Front.png",
+   "prepared": "alpha flattened, centred on a 1440x1440 light-grey field RGB 236, the carton about 28-30 % of the field width",
+   "recorded": "source",
+   "job": "ac4c6fe8-6b4e-4e12-a127-4891ff048390",
+   "jobs": [
+    "ac4c6fe8-6b4e-4e12-a127-4891ff048390",
+    "c26bdfd3-0973-4981-91a9-47fc28752f1c"
+   ],
+   "videos": [
+    "A",
+    "B"
+   ]
+  },
+  {
+   "asset": "A173",
+   "label": "Video A · c2 · Image 3 · A173 · NG_XE_SM01_Right-Angled.png",
+   "file": "image3-product-NG-ES9-SM-right-angled-padded.png",
+   "image": "c2 · Image 3",
+   "kind": "product",
+   "fingerprint": "c9feaf77",
+   "sent_fingerprint": "d8a1f4a2",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\product_samples_and_designs\\Gum - Extra Strength\\Carton 9 pieces - Spearmint\\NG_XE_SM01_Right-Angled.png",
+   "original_name": "NG_XE_SM01_Right-Angled.png",
+   "prepared": "alpha flattened, centred on a 1440x1440 light-grey field RGB 236, the carton about 28-30 % of the field width (the same padding as Image 2)",
+   "recorded": "source",
+   "job": "ac4c6fe8-6b4e-4e12-a127-4891ff048390",
+   "videos": [
+    "A"
+   ]
+  },
+  {
+   "asset": "A50",
+   "label": "Video B · Image 1 · A50 · 5566f9f81d216f8d70bc88f7995d3893.jpg",
+   "file": "image1-character-A50-head.png",
+   "image": "Image 1",
+   "kind": "character",
+   "fingerprint": "ccd8b753",
+   "sent_fingerprint": "7cc9d01d",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\5566f9f81d216f8d70bc88f7995d3893.jpg",
+   "original_name": "5566f9f81d216f8d70bc88f7995d3893.jpg",
+   "prepared": "head-and-neck crop (GrabCut cut-out) on neutral grey RGB 128, 720x900, face about half the image width; the white collared shirt, water and rocks cut away; no lettering in the photo: not flipped",
+   "recorded": "source",
+   "job": "c26bdfd3-0973-4981-91a9-47fc28752f1c",
+   "videos": [
+    "B"
+   ]
+  },
+  {
+   "asset": "A271",
+   "label": "Video B · Image 3 · A271 · IMG_6917.jpg",
+   "file": "image3-product-NG-REAL-A271-flat-cutout.png",
+   "image": "Image 3",
+   "kind": "product",
+   "fingerprint": "846e6464",
+   "sent_fingerprint": "e4a38119",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\product_samples_and_designs\\product_comparison_and_reference\\IMG_6917.jpg",
+   "original_name": "IMG_6917.jpg",
+   "prepared": "the real carton alone cut out by GrabCut (no phone, keyboard, monitor or desk), lying flat, centred on a 1440x1440 light-grey field RGB 237, about a third of the width (480 px), a soft shadow under it; never the whole photo",
+   "recorded": "source",
+   "job": "c26bdfd3-0973-4981-91a9-47fc28752f1c",
+   "videos": [
+    "B"
+   ]
+  }
+ ],
+ "shapes": []
+}

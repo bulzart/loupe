@@ -1,0 +1,176 @@
+{
+ "moment": 60,
+ "miss": 43,
+ "title": "Video A (wrong sample) package is too thick in depth, Video B(correct sample frame) is the correct in size, depth and graphics.",
+ "model": "wan3_0_prime",
+ "run": "20261104-225639-04",
+ "video": "75",
+ "t_wrong": 0.0,
+ "t_fixed": 0.0,
+ "sample": "S60",
+ "frames": [
+  {
+   "n": 1,
+   "role": "wrong",
+   "from": "as generated",
+   "video": "A",
+   "t": 0.0
+  },
+  {
+   "n": 2,
+   "role": "right",
+   "from": "correct version",
+   "video": "B",
+   "t": 0.0
+  }
+ ],
+ "product_sample_chosen": false,
+ "images_sent": [
+  {
+   "asset": "A51",
+   "label": "Videos A and B · Image 1 · A51 · 7077b329913794f1a27fa3c9fa077eaf.jpg",
+   "file": "image1-character-A51-head.png",
+   "image": "Image 1",
+   "kind": "character",
+   "fingerprint": "63c87373",
+   "sent_fingerprint": "f2778b72",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\7077b329913794f1a27fa3c9fa077eaf.jpg",
+   "original_name": "7077b329913794f1a27fa3c9fa077eaf.jpg",
+   "prepared": "head-and-neck crop above the collar on neutral grey RGB 128, face about half the image width; the cream zip hoodie, the white t-shirt, the car interior and the thumbnail strip at the bottom cut away; not flipped (no lettering to read) (the same preparation as 55-references/video-16/a1/image1-character-A51-head.png)",
+   "recorded": "source",
+   "job": "7dce9a3a-fbc3-4318-adab-8f4d5c427c82",
+   "jobs": [
+    "7dce9a3a-fbc3-4318-adab-8f4d5c427c82",
+    "7132b424-92ff-4b12-9c01-93641fe44290"
+   ],
+   "videos": [
+    "A",
+    "B"
+   ]
+  },
+  {
+   "asset": "A165",
+   "label": "Videos A and B · Image 2 · A165 · EX_EF_Gum_9 piece_Peppermint_Single-Front.png",
+   "file": "image2-product-NG-ES9-PM-front.png",
+   "image": "Image 2",
+   "kind": "product",
+   "fingerprint": "b293c10c",
+   "sent_fingerprint": "0e7c5c6b",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\product_samples_and_designs\\Gum - Extra Strength\\Carton 9 pieces - Peppermint\\EX_EF_Gum_9 piece_Peppermint_Single-Front.png",
+   "original_name": "EX_EF_Gum_9 piece_Peppermint_Single-Front.png",
+   "prepared": "front render, alpha flattened, centred on a 1440 x 1440 light-grey field (RGB 236), the carton about 28-30 % of the field's width; colours untouched (README Generation notes §3; the same preparation as 55-references/video-16/a1/image2-product-NG-ES9-PM-front.png)",
+   "recorded": "source",
+   "job": "7dce9a3a-fbc3-4318-adab-8f4d5c427c82",
+   "jobs": [
+    "7dce9a3a-fbc3-4318-adab-8f4d5c427c82",
+    "7132b424-92ff-4b12-9c01-93641fe44290"
+   ],
+   "videos": [
+    "A",
+    "B"
+   ]
+  },
+  {
+   "asset": "A271",
+   "label": "Video B · Image 3 · A271 · IMG_6917.jpg",
+   "file": "image3-product-A271-real-flat-cutout-padded.png",
+   "image": "Image 3",
+   "kind": "product",
+   "fingerprint": "846e6464",
+   "sent_fingerprint": "08b364cd",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\product_samples_and_designs\\product_comparison_and_reference\\IMG_6917.jpg",
+   "original_name": "IMG_6917.jpg",
+   "prepared": "cut out alone from x ~2075-3840, y ~1565-2147 of the 4032x3024 photo (colour mask + convex hull; phone, keyboard, monitor and desk wood removed), placed lying flat on a 1440x1440 light-grey field RGB 237 at 480 px wide (a third of the field), soft shadow under it; the judge's preparation (S51/S54 correct versions)",
+   "recorded": "source",
+   "job": "7132b424-92ff-4b12-9c01-93641fe44290",
+   "videos": [
+    "B"
+   ]
+  }
+ ],
+ "images_videos": [
+  "A",
+  "B"
+ ],
+ "product_samples": [
+  {
+   "asset": "A51",
+   "label": "Videos A and B · Image 1 · A51 · 7077b329913794f1a27fa3c9fa077eaf.jpg",
+   "file": "image1-character-A51-head.png",
+   "image": "Image 1",
+   "kind": "character",
+   "fingerprint": "63c87373",
+   "sent_fingerprint": "f2778b72",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\7077b329913794f1a27fa3c9fa077eaf.jpg",
+   "original_name": "7077b329913794f1a27fa3c9fa077eaf.jpg",
+   "prepared": "head-and-neck crop above the collar on neutral grey RGB 128, face about half the image width; the cream zip hoodie, the white t-shirt, the car interior and the thumbnail strip at the bottom cut away; not flipped (no lettering to read) (the same preparation as 55-references/video-16/a1/image1-character-A51-head.png)",
+   "recorded": "source",
+   "job": "7dce9a3a-fbc3-4318-adab-8f4d5c427c82",
+   "jobs": [
+    "7dce9a3a-fbc3-4318-adab-8f4d5c427c82",
+    "7132b424-92ff-4b12-9c01-93641fe44290"
+   ],
+   "videos": [
+    "A",
+    "B"
+   ]
+  },
+  {
+   "asset": "A165",
+   "label": "Videos A and B · Image 2 · A165 · EX_EF_Gum_9 piece_Peppermint_Single-Front.png",
+   "file": "image2-product-NG-ES9-PM-front.png",
+   "image": "Image 2",
+   "kind": "product",
+   "fingerprint": "b293c10c",
+   "sent_fingerprint": "0e7c5c6b",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\product_samples_and_designs\\Gum - Extra Strength\\Carton 9 pieces - Peppermint\\EX_EF_Gum_9 piece_Peppermint_Single-Front.png",
+   "original_name": "EX_EF_Gum_9 piece_Peppermint_Single-Front.png",
+   "prepared": "front render, alpha flattened, centred on a 1440 x 1440 light-grey field (RGB 236), the carton about 28-30 % of the field's width; colours untouched (README Generation notes §3; the same preparation as 55-references/video-16/a1/image2-product-NG-ES9-PM-front.png)",
+   "recorded": "source",
+   "job": "7dce9a3a-fbc3-4318-adab-8f4d5c427c82",
+   "jobs": [
+    "7dce9a3a-fbc3-4318-adab-8f4d5c427c82",
+    "7132b424-92ff-4b12-9c01-93641fe44290"
+   ],
+   "videos": [
+    "A",
+    "B"
+   ]
+  },
+  {
+   "asset": "A271",
+   "label": "Video B · Image 3 · A271 · IMG_6917.jpg",
+   "file": "image3-product-A271-real-flat-cutout-padded.png",
+   "image": "Image 3",
+   "kind": "product",
+   "fingerprint": "846e6464",
+   "sent_fingerprint": "08b364cd",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\product_samples_and_designs\\product_comparison_and_reference\\IMG_6917.jpg",
+   "original_name": "IMG_6917.jpg",
+   "prepared": "cut out alone from x ~2075-3840, y ~1565-2147 of the 4032x3024 photo (colour mask + convex hull; phone, keyboard, monitor and desk wood removed), placed lying flat on a 1440x1440 light-grey field RGB 237 at 480 px wide (a third of the field), soft shadow under it; the judge's preparation (S51/S54 correct versions)",
+   "recorded": "source",
+   "job": "7132b424-92ff-4b12-9c01-93641fe44290",
+   "videos": [
+    "B"
+   ]
+  }
+ ],
+ "shapes": [
+  {
+   "type": "rect",
+   "frame": 0,
+   "x1": 0.01451591290094715,
+   "y1": 0.6680813983381648,
+   "x2": 0.5219853257571235,
+   "y2": 0.9379629446647229
+  },
+  {
+   "type": "rect",
+   "frame": 1,
+   "x1": 0.004568173451926138,
+   "y1": 0.66116125330884,
+   "x2": 0.4966599137416428,
+   "y2": 0.965643087567436
+  }
+ ]
+}

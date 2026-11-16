@@ -1,0 +1,201 @@
+{
+ "moment": 64,
+ "miss": 45,
+ "title": "After the racoon in the garbage, she enters a doorway that shouldn't exist, instead she's supposed to walk back to the door that she came from and not enter to a door that spawns out of the blue",
+ "model": "seedance_2_5",
+ "run": "20261109-205907-neurogum-sleep-recharge-anim",
+ "video": "02",
+ "t_wrong": 18.767,
+ "t_fixed": 18.767,
+ "sample": "S64",
+ "frames": [
+  {
+   "n": 1,
+   "role": "wrong",
+   "from": "as generated",
+   "video": "A",
+   "t": 18.767,
+   "generation": {
+    "gen": 1,
+    "of": 2,
+    "clip": "c1",
+    "t_from": 0.0,
+    "t_to": 24.064
+   }
+  },
+  {
+   "n": 2,
+   "role": "wrong",
+   "from": "as generated",
+   "video": "A",
+   "t": 21.3,
+   "generation": {
+    "gen": 1,
+    "of": 2,
+    "clip": "c1",
+    "t_from": 0.0,
+    "t_to": 24.064
+   }
+  },
+  {
+   "n": 3,
+   "role": "wrong",
+   "from": "as generated",
+   "video": "A",
+   "t": 27.533,
+   "generation": {
+    "gen": 2,
+    "of": 2,
+    "clip": "c2",
+    "t_from": 24.064,
+    "t_to": 44.022
+   }
+  },
+  {
+   "n": 4,
+   "role": "wrong",
+   "from": "as generated",
+   "video": "A",
+   "t": 29.267,
+   "generation": {
+    "gen": 2,
+    "of": 2,
+    "clip": "c2",
+    "t_from": 24.064,
+    "t_to": 44.022
+   }
+  },
+  {
+   "n": 5,
+   "role": "wrong",
+   "from": "as generated",
+   "video": "A",
+   "t": 30.1,
+   "generation": {
+    "gen": 2,
+    "of": 2,
+    "clip": "c2",
+    "t_from": 24.064,
+    "t_to": 44.022
+   }
+  }
+ ],
+ "product_sample_chosen": false,
+ "images_sent": [
+  {
+   "asset": "",
+   "label": "c1 · Image 1 · image1-first-frame-hall-1080x1920.png · its original file is not recorded",
+   "file": "image1-first-frame-hall-1080x1920.png",
+   "image": "c1 · Image 1",
+   "kind": "",
+   "fingerprint": "",
+   "sent_fingerprint": "4aef469d",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "3579936c-63ae-443c-8f8f-e7c07d1ccd8f"
+  },
+  {
+   "asset": "",
+   "label": "c1 · Image 2 · image-character-face-3d.png · its original file is not recorded",
+   "file": "image-character-face-3d.png",
+   "image": "c1 · Image 2",
+   "kind": "character",
+   "fingerprint": "",
+   "sent_fingerprint": "5251b950",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "3579936c-63ae-443c-8f8f-e7c07d1ccd8f"
+  },
+  {
+   "asset": "",
+   "label": "c1 · Image 3 · image-character-full-3d.png · its original file is not recorded",
+   "file": "image-character-full-3d.png",
+   "image": "c1 · Image 3",
+   "kind": "character",
+   "fingerprint": "",
+   "sent_fingerprint": "f5c75a66",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "3579936c-63ae-443c-8f8f-e7c07d1ccd8f"
+  },
+  {
+   "asset": "A01",
+   "label": "c1 · Image 4 · A01 · 40_aaade3aa-d154-49ea-a33e-dbaa910c3624.jpg",
+   "file": "image-product-carton-3d-padded-1920.png",
+   "image": "c1 · Image 4",
+   "kind": "product",
+   "fingerprint": "b46762c3",
+   "sent_fingerprint": "e1d6f105",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\product_samples_and_designs\\Sleep & Recharge\\40_aaade3aa-d154-49ea-a33e-dbaa910c3624.jpg",
+   "original_name": "40_aaade3aa-d154-49ea-a33e-dbaa910c3624.jpg",
+   "prepared": "re-made as a 3D animated-film carton with gpt_image_2_6 (high) from A01's carton front (padded copy 30-assets/prepared/a01-carton-front-padded.png), standing, turned about 20 degrees so the thin right edge shows; label read word by word against A01; padded small (about 37 % of the width) on a plain light-grey 1920 px field [U: product re-made in the animation style, design unchanged]",
+   "recorded": "source",
+   "job": "3579936c-63ae-443c-8f8f-e7c07d1ccd8f"
+  }
+ ],
+ "product_samples": [
+  {
+   "asset": "",
+   "label": "c1 · Image 1 · image1-first-frame-hall-1080x1920.png · its original file is not recorded",
+   "file": "image1-first-frame-hall-1080x1920.png",
+   "image": "c1 · Image 1",
+   "kind": "",
+   "fingerprint": "",
+   "sent_fingerprint": "4aef469d",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "3579936c-63ae-443c-8f8f-e7c07d1ccd8f"
+  },
+  {
+   "asset": "",
+   "label": "c1 · Image 2 · image-character-face-3d.png · its original file is not recorded",
+   "file": "image-character-face-3d.png",
+   "image": "c1 · Image 2",
+   "kind": "character",
+   "fingerprint": "",
+   "sent_fingerprint": "5251b950",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "3579936c-63ae-443c-8f8f-e7c07d1ccd8f"
+  },
+  {
+   "asset": "",
+   "label": "c1 · Image 3 · image-character-full-3d.png · its original file is not recorded",
+   "file": "image-character-full-3d.png",
+   "image": "c1 · Image 3",
+   "kind": "character",
+   "fingerprint": "",
+   "sent_fingerprint": "f5c75a66",
+   "original": "",
+   "original_name": "",
+   "prepared": "",
+   "recorded": "",
+   "job": "3579936c-63ae-443c-8f8f-e7c07d1ccd8f"
+  },
+  {
+   "asset": "A01",
+   "label": "c1 · Image 4 · A01 · 40_aaade3aa-d154-49ea-a33e-dbaa910c3624.jpg",
+   "file": "image-product-carton-3d-padded-1920.png",
+   "image": "c1 · Image 4",
+   "kind": "product",
+   "fingerprint": "b46762c3",
+   "sent_fingerprint": "e1d6f105",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\neurogum\\assets\\product_samples_and_designs\\Sleep & Recharge\\40_aaade3aa-d154-49ea-a33e-dbaa910c3624.jpg",
+   "original_name": "40_aaade3aa-d154-49ea-a33e-dbaa910c3624.jpg",
+   "prepared": "re-made as a 3D animated-film carton with gpt_image_2_6 (high) from A01's carton front (padded copy 30-assets/prepared/a01-carton-front-padded.png), standing, turned about 20 degrees so the thin right edge shows; label read word by word against A01; padded small (about 37 % of the width) on a plain light-grey 1920 px field [U: product re-made in the animation style, design unchanged]",
+   "recorded": "source",
+   "job": "3579936c-63ae-443c-8f8f-e7c07d1ccd8f"
+  }
+ ],
+ "shapes": []
+}

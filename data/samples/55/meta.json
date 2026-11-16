@@ -1,0 +1,96 @@
+{
+ "moment": 55,
+ "miss": 39,
+ "title": "The can/tin is placed in a place where the character on the original video puts his foot over and it makes him seem like stepping on the can, which doesn't happen in real life physics and logic because the no one steps on a can/tin.",
+ "model": "wan3_0_prime",
+ "run": "20261104-225639-04",
+ "video": "13",
+ "t_wrong": 0.533,
+ "t_fixed": 0.533,
+ "sample": "S55",
+ "frames": [
+  {
+   "n": 1,
+   "role": "wrong",
+   "from": "as generated",
+   "video": "A",
+   "t": 0.533
+  },
+  {
+   "n": 2,
+   "role": "wrong",
+   "from": "as generated",
+   "video": "A",
+   "t": 0.867
+  },
+  {
+   "n": 3,
+   "role": "wrong",
+   "from": "as generated",
+   "video": "A",
+   "t": 1.2
+  }
+ ],
+ "product_sample_chosen": false,
+ "images_sent": [
+  {
+   "asset": "A43",
+   "label": "Image 1 · A43 · 🌞.jpg",
+   "file": "image1-character-A43-head.png",
+   "image": "Image 1",
+   "kind": "character",
+   "fingerprint": "b0234c28",
+   "sent_fingerprint": "e05ef92a",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\🌞.jpg",
+   "original_name": "🌞.jpg",
+   "prepared": "head-and-neck crop above the collar on neutral grey RGB 128, face about half the image width; read the navy tee's lettering first: flip only if the photo is a mirrored selfie | X3 (agent): not flipped (the navy tee's lettering is cut off by the photo's bottom edge and illegible: no evidence of a mirrored selfie); cut out with OpenCV grabCut, head and neck above the collar, on grey RGB 128, 1024x1024",
+   "recorded": "source",
+   "job": "03d41441-2c90-44da-98ef-633d6f51b848"
+  },
+  {
+   "asset": "A13",
+   "label": "Image 2 · A13 · cherry cola front - cans usa.png",
+   "file": "image2-product-CEL-CC-front.png",
+   "image": "Image 2",
+   "kind": "product",
+   "fingerprint": "5c33608c",
+   "sent_fingerprint": "ccbb9bbc",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\cherry cola front - cans usa.png",
+   "original_name": "cherry cola front - cans usa.png",
+   "prepared": "the canonical front render padded small, upright, on a light grey field (9:16 canvas, the can about a third of the canvas height); colours untouched | X3 (agent): 1080x1920, can 640 px tall, RGB 236 field",
+   "recorded": "source",
+   "job": "03d41441-2c90-44da-98ef-633d6f51b848"
+  }
+ ],
+ "product_samples": [
+  {
+   "asset": "A43",
+   "label": "Image 1 · A43 · 🌞.jpg",
+   "file": "image1-character-A43-head.png",
+   "image": "Image 1",
+   "kind": "character",
+   "fingerprint": "b0234c28",
+   "sent_fingerprint": "e05ef92a",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\🌞.jpg",
+   "original_name": "🌞.jpg",
+   "prepared": "head-and-neck crop above the collar on neutral grey RGB 128, face about half the image width; read the navy tee's lettering first: flip only if the photo is a mirrored selfie | X3 (agent): not flipped (the navy tee's lettering is cut off by the photo's bottom edge and illegible: no evidence of a mirrored selfie); cut out with OpenCV grabCut, head and neck above the collar, on grey RGB 128, 1024x1024",
+   "recorded": "source",
+   "job": "03d41441-2c90-44da-98ef-633d6f51b848"
+  },
+  {
+   "asset": "A13",
+   "label": "Image 2 · A13 · cherry cola front - cans usa.png",
+   "file": "image2-product-CEL-CC-front.png",
+   "image": "Image 2",
+   "kind": "product",
+   "fingerprint": "5c33608c",
+   "sent_fingerprint": "ccbb9bbc",
+   "original": "C:\\Users\\Glaresquare1\\Documents\\celsius\\celsius_assets\\cherry cola front - cans usa.png",
+   "original_name": "cherry cola front - cans usa.png",
+   "prepared": "the canonical front render padded small, upright, on a light grey field (9:16 canvas, the can about a third of the canvas height); colours untouched | X3 (agent): 1080x1920, can 640 px tall, RGB 236 field",
+   "recorded": "source",
+   "job": "03d41441-2c90-44da-98ef-633d6f51b848"
+  }
+ ],
+ "shapes": []
+}
