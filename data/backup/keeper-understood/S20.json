@@ -1,0 +1,29 @@
+{
+ "id": "S20",
+ "moment_id": 20,
+ "title": "The can/tin is sitting in a totally unpredictable and far place, and is not even noticeable yet fake",
+ "source_sig": "a1a9579ae27839ea",
+ "read_at": "2026-11-05T00:27:02+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.0027,
+ "turns": 3,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\20\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\20\\frame-1-marked.png"
+ ],
+ "reading": {
+  "marked": "A thin red rectangle (box) is drawn around the can on the wall at the right of the frame. In the zoom (the CLOSE RANGE panel) the same can is boxed; the zoom shows the can standing on a white plate on a surface at the edge of the wall, with the man's arm at the lower left of the zoom. The box marks only the can; no arrow or circle is drawn, and no text is written on the frame itself.",
+  "right_version": "No right frame: the admin marked this sample as a miss example only, with no right version.",
+  "product_and_scene": "Product: a Celsius-style silver energy-drink can with a red logo at the top, a 'CELSIUS' wordmark, a cherry-cola-style label with a pink band, and a dark silver base. It stands upright on a small white square plate. Its size is very small against the man: about the height of his hand or smaller than his head, and it sits on a surface high on the far wall or background, not on the desk. The scene is a plain office with a whiteboard, a light fixture, a beige wall, a wooden desk in the foreground and a laptop at the lower left. Camera: static, front-facing medium shot, at seated height, with the can far back in the room.",
+  "admin_words": "Title: The can/tin is sitting in a totally unpredictable and far place, and is not even noticeable yet fake. Model: wan3_0_prime. Source: run 20261019-235823-19, video 13, at 0:01.10 (analyze-recreate). Kinds: not tagged. Frame 1 WRONG 0:01.10, VIDEO A (as generated). The sample is marked as a miss example only, with no right version. Reference images sent with the generation: Image 1 A01 Bradley Thompson.jpg (a face), Image 2 A15 cherry cola front - cans usa.png (a can on a plain background), Image 3 video-13-guide.png (its original file is not recorded; it shows a can on a white plate against a grey wall).",
+  "unclear": "The can's exact real-world size is not stated in the frame, so its scale against the man is judged only by eye. Whether the surface under the can is a shelf, a ledge or the wall's lower edge is not clear. The original video the generation was made from (video 13) is not shown, so there is no comparison with it. The hands' exact positions and the mid-gesture motion are not clear from a single frame.",
+  "frames_seen": [
+   {
+    "frame": "WRONG 0:01.10",
+    "seen": "A man with brown wavy hair, a mustache and beard, wearing an olive-green crew-neck T-shirt, sits in a black office chair behind a reddish-brown wooden desk. A silver laptop sits at the lower left edge. He holds his left hand up open with five fingers spread toward the camera (on the left of the frame) and his right hand raised lower at the right, mid-gesture, with the fingers curled. …"
+   }
+  ],
+  "prompts_saved": "kept in the record: the flawed version's prompt (the generations the frames called WRONG come from); no correct version's prompt (no frame of this sample is called RIGHT)"
+ }
+}

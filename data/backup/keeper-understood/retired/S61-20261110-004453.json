@@ -1,0 +1,23 @@
+{
+ "id": "S61",
+ "moment_id": 61,
+ "title": "Video A (wrong sample) package is too thick in depth, Video B(correct sample frame) is the correct in size, depth and graphics.",
+ "source_sig": "cef0891290ec0652",
+ "read_at": "2026-11-07T00:33:34+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.0032,
+ "turns": 7,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\61\\composite.png"
+ ],
+ "reading": {
+  "marked": "",
+  "right_version": "",
+  "product_and_scene": "",
+  "admin_words": "Title: \"Video A (wrong sample) package is too thick in depth, Video B(correct sample frame) is the correct in size, depth and graphics.\"",
+  "unclear": "The composite (C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\61\\composite.png) and the frame files (frame-1-marked.png, frame-2-marked.png) could not be read. Read returned 'File does not exist' for the composite and both frames at the given path. The same error came for the sample folder itself (samples\\61), for samples\\62\\composite.png, and for samples\\61\\composite.png under data\\keeper\\extract. Nothing about the frames, marks, product or scene could be seen, so no frame description is given. The admin's title is restated from the request, not from the picture. Check that the sample's files exist at that path, or give the correct path, and the sample can be read again.",
+  "frames_seen": [],
+  "prompts_saved": "kept in the record: the flawed version's prompt (the generations the frames called WRONG come from) and the correct version's prompt (the generations the frames called RIGHT come from)"
+ }
+}

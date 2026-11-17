@@ -1,0 +1,39 @@
+{
+ "id": "S50",
+ "moment_id": 50,
+ "title": "The render graphics and place is wrong, could've been better if it was placed on the shelf right before the mirror close to the deodorant",
+ "source_sig": "171303150ded9016",
+ "read_at": "2026-11-05T00:24:36+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.0046,
+ "turns": 5,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\50\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\50\\frame-1-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\50\\frame-2-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\50\\frame-3-marked.png"
+ ],
+ "reading": {
+  "marked": "Frame 1 (0:03.13): a red box sits on the can standing on the wooden bench, with the man's hand reaching toward it at the box's upper left edge; the box encloses the can and the bench seat under it, against the grey wall. Frame 2 (0:04.10): a red box encloses the can on the bench to the right of the trash bin, the bench seat, and the wall behind them; the deodorant can on the counter is not inside the box. Frame 3 (0:04.73): a red box encloses the can on the bench at the far right edge, the bench, and the wall behind it. The admin's marks are rectangles only; there are no arrows or circles.",
+  "right_version": "no right frame",
+  "product_and_scene": "Product: a slim can with a white upper body, a red C-shaped logo at the top, small dark lettering, red PEACH VIBE-style script in the middle, a green palm-tree logo, and a grey-silver lower band. It is shown upright, roughly the height of a slim can against the man, about 1/8 of his standing height in frame 1. Scene: a men's changing room with grey walls, a white counter with a mirror and a hair dryer, a black spray deodorant can on the counter, a wooden slatted bench with a black waste bin beside it, a tiled floor and a ceiling with a smoke detector and recessed lights. The man wears a black tank top, black shorts, black socks with yellow pattern, black sneakers and a dark watch. …",
+  "admin_words": "Title: The render graphics and place is wrong, could've been better if it was placed on the shelf right before the mirror close to the deodorant. Note text at the bottom of the picture: The render graphics and place is wrong, could've been better if it was placed on the shelf right before the mirror close to the deodorant.",
+  "unclear": "The small text on the can (the 'CELSIUS' line and the flavour name) is too small to read clearly at this size. Frame 1 does not show clearly whether the man's hand touches or holds the can. The composite lists three images sent with this generation (download (19).jpg, peach vibe front - cans usa.png, ipiccy_image.jpg), but the frames do not show which image each element came from. The bench's exact position relative to the mirror is not clear from these three frames.",
+  "frames_seen": [
+   {
+    "frame": "WRONG 0:03.13",
+    "seen": "Man in a black tank top and black shorts stands in profile facing left, near the left edge of the frame, with his right arm bent down toward a wooden slatted bench on the right. One upright slim can sits on the bench seat, about 1/8 of his standing height, against a plain grey wall. The sink and mirror edge are at the far left, behind him. …"
+   },
+   {
+    "frame": "WRONG 0:04.10",
+    "seen": "Man in a black tank top and shorts, facing left and smiling, stands at a white counter with a black spray deodorant can on its left end, near the left edge. A black hair dryer and cables sit on the counter by the mirror. The can stands upright on the wooden bench to the right, beside a black waste bin with a bag in it, against a grey wall. …"
+   },
+   {
+    "frame": "WRONG 0:04.73",
+    "seen": "Man in a black tank top and shorts, facing left and smiling, stands at the counter with a black hair dryer in his hands near the mirror. The can stands upright on the wooden bench at the far right edge of the frame, next to a grey waste bin, against a grey wall with a paper notice. The can is close to the right edge and slightly cropped by the frame boundary on its right side. …"
+   }
+  ],
+  "prompts_saved": "kept in the record: the flawed version's prompt (the generations the frames called WRONG come from); no correct version's prompt (no frame of this sample is called RIGHT)"
+ }
+}

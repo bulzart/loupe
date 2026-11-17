@@ -1,4 +1,5 @@
-# Loupe's own data: the live database, API keys, the admin passphrase hash, sessions, captures, caches and the keeper session never go in.
+# Loupe's own data: the live database file (SQLite is writing it), the caches and the keeper's working context never go in. The whole record (settings, API keys,
+# passphrase hash, sessions, history, captures, keeper readings) goes in only as data/backup/, written by `python loupe.py backup export` (the admin, 2026-11-16).
 # What travels with the repo so a clone opens with the sample library: the sample images, the admin's uploads, the flag evidence and the seed
 # (data/seed/loupe-seed.db, written by `python loupe.py seed export`: misses, moments and flags with every secret stripped).
 data/*
@@ -6,6 +7,7 @@ data/*
 !data/uploads/
 !data/flags/
 !data/seed/
+!data/backup/
 
 __pycache__/
 *.pyc

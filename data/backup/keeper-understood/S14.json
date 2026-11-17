@@ -1,0 +1,34 @@
+{
+ "id": "S14",
+ "moment_id": 14,
+ "title": "the character just pops the energy drink's can lid open with one finger in a split of a second like it was nothing, typical ai generation miss, should've holded the can with one hand and open it with the other",
+ "source_sig": "11291b2bcd345964",
+ "read_at": "2026-11-05T00:28:09+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.0034,
+ "turns": 4,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\14\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\14\\frame-1-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\14\\frame-2-marked.png"
+ ],
+ "reading": {
+  "marked": "The composite and both single frames show no circle, arrow, box or zoom panel on either frame, so I cannot see what the admin's marks point at. The only visible difference between the two frames is the ring pull, which is closed in the first and raised in the second.",
+  "right_version": "no right frame",
+  "product_and_scene": "Product: a silver Celsius Sparkling Watermelon energy drink can, held upright, roughly 12 oz in size and about a third of the man's torso height in frame. Its label shows the Celsius logo, a watermelon graphic and 'SPARKLING WATERMELON' in red and black. Scene: a bright office with frosted glass panels behind the man, a white desk with a sheet of printed text in the middle, and a closed silver laptop at the right edge. Camera: a static, eye-level medium shot in portrait orientation. The man sits centred, facing the camera, with his right hand holding the can at the left of the frame.",
+  "admin_words": "Title: \"the character just pops the energy drink's can lid open with one finger in a split of a second like it was nothing, typical ai generation miss, should've holded the can with one hand and open it with the other\". Sample note: \"a miss example only, no right version\". Source: seedance_2_5, run 20261015-215200-08, video 07, at 0:04.87, analyze-create, kinds not tagged. Two images were sent with this generation: Image 1 \"watermelon front - cans usa.png\" (A21) and Image 2 \"watermelon.jpg\" (A23).",
+  "unclear": "No marks from the admin are visible on the frames, so I cannot confirm which detail they point at. The 0:04.87 to 0:04.97 interval is only represented by these two frames, so I cannot see the lid opening itself or whether a finger pops the tab. I cannot tell from the stills whether the man's left hand ever touches the can. The reference images are only visible in the composite thumbnails, at small size.",
+  "frames_seen": [
+   {
+    "frame": "WRONG 0:04.87",
+    "seen": "Medium shot, portrait framing, static camera. A man in a light blue button-down shirt sits at a white desk facing the camera. His right hand, on the left of the image, holds a silver Celsius 'Sparkling Watermelon' can upright at about desk height, the can's lid at roughly the height of his chest. The can's top looks closed and flat, with no raised ring pull visible. …"
+   },
+   {
+    "frame": "WRONG 0:04.97",
+    "seen": "Same shot and framing as the earlier frame. The man holds the same upright Celsius can in his right hand, lid toward the top of the frame. The can's top now shows a small dark ring pull raised above the lid, near its left edge. His fingers are wrapped around the can's upper body. His left hand is still resting on the desk by the paper, and the laptop and chair are in the same places."
+   }
+  ],
+  "prompts_saved": "kept in the record: the flawed version's prompt (the generations the frames called WRONG come from); no correct version's prompt (no frame of this sample is called RIGHT)"
+ }
+}

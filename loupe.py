@@ -9,6 +9,8 @@
   python loupe.py status                       is it running, how many flags / samples / keys
   python loupe.py keeper understand [--ids S3] read the samples without a current reading of their picture (only new or changed ones)
   python loupe.py keeper status                what the collector saw in every sample's picture (no verdict) and the counts
+  python loupe.py backup export                write data/backup/: the whole record for git (full database copy with settings, API keys, history; key files, captures, keeper readings)
+  python loupe.py backup restore [--replace]   put data/backup/ back (server stopped; --replace moves an existing database aside first)
 Scopes: flags:write, flags:read, qc:read, runs:read, admin.
 """
 import argparse
@@ -34,6 +36,8 @@ def main():
     s = sp.add_parser("keeper", help="understand: read the samples that have no current reading of their picture now (only new or changed ones; --ids S3,S7 re-reads those); status: the readings and the counts")
     s.add_argument("action", choices=["understand", "status"])
     s.add_argument("--ids", default="")
+    s = sp.add_parser("backup", help="export: write data/backup/ (the whole record, secrets included, for the private repo); restore: put it back (server stopped; --replace over an existing database)")
+    s.add_argument("action", choices=["export", "restore"]); s.add_argument("--replace", action="store_true")
     s = sp.add_parser("seed", help="export: write data/seed/loupe-seed.db (misses, moments, flags; no secrets) for a clone; import: start an empty data folder from it")
     s.add_argument("action", choices=["export", "import"])
     a = ap.parse_args()
@@ -54,6 +58,18 @@ def main():
     elif a.cmd == "key-revoke":
         core.key_revoke(a.id)
         print("revoked", a.id)
+    elif a.cmd == "backup":
+        from loupe_app import backup
+        if a.action == "export":
+            print(json.dumps(backup.export(), indent=1))
+        else:
+            import loupe_client as lc
+            if lc.health():
+                print("restore refused: Loupe is running on", lc.base_url(), "- stop the server first")
+                sys.exit(1)
+            r = backup.restore(a.replace)
+            print(json.dumps(r, indent=1))
+            sys.exit(0 if r.get("restored") else 1)
     elif a.cmd == "seed":
         from loupe_app import seed
         if a.action == "export":

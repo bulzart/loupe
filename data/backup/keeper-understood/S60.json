@@ -1,0 +1,34 @@
+{
+ "id": "S60",
+ "moment_id": 60,
+ "title": "Video A (wrong sample) package is too thick in depth, Video B(correct sample frame) is the correct in size, depth and graphics.",
+ "source_sig": "f7990c1ae21a8a46",
+ "read_at": "2026-11-07T00:33:19+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.0041,
+ "turns": 4,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\60\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\60\\frame-1-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\60\\frame-2-marked.png"
+ ],
+ "reading": {
+  "marked": "Frame 1 (WRONG): a red rectangle around the lower-left part of the frame, covering the carton on the table, the empty marble in front of it, and the left edge of the laptop. The zoom under it (the marked place) is the same rectangle, enclosing the carton and the table. Frame 2 (RIGHT): a green rectangle at the same place, covering the carton, the table in front of it and the laptop's left edge. Its zoom shows the same area with the carton inside the rectangle. The marks sit on the carton in both frames.",
+  "right_version": "Frame 2 (RIGHT, Video B, correct version, 0:00.00): the carton on the table to the left of the laptop, shown at a shallower depth, with its label upside down relative to the viewer. The rest of the scene matches Frame 1.",
+  "product_and_scene": "Product: a Neuro Energy & Focus Peppermint carton, a small teal-and-white box, sitting on a white marble table to the left of a dark grey laptop. In Frame 1 it is taller and deeper with its label upright; in Frame 2 it is lower-profile, thinner in depth, and its label is upside down. Scene: an indoor living room with a man in a dark cap and T-shirt seated at the table, bowed over with both hands at his cap brim; a grey sofa, yellow bench, lamp and curtained window behind him. Camera: static, vertical portrait, same framing in both frames. Reference images sent with the generations (as shown in the admin's panel): Image 1 is a man's face portrait; …",
+  "admin_words": "Title: \"Video A (wrong sample) package is too thick in depth, Video B(correct sample frame) is the correct in size, depth and graphics.\" The picture's footer also reads: \"Frames tagged 'as generated' are from video A (the version as generated); frames tagged 'correct version' are from video B (the right version, a different video).\" No other notes were given.",
+  "unclear": "The depth difference is judged by eye at this small size; I cannot measure it. Whether the carton in Frame 2 is the same object lying at a different angle, or a differently shaped box, is not clear from the frames. The label orientation difference is visible but its meaning is not stated. Only one timestamp (0:00.00) is shown for each frame, so I cannot see how the carton changes over time.",
+  "frames_seen": [
+   {
+    "frame": "WRONG 0:00.00",
+    "seen": "Portrait frame of a man in a dark cap and dark T-shirt seated at a white marble table, both hands at the brim of his cap, head bowed. A dark grey laptop sits in the centre-right, lid facing the camera. A small upright teal-and-white carton (Neuro Energy & Focus, Peppermint) stands on the table to the left of the laptop, its label reading normally with the text upright. …"
+   },
+   {
+    "frame": "RIGHT 0:00.00",
+    "seen": "Same scene and camera framing: the man in the same dark cap and T-shirt, the same laptop and table, the same background. The man's cap sits slightly lower and tilted. The carton is in the same place to the left of the laptop, a little lower in the frame and slightly smaller. …"
+   }
+  ],
+  "prompts_saved": "kept in the record: the flawed version's prompt (the generations the frames called WRONG come from) and the correct version's prompt (the generations the frames called RIGHT come from)"
+ }
+}

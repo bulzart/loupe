@@ -1,0 +1,49 @@
+{
+ "id": "S64",
+ "moment_id": 64,
+ "title": "After the racoon in the garbage, she enters a doorway that shouldn't exist, instead she's supposed to walk back to the door that she came from and not enter to a door that spawns out of the blue",
+ "source_sig": "e67848274320f06c",
+ "read_at": "2026-11-10T23:45:54+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.0053,
+ "turns": 8,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\64\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\64\\frame-1-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\64\\frame-2-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\64\\frame-3-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\64\\frame-4-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\64\\frame-5-marked.png"
+ ],
+ "reading": {
+  "marked": "No circle, arrow, box or zoom is visible in any of the five frames or in the composite. Each frame carries only its WRONG tag, its time, and its VIDEO A / generation / clip line.",
+  "right_version": "no right frame",
+  "product_and_scene": "The Sleep & Recharge carton does not appear in any of the five frames. The woman has curly brown hair in a high bun and wears lilac pajamas with pink piping and pink-trimmed cuffs; she is barefoot at 0:18.77. The scene moves from a front step by a red door and lantern at dusk to a night suburban street with lawns, hedges, houses and a dark wheelie bin, with fireworks in the sky at 0:21.30. A raccoon appears at the bin at 0:27.53. At 0:30.10 an open door panel and white door jamb frame her at the threshold. The camera is mostly medium or medium-full shots.",
+  "admin_words": "Title: After the racoon in the garbage, she enters a doorway that shouldn't exist, instead she's supposed to walk back to the door that she came from and not enter to a door that spawns out of the blue. Note on the sample as shown: this is a miss example only, with no right version.",
+  "unclear": "The message ended with an image-scaling note (original 1776x2602, displayed 1586x2324) but no image attached to it, so this answer rests on the composite and the five frame files already read. Whether the door at 0:30.10 is the same red door shown at 0:18.77 cannot be confirmed; the frame shows only a dark panel and white jamb. The bag's disappearance between 0:21.30 and 0:27.53 is not explained by anything visible. The four reference images in the composite's bottom panel were not examined in detail.",
+  "frames_seen": [
+   {
+    "frame": "WRONG 0:18.77",
+    "seen": "Front-step shot at dusk. A woman with a curly brown high bun, lilac pajamas with pink piping, and bare feet faces the camera and smiles. She holds a pale grey tied garbage bag in one hand. Behind her is a red front door with a round knob, a lit wall lantern on blue-grey siding, and a dark shrub. The camera is a medium-full frontal shot."
+   },
+   {
+    "frame": "WRONG 0:21.30",
+    "seen": "Night lawn scene. The woman walks toward the camera-right with the garbage bag hanging from one hand. She glances sideways and smiles. Behind her are a lit window with green shutters, a dark hedge, a lawn, and a fireworks burst with a bright streak in the sky. The camera is a medium shot, slightly low."
+   },
+   {
+    "frame": "WRONG 0:27.53",
+    "seen": "Night sidewalk scene. The woman walks with her arms at her sides, looking to her right toward a black wheelie bin. A raccoon is at the bin's open lid, with both front paws raised on its edge. The garbage bag is not visible. Behind her are houses, a hedge and a lawn. The camera is a medium-full shot."
+   },
+   {
+    "frame": "WRONG 0:29.27",
+    "seen": "Night street scene. The woman walks toward the camera, smiling and looking ahead, with her hands at her sides. A dark wheelie bin with a bluish lit edge sits at the right edge. Behind her are houses, a hedge and a lawn. No garbage bag is visible. The camera is a medium-full shot."
+   },
+   {
+    "frame": "WRONG 0:30.10",
+    "seen": "Night shot from inside a doorway. A dark red-brown door panel with hinges and a brass knob is open at the left edge, and a white door jamb with a warm light is at the right edge. The woman stands in the opening on the sidewalk, face surprised with her mouth open, hands at her sides. Behind her are the lawn, houses, and a dark wheelie bin at the right. The camera is a medium-full shot."
+   }
+  ],
+  "prompts_saved": "kept in the record: the flawed version's prompt (the generations the frames called WRONG come from); no correct version's prompt (no frame of this sample is called RIGHT)"
+ }
+}

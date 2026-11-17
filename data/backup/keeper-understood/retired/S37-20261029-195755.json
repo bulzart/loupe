@@ -1,0 +1,39 @@
+{
+ "id": "S37",
+ "moment_id": 37,
+ "title": "On the first frame neurogum's package size is excellent just the graphics looking a bit weary and the problem is that the package seems standing midway nor falling nor staying looking like leaning into something but there's actually nothing to lean to, but in the second frame which is the continuity of the video the package graphics are excellent but the size changes which should not has occured",
+ "source_sig": "55f9d4b2070d0be3",
+ "read_at": "2026-10-29T19:34:06+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.0059,
+ "turns": 6,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\37\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\37\\frame-1-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\37\\frame-2-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\37\\frame-3-marked.png"
+ ],
+ "reading": {
+  "marked": "Frame 1 (full view and zoom): one blue arrow runs from above the sofa area down to the carton, with its tip just above the carton's top edge. The zoom shows the carton at the bottom edge with the arrow tip above it, and the carton's base is cut off by the zoom edge. Frame 2 (full view and zoom): one blue arrow from upper right ends just above the carton's top edge; the zoom shows the carton with the arrow tip above it in the dark. Frame 3 (full view and zoom): one blue arrow from upper right ends just above the carton's top edge, in the same way as frame 2. No circle or box is drawn on any frame. The arrows all point at the carton, and no other mark is present.",
+  "right_version": "no right frame",
+  "product_and_scene": "Product: a rectangular teal carton of the Neuro Energy & Focus product (GUM panel, Spearmint sample label on the product card), standing upright with its front face to the camera. Its size against the keyboard is small in frame 1 and larger in frames 2 and 3. Scene: a home desk setup with a man in a dark grey hoodie with a headset and mic, arms crossed; a monitor at left, a mechanical keyboard in front, and the carton on the desk to the right of the keyboard, with a tufted sofa behind it in frame 1 only. The lighting goes from bright warm (frame 1) to dim and dark (frames 2 and 3). Camera: static, portrait framing, eye-level medium shot, the same framing in all three frames.",
+  "admin_words": "Title: On the first frame neurogum's package size is excellent just the graphics looking a bit weary and the problem is that the package seems standing midway nor falling nor staying looking like leaning into something but there's actually nothing to lean to, but in the second frame which is the continuity of the video the package graphics are excellent but the size changes which should not has occured",
+  "unclear": "At this resolution I cannot tell whether the carton's base touches the desk in frame 1, so whether it looks floating or leaning cannot be confirmed from the picture. The graphic wear the admin describes in frame 1 is hard to judge at this size, and the darkened frames 2 and 3 make the graphics harder to judge. The size comparison is an estimate from the keyboard, since no real-world scale is shown. The exact time of the cut between clip c1 and clip c2 is not visible.",
+  "frames_seen": [
+   {
+    "frame": "EXAMPLE 0:00.00",
+    "seen": "Video A, generation 1 of 2, clip c1. A man in a dark grey hoodie with a headset and boom mic stands with his arms crossed, centred in a portrait frame. A monitor is at the left edge and a mechanical keyboard with blue-lit keys sits in front of him. A tufted beige sofa is behind him on the right. …"
+   },
+   {
+    "frame": "EXAMPLE 0:06.77",
+    "seen": "Video A, generation 2 of 2, clip c2 (6.1-12.433 s). Same man, pose, monitor, keyboard and camera position as frame 1, but the scene is much darker and low-key, with the background almost black. The Neuro carton stands in the same place, right of the keyboard, and it is visibly larger: roughly a quarter of the keyboard's length, about a third larger than in frame 1. …"
+   },
+   {
+    "frame": "EXAMPLE 0:07.80",
+    "seen": "Video A, generation 2 of 2, clip c2 (6.1-12.433 s). Matches frame 2: same darkened scene, same man and pose, same keyboard, same carton position right of the keyboard, same size (about a quarter of the keyboard's length). Caption reads 'Villain vs villain'."
+   }
+  ],
+  "prompts_saved": "kept in the record: Video A's prompt, an example take: its frames in this sample are called EXAMPLE, a suggestion of what could have changed or how it could have been done another way, neither a bad generation nor a correct one"
+ }
+}

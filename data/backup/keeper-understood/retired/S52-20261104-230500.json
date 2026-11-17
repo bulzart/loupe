@@ -1,0 +1,34 @@
+{
+ "id": "S52",
+ "moment_id": 52,
+ "title": "The wrong frame the package is wayyyy thicker, even though the size is correct just the depth is way off, the right sample's depth is correct (thin)",
+ "source_sig": "14b188b8e2e018f7",
+ "read_at": "2026-11-04T23:03:25+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.0048,
+ "turns": 8,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\52\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\52\\frame-1-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\52\\frame-2-marked.png"
+ ],
+ "reading": {
+  "marked": "I could not see any admin mark (red tag, circle, arrow, box or text) on the frames I read. frame-1-marked.png shows the full kitchen frame with no drawn marks; the blue carton at lower centre is the product itself. frame-2-marked.png looks identical to frame-2.png, with no visible marks. The composite.png file is 0 bytes, and guessed zoom files (frame-1-zoom.png, frame-2-zoom.png) do not exist, so any circle, arrow or box on a zoom could not be checked.",
+  "right_version": "A frame in which the same light blue carton lies flat on a desk beside a keyboard and monitor stand, with the label facing the camera and a thin profile; the carton is small in frame and the framing is from behind a second person's shoulder. Only the frame's visible shape is described here; the admin's note says the depth is correct (thin) in this sample.",
+  "product_and_scene": "The product is a light blue flat carton with dark and green label accents, lying flat. In the WRONG frame it sits on a kitchen counter in front of a white bowl and appears about as wide as the bowl rim, with visible height that looks deeper than the RIGHT frame. In the RIGHT frame it sits on an office desk beside a keyboard and monitor stand and appears thin. The WRONG scene is a kitchen with a man leaning over the counter, phone in one hand and spoon in the other. The RIGHT scene is an office with a seated man at a monitor and a blurred person in the foreground. The camera is vertical in both frames, at counter height in the WRONG frame and behind a shoulder in the RIGHT frame. …",
+  "admin_words": "Title: The wrong frame the package is wayyyy thicker, even though the size is correct just the depth is way off, the right sample's depth is correct (thin). Product line as supplied: model wan3_0_prime; from run 20261102-233733-02 video 19 at 0:00.00 (analyze-recreate); product: the Neuro Energy & Focus Spearmint 6-piece carton, front render (A91), padded sm + the Neuro Energy & Focus Spearmint 6-; kinds: not tagged. No other notes were given.",
+  "unclear": "composite.png is 0 bytes, so the composite picture could not be read and any tag text on it is unseen. The sample folder could not be listed (only Read is available), so zoom files other than the two guessed names could not be located, and I could not confirm whether the admin's marks sit on zooms. The carton's exact depth cannot be measured from these two frames, which differ in angle and distance. The label text is too small to read reliably.",
+  "frames_seen": [
+   {
+    "frame": "WRONG 0:00.00",
+    "seen": "Kitchen, vertical framing, camera at roughly counter height looking down. A man with tattooed arms, a grey sleeveless graphic tee and dark shorts leans over a pale grey countertop. His left hand holds a phone, his right hand holds a spoon over a white bowl of food. …"
+   },
+   {
+    "frame": "RIGHT 0:01.67",
+    "seen": "Office, vertical framing, camera behind the shoulder of a second person in the right foreground (blurred, dark jacket). A man in a dark polo with a cross necklace sits behind a black monitor on a cherry-wood desk. A light blue carton lies flat on the desk between the keyboard and the monitor stand, small in frame, with its label facing the camera. Its profile looks thin. …"
+   }
+  ],
+  "prompts_saved": "kept in the record: the flawed version's prompt (the generations the frames called WRONG come from) and the correct version's prompt (the generations the frames called RIGHT come from)"
+ }
+}

@@ -1,0 +1,29 @@
+{
+ "id": "S45",
+ "moment_id": 45,
+ "title": "Excellent Neurogum package render and excellent size, 10/10 active",
+ "source_sig": "5d8ca0881925a72f",
+ "read_at": "2026-10-30T07:34:53+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.0029,
+ "turns": 3,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\45\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\45\\frame-1-marked.png"
+ ],
+ "reading": {
+  "marked": "The composite shows no arrow, circle, box or written mark drawn on the frame or on any zoom. The only admin text is the title. The frame is tagged WRONG at 0:00.00, VIDEO A, as generated, with no zoom under it.",
+  "right_version": "no right frame",
+  "product_and_scene": "Product: a flat blue-and-white carton labelled 'Neuro' and 'Energy & Focus', lying flat on the table, with a small white logo and a second line of text on its side panel. Its size is about twice the width of a paper cup's top, and it sits in the foreground beside the hot sauce bottle. The composite's reference images show the same box as a front-face product image (Image 2, A82, EF_Gum_6piece_Peppermint_Single-Front.png) and as a box lying at an angle on a plain grey background (Image 3, A273, IMG_6917.jpg). Scene: a fast-casual restaurant with a man at a steel table, paper cups, shredded cheese bowls and a hot sauce bottle. …",
+  "admin_words": "Title: \"Excellent Neurogum package render and excellent size, 10/10 active\". Sample S45 is a miss example only, with no right version. Model wan3_0_prime; from run 20261029-231113-recreate-celsius-neurogum video 23 at 0:00.00 (analyze-recreate); product: Celsius products; kinds: not tagged. The admin's words are the title only.",
+  "unclear": "At this resolution the small print on the box (the peppermint wording and any size or count text) is not legible. I cannot tell from the frame alone whether the box's physical size is true to the reference images. The reference images are small in the composite, so their details are not fully legible either. No marks are visible, so I cannot tell which detail the admin meant the title to praise.",
+  "frames_seen": [
+   {
+    "frame": "WRONG 0:00.00",
+    "seen": "Vertical shot of a man with short brown hair and a beard, in a light blue button-up shirt with a black undershirt, seated at a metal table in a fast-casual restaurant. Behind him are a glass-front drink cooler with red and green cans, white subway tile, and wooden-topped stools and high tables. …"
+   }
+  ],
+  "prompts_saved": "kept in the record: the flawed version's prompt (the generations the frames called WRONG come from); no correct version's prompt (no frame of this sample is called RIGHT)"
+ }
+}

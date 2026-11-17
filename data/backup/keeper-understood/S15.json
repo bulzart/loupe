@@ -1,0 +1,34 @@
+{
+ "id": "S15",
+ "moment_id": 15,
+ "title": "Pops the energy drink can lid open without even touching it, ilogical and incorrect, every actions has to have a logical cause",
+ "source_sig": "263bb2e7b6267150",
+ "read_at": "2026-11-05T00:27:54+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.0034,
+ "turns": 4,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\15\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\15\\frame-1-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\15\\frame-2-marked.png"
+ ],
+ "reading": {
+  "marked": "No circle, arrow, box or written mark is visible on either composite frame or on the two single frame files. Both frames show the unmarked picture.",
+  "right_version": "no right frame",
+  "product_and_scene": "The product is a tall slim silver Celsius Peach Vibe energy drink can, with red and green palm-tree and red-swoosh artwork and a pink-and-teal lower band, held upright in one hand. Relative to the woman's head it is about as tall as her head with hair, and it is held close to the camera. The lid is at the top. The scene is an indoor classroom: pale wall, a tan board, a wall outlet, a wooden floor and a metal-framed chair. The camera is a static, level, front-facing medium shot with the woman centred. …",
+  "admin_words": "Title: \"Pops the energy drink can lid open without even touching it, ilogical and incorrect, every actions has to have a logical cause\". No other notes were given.",
+  "unclear": "The two frames are about 0.14 s apart, so the frames between them are not in the sample and the moment the tab rises cannot be seen. The other hand is never visible, so it cannot be seen whether anything touches the tab. At composite size the tab detail in frame 2 is small; the single frame file shows it clearly.",
+  "frames_seen": [
+   {
+    "frame": "WRONG 0:04.23",
+    "seen": "Medium front shot of a seated woman with curly hair in a mustard knit sweater, in a classroom with a whiteboard and wooden floor. She holds a silver Celsius Peach Vibe can out toward the camera at chest height, in her right hand (on the left of the frame). The can fills roughly the height of her head and hair. Its top edge is plain silver with no pull tab raised above it. …"
+   },
+   {
+    "frame": "WRONG 0:04.37",
+    "seen": "Same woman, same classroom, same static front camera and framing. The can is held in the same hand at about the same height, shifted slightly higher. A pull tab stands upright above the top of the can, near its centre, and the top edge looks changed compared with 0:04.23. Her fingers are still on the side of the can, not on the tab. Her other hand is not visible."
+   }
+  ],
+  "prompts_saved": "kept in the record: the flawed version's prompt (the generations the frames called WRONG come from); no correct version's prompt (no frame of this sample is called RIGHT)"
+ }
+}

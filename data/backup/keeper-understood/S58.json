@@ -1,0 +1,34 @@
+{
+ "id": "S58",
+ "moment_id": 58,
+ "title": "the face swap on Video A (wrong sample) looks fake and off, the right version is correct.",
+ "source_sig": "7039567e84005cea",
+ "read_at": "2026-11-07T00:15:33+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.0038,
+ "turns": 4,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\58\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\58\\frame-1-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\58\\frame-2-marked.png"
+ ],
+ "reading": {
+  "marked": "No circle, arrow, box or zoom appears on either frame in the composite or in the single frame files. The only marks are the coloured tags: FRAME 1 WRONG 0:00.00 in red over VIDEO A as generated (generation 1 of 2, clip c1, 0 to 2.533 s), and FRAME 2 RIGHT 0:00.00 in green over VIDEO B correct version.",
+  "right_version": "Frame 2 (RIGHT, 0:00.00, VIDEO B correct version): the man has short light-brown wavy hair, little or no beard, a neutral expression and turns his head to the side, in the same classroom set-up and clothing as Frame 1.",
+  "product_and_scene": "No product is visible in either frame. The scene is the same classroom in both: a wide whiteboard on a cream block wall, grey metal-leg desks and grey chairs, a beige floor, and a single seated man at the front desk in a grey t-shirt, dark shorts and dark sneakers, forearms resting on the desk. The camera is portrait and close to the seated man, with the desk in the foreground-right. The composite's bottom-right panel, titled '5 images sent with the generations of Video A and Video B', lists five images: Video A c1 Image 1 (ce6a267c...jpg) shows a smiling bearded face on grey; …",
+  "admin_words": "Title: 'SAMPLE S58 (a miss with its correct version)'. Header: model wan3_0_prime; from run 20261104-225639-04 video 20 at 0:00.00 (analyze-recreate) | product: the Neuro Extra Strength Spearmint 9-piece carton, front render (A170, the label + the same Neuro Extra Strength Spearmi; kinds: not tagged. Admin's title: 'the face swap on Video A (wrong sample) looks fake and off, the right version is correct.' Bottom text on the picture: 'the face swap on Video A (wrong sample) looks fake and off, the right version is correct.' No other notes from the admin are present in the picture.",
+  "unclear": "The header's product line is cut off after 'Neuro Extra Strength Spearmi', so the full product description cannot be read. The composite does not show the carton itself in either frame, so whether the product matches the admin's description cannot be checked from these frames. The admin's 'face swap' wording is not something the frames show directly: they show two different faces in the same scene, and the panel images suggest which face came from which source, but the frames do not show what the swap process did. The panel does not say which sent image was used for which generation or frame.",
+  "frames_seen": [
+   {
+    "frame": "WRONG 0:00.00",
+    "seen": "Portrait frame of a seated young man with curly brown hair, a short full beard and a broad smile, looking at the camera. He wears a dark grey washed t-shirt with a chain necklace and dark shorts, sits at a dark grey table with both forearms on its top, and wears dark sneakers. Behind him are a wall-mounted whiteboard, a wall of cream cinder block and rows of grey chairs and desks. …"
+   },
+   {
+    "frame": "RIGHT 0:00.00",
+    "seen": "Portrait frame of the same seated setting: same whiteboard, cream wall, grey desks and chairs, same grey t-shirt, shorts and sneakers, same posture with forearms on the table. The man here has short, wavy, light-brown hair, a clean face with little or no beard, and a calm, neutral expression with lips closed. …"
+   }
+  ],
+  "prompts_saved": "kept in the record: the flawed version's prompt (the generations the frames called WRONG come from); no correct version's prompt (no frame of this sample is called RIGHT)"
+ }
+}

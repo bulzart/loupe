@@ -1,0 +1,34 @@
+{
+ "id": "S30",
+ "moment_id": 30,
+ "title": "Wrong sample looks bad graphics and not rendered properly and blended with the environment specs, right/correct sample is perfect",
+ "source_sig": "75b04ea813a619c8",
+ "read_at": "2026-11-05T00:26:41+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.0041,
+ "turns": 5,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\30\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\30\\frame-1-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\30\\frame-2-marked.png"
+ ],
+ "reading": {
+  "marked": "Frame 1 (WRONG): a red box covers the lower-left corner from the left edge to about a third of the frame width and from the top of the sweatshirt to the bottom edge. It holds the whole can with the sweatshirt and sleeve behind it. The zoom under it shows the same box enlarged: the can stands on the wood at the bottom right of the box and is framed by the sweatshirt. Frame 2 (RIGHT): a green box covers the lower-left area from the left edge to about 40% of the frame width and from the sweatshirt down to the bottom edge, holding the whole can with the sweatshirt and the man's hand beside it. The zoom under it shows the can standing on the wood, with the hand to its right.",
+  "right_version": "Video B at 0:00.00: a sealed CELSIUS CHERRY COLA can stands upright at the lower left, label readable, base resting on the wooden table in front of the man's sweatshirt, about head height, with the man's hand and the table around it. This is the frame the admin marked as the correct version.",
+  "product_and_scene": "Product: a sealed silver CELSIUS Sparkling Cherry Cola can, tall slim form with a red C logo, CELSIUS LIVE FIT and 0 CALORIES printed on it, shown upright. It is roughly as tall as the man's head in both frames. Scene: a man in a navy and cream hoodie sits at a wooden table in a home room with framed pictures, a pink and green light arc on the wall, and a laptop edge at the right of the table. Camera: static, portrait, close, at table height, with the can in the lower-left foreground.",
+  "admin_words": "Title: \"Wrong sample looks bad graphics and not rendered properly and blended with the environment specs, right/correct sample is perfect\". No other notes from the admin are shown on the picture.",
+  "unclear": "Whether the can rests on the table in frame 1 cannot be seen, because its base is cut off by the bottom edge; in frame 2 the base is visible on the wood. Whether the edges or lighting of the can differ from the scene cannot be settled from stills at this size. The frames are single stills, so motion and how the can behaves over time are not visible. The reference images sent with the generations (a man's face, a small can on white, and the same face without earbud) are listed in the composite but not shown in the frames.",
+  "frames_seen": [
+   {
+    "frame": "WRONG 0:00.00",
+    "seen": "Video A as generated. A man in a navy and cream hoodie sits at a wooden table, turned to his left, with an earbud in his visible left ear. A sealed silver CELSIUS can (SPARKLING, CHERRY COLA label, red C logo, 0 CALORIES) stands upright at the lower left, its base at the bottom edge of the frame. …"
+   },
+   {
+    "frame": "RIGHT 0:00.00",
+    "seen": "Video B, correct version. The same man, same hoodie, same table, same wall pictures and light arc, now looking down toward his hands with his head angled lower. His left ear shows no earbud. The sealed CELSIUS CHERRY COLA can stands upright at the lower left, its base near the bottom edge, about the same height as the head and in front of the sweatshirt. …"
+   }
+  ],
+  "prompts_saved": "kept in the record: the flawed version's prompt (the generations the frames called WRONG come from) and the correct version's prompt (the generations the frames called RIGHT come from)"
+ }
+}

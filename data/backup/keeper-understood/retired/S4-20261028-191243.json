@@ -1,0 +1,34 @@
+{
+ "id": "S4",
+ "moment_id": 4,
+ "title": "The can proportions are good but it doesnt look like a real actual real can/tin that actually was in the video,, rather it looks like a video edit or image placement, i looks a bit 3d and doesnt blend",
+ "source_sig": "4309706161051090",
+ "read_at": "2026-10-28T04:41:23+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.0039,
+ "turns": 4,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\4\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\4\\frame-1-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\4\\frame-2-marked.png"
+ ],
+ "reading": {
+  "marked": "Each frame carries one box, not an arrow or circle. In the WRONG frame the red box surrounds the can and the wood beside it, from the cable at its upper left down to the bottom edge of the frame. In the RIGHT frame the green box surrounds the can and the desk to its right, reaching up to the monitor base at the top right. Each frame has a zoom beneath it of the marked place: the red zoom shows the can at centre-left of the box, the green zoom shows the can at lower left of the box beside the cables. The admin's text box at the bottom carries the title and the note quoted below.",
+  "right_version": "The RIGHT frame at 0:00.00 shows the same scene with the can standing upright on the wood desk in the lower right, the cables looping around it, and a caption at the top. The green box is placed further right and higher than the red one and includes the monitor base. Its zoom shows the can standing on the desk beside the cables. The admin's note calls this version the correct one; the note does not say what makes it correct beyond what the frames show.",
+  "product_and_scene": "Product as seen: a slim silver CELSIUS can with a red C logo, palm-tree graphics, the words \"CELSIUS\", \"PEACH VIBE\" in red, a \"Live Fit\" style small line and a black-and-white barcode panel, with a silver pull-tab top. The product sample at bottom right shows the same CELSIUS Peach Vibe can, sealed, on a grey background, captioned \"PRODUCT SAMPLE · CELSIUS Peach Vibe can, sealed\". The record's product field reads \"Affordance sheet\". Scene: a home or office desk with a seated man in a black t-shirt, a white keyboard, a white mouse, a pen, a black power bank, a monitor edge at the right, a map on the wall and venetian blinds. …",
+  "admin_words": "Title: \"The can proportions are good but it doesnt look like a real actual real can/tin that actually was in the video,, rather it looks like a video edit or image placement, i looks a bit 3d and doesnt blend\". Note at the bottom, as written: \"The can proportions are good but it doesnt look like a real actual real can/tin that actually was in the video,, rather it looks like a video edit or image placement, i looks a bit 3d and doesnt blend\". The record notes: \"kinds: not tagged\" and \"from run 20261014-220106-13 video 06 at 0:00.00 (analyze-recreate)\".",
+  "unclear": "Whether the can's base has any contact shadow on the wood cannot be settled at this resolution in either frame. The exact real-world size of the can against the keyboard and mouse is not measurable from the frames. The surface the can sits on is hard to read clearly in the zooms. The admin's words say \"video,,\" with a double comma and \"i looks\", which are restated as written. The admin's marks do not say what is wrong in the frame, beyond the box placement.",
+  "frames_seen": [
+   {
+    "frame": "WRONG 0:00.00",
+    "seen": "Wide vertical shot of a man in a black t-shirt seated at a desk, chin resting on his hand, with a white computer mouse under his other hand. A white keyboard, a pen, a black power bank (bottom left) and a monitor edge (right) are on the wood-look desk. A single CELSIUS Peach Vibe can stands upright on the wood surface, lower right of centre, next to the white cables. …"
+   },
+   {
+    "frame": "RIGHT 0:00.00",
+    "seen": "Same framing and scene as the WRONG frame: the same man, desk, keyboard, mouse, pen, power bank and monitor edge, with a white caption at the top reading \"When you're reading a work email and they don't use punctuations.\" A CELSIUS Peach Vibe can stands upright on the wood desk in the lower right, with white cables looping around it. …"
+   }
+  ],
+  "prompts_saved": "none"
+ }
+}

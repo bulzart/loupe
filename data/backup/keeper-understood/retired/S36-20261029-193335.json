@@ -1,0 +1,34 @@
+{
+ "id": "S36",
+ "moment_id": 36,
+ "title": "On the first frame neurogum's package size is excellent just the graphics looking a bit weary and the problem is that the package seems standing midway nor falling nor staying looking like leaning into something but there's actually nothing to lean to, but in the second frame which is the continuity of the video the package graphics are excellent but the size changes which should not has occured",
+ "source_sig": "a1b7300a722f8ea5",
+ "read_at": "2026-10-29T00:29:07+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.0044,
+ "turns": 5,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\36\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\36\\frame-1-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\36\\frame-2-marked.png"
+ ],
+ "reading": {
+  "marked": "Frame 1 (EXAMPLE 0:00.00): a blue arrow runs from the man's crossed-arm area down to the carton on the desk to the right of the keyboard, and its head lands on the carton's upper front. The zoom (\"marked place\") shows the carton on the desk surface beside the sofa, with the arrow tip on its upper edge. Frame 2 (EXAMPLE 0:07.53): a blue arrow runs from the upper right of the frame, down to the top of the carton on the desk at the man's right side. The zoom (\"marked place\") is darker, with the arrow tip on the carton's top edge and the carton cut off by the bottom of the zoom. The arrows mark only the carton; no other mark is drawn.",
+  "right_version": "no right frame",
+  "product_and_scene": "Product: the P3s E&F 9-piece Spearmint carton, a Neuro box labelled Energy & Focus with a GUM panel, a Spearmint pill, Natural Caffeine and L-theanine + B Vitamins text, and 9 Pieces | Dietary Supplement. The reference product sample on the right of the composite shows it as an upright, rectangular carton with a flat base. In frame 1 the carton is small and sits on the desk next to the keyboard. In frame 2 it is larger and sits at the man's right side, against a darker background. Scene: a home-office setup with a man in a hoodie and headset at a desk, a keyboard, a monitor on the left, a tan tufted sofa and wooden shutters. The first clip is brightly lit and the second is dark and moody. …",
+  "admin_words": "Title: \"On the first frame neurogum's package size is excellent just the graphics looking a bit weary and the problem is that the package seems standing midway nor falling nor staying looking like leaning into something but there's actually nothing to lean to, but in the second frame which is the continuity of the video the package graphics are excellent but the size changes which should not has occured\". Scenario label: \"SAMPLE S36 (a scenario)\". Frame notes as given in the composite: Frame 1 EXAMPLE 0:00.00, Video A (as generated), generation 1 of 2, clip c1 (0–6.1 s); Frame 2 EXAMPLE 0:07.53, Video A (as generated), generation 2 of 2, clip c2 (6.1–12.433 s). Kinds: not tagged. …",
+  "unclear": "In frame 1 the exact contact of the carton with the desk is small in the full frame and not resolved; the zoom crop cuts off its base. In frame 2 the carton's base and its contact with the desk are out of the zoom and hard to see in the dark. Whether the carton is standing, leaning or floating cannot be settled from these two frames alone. The admin's words describe the carton as 'midway' and 'leaning', but the frames show no clear lean or support. The two frames come from two different clips, and I cannot confirm the size change between them beyond the visual comparison given here.",
+  "frames_seen": [
+   {
+    "frame": "EXAMPLE 0:00.00",
+    "seen": "Clip c1, generation 1 of 2, Video A as generated. Portrait frame, medium-wide, static camera at roughly seated eye level. A man in a dark grey hoodie with a headset and a name badge sits at a desk with his arms crossed, facing the camera. A mechanical keyboard with blue backlight lies in front of him. A tan tufted sofa and wooden shuttered walls are behind him. …"
+   },
+   {
+    "frame": "EXAMPLE 0:07.53",
+    "seen": "Clip c2, generation 2 of 2, Video A as generated. Same static portrait framing, with the same man in the same hoodie and headset, arms crossed, and the same keyboard and desk. The scene is much darker, with blue-grey light and deep shadow, and the caption reads \"Villain vs villain\". …"
+   }
+  ],
+  "prompts_saved": "kept in the record: Video A's prompt, an example take: its frames in this sample are called EXAMPLE, a suggestion of what could have changed or how it could have been done another way, neither a bad generation nor a correct one"
+ }
+}

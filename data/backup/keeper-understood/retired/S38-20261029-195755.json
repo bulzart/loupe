@@ -1,0 +1,39 @@
+{
+ "id": "S38",
+ "moment_id": 38,
+ "title": "Video 02 at 0:00.63",
+ "source_sig": "fe92531c22a01036",
+ "read_at": "2026-10-29T19:36:13+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.0052,
+ "turns": 5,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\38\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\38\\frame-1-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\38\\frame-2-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\38\\frame-3-marked.png"
+ ],
+ "reading": {
+  "marked": "Frame RIGHT 0:00.63: a green arrow runs from above the sofa's arm area straight down to the top of the carton, and the zoom shows the arrow tip on the carton's top edge. Frame WRONG 0:06.57: a red arrow runs from upper right down to the top of the carton at the right end of the keyboard; the zoom shows the arrow tip just above the carton's top edge, which sits on the surface beside the keyboard. Frame WRONG 0:10.17: a red arrow runs from upper right down to the top of the carton beside the man's right side; the zoom shows the arrow tip on the carton's top edge. The admin's marks are on the carton in all three frames. No box or circle is drawn.",
+  "right_version": "The RIGHT frame at 0:00.63 (VIDEO A as generated, generation 1 of 2, clip c1 0–6.1 s) shows the man in bright daylight with the carton small on the desk beside the beige sofa, at the right of the keyboard, upright, front to camera, with the carton's top below the sofa's lower cushion. This is the only frame tagged RIGHT.",
+  "product_and_scene": "Product: a teal carton, upright, front face to camera, labelled 'Neuro', 'GUM', 'Energy & Focus', with a green side panel. The product sample at the bottom of the picture is the same carton. Scene: a home-office setting with a man in a grey hoodie and headset seated or standing behind a desk. A mechanical RGB keyboard lies across the desk, a black monitor is at the left, and the wall is wooden louvres with a cream curtain. The lighting changes from bright daylight at 0:00.63 to dark with keyboard light at 0:06.57 and 0:10.17. The camera is static in portrait framing; it is closer to the man at 0:10.17.",
+  "admin_words": "Title: 'Video 02 at 0:00.63'. No other admin notes, explanation, idea, could-be-better note, missed-by-agents note or correct note is visible in the picture.",
+  "unclear": "The sofa and the desk surface are not visible in the two dark frames, so I cannot tell where the carton sits in them. Real size and depth cannot be measured from the picture; the sizes compared are only as they appear in the frames. The bottom of the carton is cut off by the frame edge in the zoom of WRONG 0:10.17. The composite's explanatory text (the paragraph at the bottom left) is the loupe's own text, not the admin's, so I have not counted it as admin words.",
+  "frames_seen": [
+   {
+    "frame": "RIGHT 0:00.63",
+    "seen": "Bright, warm daylight. A man in a grey hoodie with a Nike-style patch and a headset with boom mic stands behind a desk with his arms crossed, facing the camera, with a black monitor at the left edge. The wall behind him is wooden louvres, with a cream curtain at the top left and a beige tufted sofa at the right. …"
+   },
+   {
+    "frame": "WRONG 0:06.57",
+    "seen": "Much darker, low-key lighting, with the keyboard's blue and green key lights as the main light. The background is near-black louvres and a grey curtain at the left. The same man, arms crossed, is at about the same place. The sofa is not visible. The teal carton is at the right end of the keyboard, upright, front to camera, and appears larger relative to the keyboard than in frame RIGHT 0:00.63. …"
+   },
+   {
+    "frame": "WRONG 0:10.17",
+    "seen": "Also dark, with keyboard light at the bottom. The camera is closer to the man, who fills more of the frame and sits further right, with his right forearm and hand at the carton's left. The carton is at the right of the keyboard's right end, upright, front to camera, with its top at about the level of his forearm, and it is not behind the keyboard. …"
+   }
+  ],
+  "prompts_saved": "the prompts of both takes are kept in the record (Video A's prompt generated the flawed version; Video B's is the prompt of the correct take)"
+ }
+}

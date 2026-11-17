@@ -1,0 +1,34 @@
+{
+ "id": "S49",
+ "moment_id": 49,
+ "title": "The product render and sizing were correct, but the Celsius can/tin changed its placement location between two frames((moves a bit and is not at the same place in both) without any logical or physical reason done by the characters or other actions in the video",
+ "source_sig": "4a15f2258528dae1",
+ "read_at": "2026-11-05T00:24:53+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.0038,
+ "turns": 5,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\49\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\49\\frame-1-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\49\\frame-2-marked.png"
+ ],
+ "reading": {
+  "marked": "Frame 1 (EXAMPLE 0:00.57): a thin blue rectangle is placed over the Celsius can, the pen caddy beside it and the desk edge between them (roughly the left-centre of the frame, down to the blue-bordered pad). In the zoom the box frames the can at its centre with the caddy to its left and the pad at its lower right. Frame 2 (EXAMPLE 0:03.03): a thin blue rectangle is placed over the can, the pen caddy with the yellow highlighter, and the rear corner of the keyboard (centre of the frame). In the zoom the box frames the can at its upper left, with the caddy beneath it and the keyboard across the bottom. No text or arrow marks are on either frame; the marks are boxes only.",
+  "right_version": "no right frame",
+  "product_and_scene": "The product is a Celsius energy drink can: silver body, red and white Celsius logo, a red and black label band, shown upright. In both frames it is about the height of the black pen caddy beside it. The scene is a small office desk: a seated man in a black polo at a wooden desk, a monitor, a keyboard, a pen caddy, and a white pad with a blue border. Frame 1 is a front-side view with the camera at a medium distance; frame 2 is a close over-the-shoulder view from behind the seated man, with a second man and a glass wall in the background. The two frames come from different camera positions, so the can's place is compared across a change of viewpoint.",
+  "admin_words": "Title: \"The product render and sizing were correct, but the Celsius can/tin changed its placement location between two frames((moves a bit and is not at the same place in both) without any logical or physical reason done by the characters or other actions in the video\". Sample header: S49, a scenario of Examples only; model wan3_0_prime; from run 20261029-231113-recreate-celsius-neurogum video 07 at 0:00.57 (analyze-recreate); kinds: not tagged. Frames: Frame 1 EXAMPLE 0:00.57, Video A (as generated), generation 1 of 2, clip c1 (0–2.967 s); Frame 2 EXAMPLE 0:03.03, Video A (as generated), generation 2 of 2, clip c2 (2.967–8.2 s). …",
+  "unclear": "The two frames come from different camera positions and different clips (c1 and c2), so it is hard to say from the pictures alone whether the can moved on the desk or the camera simply changed view. The can's position relative to the keyboard, the pen caddy and the monitor base is only partly visible in each frame. Whether the can rests on the desk or is raised at either point cannot be seen clearly. The admin's title text has a doubled bracket and an unclosed parenthesis, restated here as written.",
+  "frames_seen": [
+   {
+    "frame": "EXAMPLE 0:00.57",
+    "seen": "Portrait frame of an office. A seated man in a black polo, with a cross necklace and a watch, sits behind a wooden desk and faces left. A curly-haired person in a black jacket is in the right foreground, writing on a white pad with a blue border. …"
+   },
+   {
+    "frame": "EXAMPLE 0:03.03",
+    "seen": "Portrait frame from a different camera position, behind and to the side of a short-haired man in a black polo seated at the desk. A second, curly-haired man sits in the background near a glass wall, with a kitchen and a person visible through the glass. A monitor showing a coral-reef wallpaper is at right. …"
+   }
+  ],
+  "prompts_saved": "kept in the record: the prompt box of Video A, an example prompt: its frames in this sample are called EXAMPLE, a suggestion of what could have changed or how it could have been done another way, neither a bad generation nor a correct one (the generations of that video its Example frames come from)"
+ }
+}

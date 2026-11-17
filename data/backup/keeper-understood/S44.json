@@ -1,0 +1,29 @@
+{
+ "id": "S44",
+ "moment_id": 44,
+ "title": "Excellent Neurogum package render and excellent size, 10/10",
+ "source_sig": "e0584d441ead149f",
+ "read_at": "2026-11-05T00:25:22+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.0031,
+ "turns": 3,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\44\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\44\\frame-1-marked.png"
+ ],
+ "reading": {
+  "marked": "A green rectangle (the admin's RIGHT mark) sits in the lower centre of the frame and encloses the Neurogum box, the black spoon's tip and the lower parts of the two front cups. The zoom under the frame, shown at close range, carries the same green rectangle around the box, with the spoon and the bottom of the cups at its edges. The box lies fully inside the rectangle.",
+  "right_version": "RIGHT 0:00.00 (FRAME 1, Video A, as generated): the Neurogum 'Energy & Focus' box lies flat on the steel table among the cups and spoon, shown at the scale described above.",
+  "product_and_scene": "Product: a light blue Neurogum 'Energy & Focus' carton (Peppermint), lying flat, front face to camera, its long side wider than a cup's top rim and about the length of the spoon. Scene: a casual restaurant table with a seated man speaking to camera, cups, cheese bowls, hot sauce and cutlery around the box. Camera: portrait orientation, eye level, medium shot, steady and centred on the man.",
+  "admin_words": "Title: Excellent Neurogum package render and excellent size, 10/10. This sample holds only the correct version (its one frame is RIGHT).",
+  "unclear": "The small 'Peppermint' label and fine print on the box are too small to read with certainty at this size. The composite and the marked frame show the box at a small size, so its exact real-world scale against the cups cannot be measured from the picture.",
+  "frames_seen": [
+   {
+    "frame": "RIGHT 0:00.00",
+    "seen": "Portrait frame at eye level, medium shot. A man in a light blue button-up shirt over a black t-shirt sits behind a steel table, speaking to the camera, with a pen clipped in his shirt pocket. On the table in front of him are a tall white paper cup at left, two more white paper cups at centre and right, two bowls of shredded cheese, a red hot sauce bottle at lower left, a black spoon, a fork at …"
+   }
+  ],
+  "prompts_saved": "kept in the record: the correct version's prompt (the generations the frames called RIGHT come from); no flawed version's prompt (no frame of this sample is called WRONG)"
+ }
+}

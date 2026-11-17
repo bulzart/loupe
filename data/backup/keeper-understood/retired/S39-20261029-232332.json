@@ -1,0 +1,34 @@
+{
+ "id": "S39",
+ "moment_id": 39,
+ "title": "Nueorgum pack of 6 or 9 i can't really recall was perfectly rendered, graphics and package size is on point",
+ "source_sig": "8bc346624fb0673c",
+ "read_at": "2026-10-29T23:03:15+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.0035,
+ "turns": 4,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\39\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\39\\frame-1-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\39\\frame-2-marked.png"
+ ],
+ "reading": {
+  "marked": "FRAME 1 (RIGHT 0:00.00): a green arrow points down-right at the blue package on the desk, beside the black phone/wallet and above the yellow sticky note. The zoom under it marks the same blue package. FRAME 2 (RIGHT 0:01.03): a green box is drawn around the desk area holding the blue package, the black object, the red-capped marker and the top edge of the papers. The zoom under it marks the same region, with the blue package inside the box.",
+  "right_version": "Both frames are tagged RIGHT. In both, the blue flat package sits on the desk among papers, next to the black object, with the yellow sticky note and red-capped marker close by. The package has a light blue label with a darker blue border and a lighter oval print on its top-left area. It is a flat box lying on the desk, not standing up. No WRONG frame is in this sample.",
+  "product_and_scene": "Product: a small flat blue rectangular package (the gum pack) lying on papers on a dark desk, with a lighter blue label and darker blue edges. Its size is roughly the same as the black phone or wallet beside it. Scene: home or small office desk with a man in a light blue quarter-zip seated behind it, laptop open to the left, gold lamp, window at right, scattered papers, yellow and red spiky balls at the lower right. Camera: static portrait-orientation medium shot from slightly in front and above the desk, with a small reframing between 0:00.00 and 0:01.03.",
+  "admin_words": "Title: \"Nueorgum pack of 6 or 9 i can't really recall was perfectly rendered, graphics and package size is on point\". No other notes were written.",
+  "unclear": "The text or logo on the blue package is too small to read in these frames, so the printed wording and graphics cannot be confirmed. The number of pieces in the pack (6 or 9, as the admin's title says they cannot recall) cannot be seen. The exact size comparison is approximate because the package is partly covered by papers. Whether the package is open or sealed is not visible.",
+  "frames_seen": [
+   {
+    "frame": "FRAME 1 RIGHT 0:00.00",
+    "seen": "Portrait-framed static medium shot of a man in a light blue quarter-zip sitting at a dark desk, hands near the keyboard and mouse. Open laptop on the left with a landscape wallpaper, a gold desk lamp behind it, a dark green wall and a beige wall with a window at right. Papers are scattered across the desk. …"
+   },
+   {
+    "frame": "FRAME 2 RIGHT 0:01.03",
+    "seen": "Same office and same portrait-framed camera setup, with the framing shifted slightly; the man sits in nearly the same place and the desk items are in the same arrangement. The same flat blue package sits on the papers beside the black object, yellow sticky note and red-capped marker. The package is the same size relative to the black object as in frame 1. The same caption is shown across the top."
+   }
+  ],
+  "prompts_saved": "kept in the record: the correct version's prompt (the generations the frames called RIGHT come from); no flawed version's prompt (no frame of this sample is called WRONG)"
+ }
+}

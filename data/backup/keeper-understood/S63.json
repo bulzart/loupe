@@ -1,0 +1,44 @@
+{
+ "id": "S63",
+ "moment_id": 63,
+ "title": "The drawer opens sideways while it's a forward-facing drawer, and the sheet of paper that drags off the bed in the end seems to snap into two separate sheets with one appearing from under the bed!",
+ "source_sig": "5b5f9972f21903f7",
+ "read_at": "2026-11-10T23:42:28+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.0054,
+ "turns": 7,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\63\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\63\\frame-1-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\63\\frame-2-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\63\\frame-3-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\63\\frame-4-marked.png"
+ ],
+ "reading": {
+  "marked": "I see no circle, arrow, box or red mark on the composite or on the four single frames. The zoom panels the sample describes are not visible under the frames, so I cannot say what any mark points at. The coordinate note in your message (multiply by 1.14) came without a visible region, so I could not map it to a spot in the frames.",
+  "right_version": "no right frame",
+  "product_and_scene": "Product: the 'Sleep & Recharge' carton, a small upright box with a pale blue and white face and pink lettering, standing on the nightstand beside the lamp and a phone. Relative to the phone it is roughly twice the phone's length tall. Scene: a cosy bedroom at night with a bed of wooden frame and lilac duvet, a window with curtains and a crescent moon, a lamp with a warm shade, a wooden nightstand with a drawer, and a wooden floor. The woman and small pyjama-clad figurines are the characters. Camera: starts at medium-wide eye level on the bed, moves to a close-up of the woman with the drawer at the edge, then to wide shots from the foot of the bed.",
+  "admin_words": "Title: \"The drawer opens sideways while it's a forward-facing drawer, and the sheet of paper that drags off the bed in the end seems to snap into two separate sheets with one appearing from under the bed!\" Explanation (same sentence, as written in the note): \"The drawer opens sideways while it's a forward-facing drawer, and the sheet of paper that drags off the bed in the end seems to snap into two separate sheets with one appearing from under the bed!\" Record notes: a miss example only, no right version. Model seedance_2_5; run 20261109-205907-neurogum-sleep-recharge-anim, video 01, at 0:00.97 (analyze-create). …",
+  "unclear": "No admin marks are visible, so I cannot tell which detail the admin circled or pointed at. The 1.14 coordinate note in your message does not match a visible spot. The drawer's opening direction in frame 2 and the number of paper pieces in frames 3 and 4 are visible but small at this size; the single frames would be needed for a closer look. I did not open the single frame files beyond the marked copies.",
+  "frames_seen": [
+   {
+    "frame": "WRONG 0:00.97",
+    "seen": "Medium-wide, eye-level view of a bed with a smiling woman with brown hair in a bun, in blue-lilac pyjamas, sitting up against the pillows. Several small toy-like figurines in matching pyjamas are on the duvet and pillow, one holding a purple glowing stick, one sitting by a small projector with a light beam. Nightstand at right with a lamp, a phone, and the 'Sleep & Recharge' carton; …"
+   },
+   {
+    "frame": "WRONG 0:22.87",
+    "seen": "Close-up, slightly low angle, of the woman's upper body in the bed. A mirror disco ball hangs from the top of the frame in front of the window. Small figurines stand on the headboard and pillow behind her. At the right edge, a wooden drawer is pulled partly open on the nightstand, its front face toward the camera and its side angled into view."
+   },
+   {
+    "frame": "WRONG 0:33.07",
+    "seen": "Wide view from the foot of the bed. The woman, eyes closed, lies under the duvet at the left edge with her head on the pillow. A cream, lined paper strip lies over the duvet and drapes over the footboard, then continues down across the wooden floor toward the right. Two small figurines sit near the bed's far side. The nightstand with lamp, phone and carton is at right."
+   },
+   {
+    "frame": "WRONG 0:33.27",
+    "seen": "Same wide view as the previous frame, camera slightly further back. A cream lined paper strip rests on the left side of the bed, over the blanket edge. A separate strip lies on the floor from the foot of the bed toward the right edge of the frame, and the two appear to be separate pieces. Two small figurines are behind the bed; the woman is cut off at the left edge. …"
+   }
+  ],
+  "prompts_saved": "kept in the record: the flawed version's prompt (the generations the frames called WRONG come from); no correct version's prompt (no frame of this sample is called RIGHT)"
+ }
+}

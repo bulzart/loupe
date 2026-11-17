@@ -57,12 +57,12 @@ and uploads go to the audit log (Settings page); consults are logged on the Keep
 
 ## The keeper
 
-The keeper is the judge (the user, 2026-10-28). `qc.py` starts `claude -p … --model claude-opus-5-5 --effort high --tools Read --strict-mcp-config`
-(`keeper_model` on the Keeper page, Opus 5.5 unless the admin sets another) as a session of its own (`--session-id`, then `--resume`), working in
+The keeper is the judge (the user, 2026-10-28). `qc.py` starts `claude -p … --model claude-sonnet-5-5 --effort high --tools Read --strict-mcp-config`
+(`keeper_model` on the Keeper page, Sonnet 5.5 unless the admin sets another; Opus 5.5 before 2026-11-17) as a session of its own (`--session-id`, then `--resume`), working in
 `data/keeper`, told the whole library digest. It can read the sample images and write nothing. It alone judges: what went wrong, why, what a check
 compares, which prompt did better, what a template should say; the data collector (below) only describes the pictures. After 30 turns it is replaced by a
 fresh session rebuilt from the library (the library is the memory, so nothing is lost). If it cannot run, `qc-consult` falls back to the deterministic
-brief (`mode: fallback`). A consult on Opus costs more than it did on Haiku and grows with the library and the session's length; each consult's cost is
+brief (`mode: fallback`). A consult costs more than it did on Haiku and grows with the library and the session's length; each consult's cost is
 kept in the `consults` table of the database. Every judge and collector call is started with `--effort` at high or above (`keeper_effort` on the Keeper
 page: high, xhigh or max; a lower value is refused, and one stored around the API runs at high), because the Haiku collector's own default is medium;
 the CLI still runs a model that has no effort levels.
@@ -194,17 +194,28 @@ The run browser, the product sample finder, the usage index and the evidence for
 ## Data: what travels with the repo and what never does
 
 `data/samples/` (every sample's composite, frames and meta), `data/uploads/` (the right-version videos the admin uploaded), `data/flags/` (the flag evidence) and
-`data/seed/` are tracked, so a clone opens with the whole sample library: `python loupe.py seed export` writes `data/seed/loupe-seed.db` (an online copy of the
+`data/seed/` and `data/backup/` are tracked, so a clone opens with the whole sample library: `python loupe.py seed export` writes `data/seed/loupe-seed.db` (an online copy of the
 database with the misses, moments, flags and flag inputs only; the sessions, API keys, settings with the passphrase hash and the keeper session, captures, audit,
 usage and file indexes and the consult log are dropped, and signed URLs are scrubbed from the flag records) beside `seed.json` (what it holds). A data folder
 with no `loupe.db` starts from the seed at the first `core.db()` (the server start, any command); the admin then sets a passphrase and creates the keys.
 Run the export after the library changed and commit it with the samples. The misses' video paths in the seed are those of the exporting machine: the
 sample images and the keeper need none of them, only a regenerate does.
 
+## The full backup (`data/backup/`, since 2026-11-17)
+
+The admin, 2026-11-16: "everything should be pushed to git"; settings, history logs, secrets and the keeper's readings were all chosen. `python loupe.py backup export`
+writes `data/backup/`: `loupe-full.db` (an online copy of the live database with **every** table: the settings with the keeper's model and rules, the passphrase hash and the
+keeper session, the API keys' hashes, the login session, the consult log, audit, usage and file indexes, the captures table, the flags and samples; signed URLs are scrubbed from
+the flag records), `keys/` (the agents' plain key files), `captures/` (the raw Higgsfield response files, signed URLs scrubbed), `keeper-understood/` (the keeper's readings of the
+sample pictures) and `backup.json` (what it holds). **The folder holds secrets**: the repository is private and the admin decided that it travels.
+`python loupe.py backup restore` puts it back into a data folder with no database; with `--replace` (and the server stopped: it refuses while Loupe answers on its port) it moves
+the existing `loupe.db` aside (`loupe.db.before-restore-<time>`) first and overwrites the key, capture and reading files. The backup is a snapshot: run the export, then commit and push
+`data/backup/`, after the database changed. The seed above stays the secret-free start of a clone.
+
 ## Data that never goes in
 
-`data/loupe.db` (SQLite), `data/samples/<id>/{wrong,fixed,annotated,composite,zoom}.png`, `data/flags/` (thumbnails), `data/captures/`,
-`data/keys/`, `data/keeper/`, `data/cache/`, `data/outbox/`. Back up the `data` folder to keep the record.
+`data/loupe.db` itself (SQLite is writing it; it travels only as the copy in `data/backup/`), `data/keeper/ctx` and `data/keeper/extract` (the keeper's working context, rebuilt by
+Loupe), `data/cache/`, `data/outbox/`, `data/hook-state.json`, `data/server.json` and `data/server.log`. Everything else under `data/` is in git, as the folders and the backup above.
 
 ## Repository
 
@@ -212,7 +223,7 @@ This folder is its own git repository; `origin` is the private GitHub repo `bulz
 
 ## Tests
 
-`python tests/selftest.py` (264 checks, among them that no text an agent reads and no code, docstring or comment of `loupe_app` names a prompt by the old words: the two takes, the correct take, Video A's prompt ...; `--keeper` adds the live keeper checks, 262 in all, among them a real session whose saved conversation is gone replaced by a fresh one that answers), `node tests/transport_check.js` (the frame controls against fake videos), `node tests/page_smoke.js` (the whole report page against a fake DOM and API; no page's source names a prompt by the old words), `node tests/flags_smoke.js` (the Flags page), `python tests/keeper_sync.py` (112 checks: the keeper receives every change to the library, a session told another library header is replaced, a session whose saved conversation is gone replaced by a fresh one (the CLI's own words read as SessionLost on a resume only; a consult asked again without the delta, a sync booted, the audit row, never twice for a session the call just started), the answer's fields and reasons, the busy fallback, a hung subprocess ended, the composite's zoom rule (a zoom only under a frame marked with a circle, arrow or box, each frame on its own; the marks drawn on the zoom only, the frame above it clean, a frame without a zoom keeping its marks) and its tags' legend, the prompts of the two boxes read on request and never in the digest; including scenarios, Example frames, miss examples and marks, for QC and for planning; the database, the QC library, the digest and the brief agree; no model call) and `python tests/keeper_sync.py --live` (the same, read-only, on the real library: the images, what QC is served over HTTP and by each pipeline's `qc-brief`, and whether the keeper's remembered version and header are current) and `python tests/demo.py` (a demo instance on port
+`python tests/selftest.py` (280 checks, among them the full backup against the live tables, its scrubbing and the restore, among them that no text an agent reads and no code, docstring or comment of `loupe_app` names a prompt by the old words: the two takes, the correct take, Video A's prompt ...; `--keeper` adds the live keeper checks, 262 in all, among them a real session whose saved conversation is gone replaced by a fresh one that answers), `node tests/transport_check.js` (the frame controls against fake videos), `node tests/page_smoke.js` (the whole report page against a fake DOM and API; no page's source names a prompt by the old words), `node tests/flags_smoke.js` (the Flags page), `python tests/keeper_sync.py` (112 checks: the keeper receives every change to the library, a session told another library header is replaced, a session whose saved conversation is gone replaced by a fresh one (the CLI's own words read as SessionLost on a resume only; a consult asked again without the delta, a sync booted, the audit row, never twice for a session the call just started), the answer's fields and reasons, the busy fallback, a hung subprocess ended, the composite's zoom rule (a zoom only under a frame marked with a circle, arrow or box, each frame on its own; the marks drawn on the zoom only, the frame above it clean, a frame without a zoom keeping its marks) and its tags' legend, the prompts of the two boxes read on request and never in the digest; including scenarios, Example frames, miss examples and marks, for QC and for planning; the database, the QC library, the digest and the brief agree; no model call) and `python tests/keeper_sync.py --live` (the same, read-only, on the real library: the images, what QC is served over HTTP and by each pipeline's `qc-brief`, and whether the keeper's remembered version and header are current) and `python tests/demo.py` (a demo instance on port
 8799 with throwaway data, passphrase `demo-passphrase`).
 
 ## Build prompt

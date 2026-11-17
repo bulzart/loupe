@@ -1,0 +1,33 @@
+{
+ "id": "S3",
+ "moment_id": 3,
+ "title": "Product render sample not accurate, also seems like an premiere pro product placement video edit rather than a actual video generation done by a video model i.e seedance or wan, the lightning and text",
+ "source_sig": "ee284c79dc3c22e5",
+ "read_at": "2026-10-28T04:41:36+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.0025,
+ "turns": 3,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\3\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\3\\frame-1-marked.png"
+ ],
+ "reading": {
+  "marked": "The red box on the WRONG frame at 0:00.00 encloses the blue \"Neuro\" Energy & Focus carton at the lower-left, on the desk in front of the man's hands and the laptop keyboard. The zoom under the frame is the same box enlarged, showing the carton's front label in detail. The admin's title and notes are not pointed at any specific detail in the frame.",
+  "right_version": "no right frame",
+  "product_and_scene": "The product is a blue upright carton labelled \"Neuro\" with \"Energy & Focus\", a green \"GUM\" panel and \"9 Pieces Dietary Supplement\" text, standing on a dark desk mat in front of a laptop keyboard. Its size against the scene: it reaches roughly from the keyboard edge down to the desk mat and is about a fifth of the frame width, next to the man's hands and forearm. The scene is an office desk with a whiteboard, a doorway and a wall thermostat, with a man in a black t-shirt typing and speaking to the right. The camera is a static, slightly low, portrait medium shot with white on-screen captions across the top.",
+  "admin_words": "Title: \"Product render sample not accurate, also seems like an premiere pro product placement video edit rather than a actual video generation done by a video model i.e seedance or wan, the lightning and text\". Sample header: \"SAMPLE S3 (a miss example only, no right version)\"; \"model: wan3_0_prime; from run 20261014-220030-13 video 03 at 0:00.00 (analyze-recreate) | product: AF-CARTON; kinds: not tagged\". The product sample shown bottom right is labelled \"PRODUCT SAMPLE · Extra Strength 9-piece carton, Spearmint\".",
+  "unclear": "The carton's wordmark and small text are legible only in the zoom; the exact small print under \"Energy & Focus\" is not readable. The admin's words \"the lightning and text\" do not clearly point to a detail in the frame, and the frame's lighting and caption overlay are not separately marked. The product sample at bottom right is shown on a flat grey background, and I cannot tell from the picture alone how it compares to the carton in the frame beyond the label and colours.",
+  "frames_seen": [
+   {
+    "frame": "WRONG 0:00.00",
+    "seen": "Vertical portrait shot of a man in a black t-shirt with tattooed forearms sitting at a desk, typing on a laptop keyboard, face turned to the right, mouth open as if speaking. Behind him: a white wall, an open doorway with a pale door panel, a whiteboard on the left with handwritten lines (\"Lead forms\", \"Pipelines\", \"Automations\", \"Lend Clarifications\"), a wall thermostat, and a small red cup and …"
+   },
+   {
+    "frame": "CLOSE RANGE (zoom of the marked box …",
+    "seen": "Close view of the boxed area: the carton is a rectangular upright box, blue with a wavy lighter-blue band, a \"Neuro\" wordmark top left, a small green \"GUM\" panel with a purple top tab, and \"Energy & Focus\" in large navy type, with \"9 Pieces Dietary Supplement\" and a navy base strip. Both of the man's hands are on a laptop keyboard above and behind the carton; …"
+   }
+  ],
+  "prompts_saved": "none"
+ }
+}

@@ -1,0 +1,35 @@
+{
+ "id": "S23",
+ "moment_id": 23,
+ "title": "The can proportions are good but it doesnt look like a real actual real can/tin that actually was in the video,, rather it looks like a video edit or image placement, i looks a bit 3d and doesnt blend",
+ "source_sig": "5b3e75c446edcddd",
+ "read_at": "2026-10-26T22:55:35+01:00",
+ "model": "claude-sonnet-5-5",
+ "cost_usd": 0.0824,
+ "turns": 4,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\23\\composite.png"
+ ],
+ "reading": {
+  "the_miss": "The can has the right proportions and the right label, but it does not look like an object that was in the room. It reads as a pasted-in image or a 3D render. The print is crisp and studio-bright, the metal is evenly lit, and there is little shading, no reflection on the glossy wood and only a faint contact shadow. So it does not blend with the soft phone-camera look of the rest of the shot.",
+  "right_version": "The same first frame with the can rendered as a real can on the desk. The viewing angle is slightly from above, so the lid and tab show. The softness and light match the phone footage. The body is darker toward one side, and there is a reflection and a soft shadow on the wood. The can's size and spot are close to the wrong take, but its look is different.",
+  "product_and_scene": "A sealed CELSIUS Sparkling Watermelon aluminium can, standing upright (about 105x300 px of a 720x1280 frame). It has a red C-swoosh, a black CELSIUS wordmark, a watermelon slice, a red and black band and a silver lower band with a 0 SUGAR badge. It stands at the lower-left corner of a glossy dark wood desk, in front of the man's forearm. The scene is a car showroom office, shot on a locked phone camera at desk level in a medium close-up. The man in the blue polo texts with both hands. The keyboard and mouse are at the right edge, with a glass partition and plants behind him.",
+  "mechanism": "The wrong prompt used Image 3 only as a 'size and placement guide'. It also said to take only the can's structure, proportions, material, colours and label, and to ignore its lighting, exposure, shadow and camera angle. The model therefore had no reference for how the can should look in this room. It rendered a clean, studio-sharp can and composited it in. The corrected prompt instead tells the model to take the can's size, spot, viewing angle, softness, light and reflection on the wood from a photo of the can on this desk. It adds 'studio finish' to the list of things not to use, and says the can looks like the can in Image 3, as if photographed by the same phone camera. …",
+  "when_it_recurs": "When a product that was not in the source clip is added to a real phone-shot video and the prompt gives the reference image only as a size/placement guide, while excluding its light, angle and shadow. This is most likely with glossy cylindrical packaging standing on a reflective surface in a soft-lit phone clip. The product then comes out sharper, cleaner and more evenly lit than the footage, with no reflection and a weak shadow.",
+  "qc_check": "Compare the can in the first frame and later frames with the room footage. First, check that it has the same softness, grain and contrast as the desk, keyboard and hands, rather than a sharper, cleaner label. Second, check for a visible reflection of the can on the glossy wood and a soft contact shadow like the keyboard's. Third, check that the can is shaded darker toward one side, with a soft highlight on the upper left. Fourth, check the viewing angle against the product photo of the can on this desk, where the lid and tab show from slightly above. Fail it if the can looks like a cut-out, a render or a placed image.",
+  "prompts": "The corrected prompt changes the role of Image 3. It is now 'a photo of how the can really stands on this desk', and the model takes from it the size, spot, viewing angle, softness, light and reflection on the wood. The wrong prompt allowed only the size and spot. The corrected prompt also adds 'studio finish' to the list of things not to use from Image 2. It adds that the can in the video 'looks like the can in Image 3, a real aluminium can photographed by the same phone camera'. In the plot beat 1 it adds 'keeping exactly the size and the look it has in Image 3, with only a thin sliver of its lid edge showing'. The wrong prompt said only 'keeping exactly the size it has in Image 3'.",
+  "admin_feedback": "The can proportions are good, but it does not look like a real can that was in the video. It looks like a video edit or an image placement, a bit 3D, and it does not blend.",
+  "uncertain": "I could not see the admin's marks on either frame. The corrected prompt says only a thin sliver of the lid shows, but the RIGHT frame shows the lid ellipse quite clearly, so the frame and the prompt differ slightly. The RIGHT frame also carries an on-screen caption, although the prompt forbids captions, so that take has a separate caption problem. Both prompts are cut off after the camera section, so I cannot tell whether later text differs. I only have the 0:00 frames, so I cannot say whether the can drifts or changes later in the clip. The two takes are different videos, so small differences in can position may not come from the prompt.",
+  "frames_seen": [
+   {
+    "frame": "WRONG 0:00.00",
+    "seen": "The first frame of the video as generated, with no caption text. A man in black-framed glasses and a blue polo sits at a glossy dark wood desk, looking down at the phone in both hands. A CELSIUS Sparkling Watermelon can stands upright at the lower left of the desk, in front of his resting forearm and nearer the camera. …"
+   },
+   {
+    "frame": "RIGHT 0:00.00",
+    "seen": "The first frame of the corrected video. It has the same man, pose, room, keyboard and mouse, and the caption 'Texting my customer: ...' sits above his head. The CELSIUS can stands at the lower left, a little further left and higher than in the wrong frame (about x 100–208, y 840–1150). The camera looks slightly down on it, so the dark lid ellipse with the tab is clearly visible. …"
+   }
+  ]
+ }
+}

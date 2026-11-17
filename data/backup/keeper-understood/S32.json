@@ -1,0 +1,34 @@
+{
+ "id": "S32",
+ "moment_id": 32,
+ "title": "On the left frame package size and thickness is correct, on the right frame size is correct and graphics too but the thickness not, all the neurogum packages are the same size and thickness like the left frame except the pouch version",
+ "source_sig": "9a148b2752e6aa9f",
+ "read_at": "2026-11-05T00:26:20+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.0037,
+ "turns": 5,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\32\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\32\\frame-1-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\32\\frame-2-marked.png"
+ ],
+ "reading": {
+  "marked": "Frame 1 (RIGHT, Video B): a green rectangle surrounds the Neuro box on the wooden desk in the full frame; the zoom shows the same green rectangle around the box's front face and the thin strip of its side. Frame 2 (WRONG, Video A): a red rectangle surrounds the Neuro box on the mouse pad in the full frame; the zoom shows the red rectangle around the box, which includes its front face and the deeper side block.",
+  "right_version": "Frame 1 (Video B, correct version): the Neuro Energy & Focus peppermint box is shown as a flat, thin carton on a wooden desk, with its front face showing the Neuro logo, 'Energy & Focus' and the peppermint marking and only a thin side strip visible. The admin marks it as right for package size and graphics but not for thickness.",
+  "product_and_scene": "Product: Neuro Energy & Focus, Extra Strength 9-piece carton, Peppermint, a light blue box with a Neuro logo and 'Energy & Focus' on its front. In the RIGHT frame it is a thin, flat carton on a wooden desk among the keyboard, mouse and power bank, and it looks small. In the WRONG frame it sits on a dark mouse pad beside a plush bunny and a keyboard, and it looks like a deeper, thicker block. Scene: an office desk. RIGHT frame: a man at a desk, seen from the side at desk height. WRONG frame: a woman lying at a keyboard with a POV text overlay, shot from close and low. Camera: handheld in both frames, with different angles and framing.",
+  "admin_words": "Title: \"On the left frame package size and thickness is correct, on the right frame size is correct and graphics too but the thickness not, all the neurogum packages are the same size and thickness like the left frame except the pouch version\". Explanation (the 'admin_words' sentence as written): \"On the left frame package size and thickness is correct, on the right frame size is correct and graphics too but the thickness not, all the neurogum packages are the same size and thickness like the left frame except the pouch version\". …",
+  "unclear": "The distance from the camera to each box is different in the two frames, and the zoomed views are cropped and scaled differently, so the true thickness of each package cannot be measured from the pictures. The side strip of the RIGHT box is small and partly hidden by the desk, so its depth is hard to judge. The admin's 'left frame' and 'right frame' wording does not match the frame tags (RIGHT is the correct version, WRONG the generated one); the picture shows only the two frames named here, so I cannot tell from the picture which side the admin meant for each point.",
+  "frames_seen": [
+   {
+    "frame": "RIGHT 0:00.00",
+    "seen": "Video B (correct version, run 20261013-230824-13 video 02), portrait frame. A man in a black t-shirt sits at a wooden desk in an office with blinds and a map on the wall, one hand on a white mouse and the other on his chin. A white keyboard, cables, a black power bank and a pen are on the desk. …"
+   },
+   {
+    "frame": "WRONG 0:00.00",
+    "seen": "Video A (as generated), portrait frame. A woman lies with her head on her arm at a keyboard, with her other hand pointing at the keys. The overlay text reads 'POV: Me after 3pm at my 9-5 job'. A yellow plush bunny stands to the left, and a dark mouse pad lies on a light wooden desk. A Neuro Energy & Focus box sits on the mouse pad near the bunny. …"
+   }
+  ],
+  "prompts_saved": "kept in the record: the flawed version's prompt (the generations the frames called WRONG come from) and the correct version's prompt (the generations the frames called RIGHT come from)"
+ }
+}

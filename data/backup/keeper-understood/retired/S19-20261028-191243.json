@@ -1,0 +1,39 @@
+{
+ "id": "S19",
+ "moment_id": 19,
+ "title": "product render is looking fake, sitting in the air or in just a little bit of the desks edge (which is still wrong in the way that it is sitting and not real life physics and logical feeling), everythings wrong about the product in this one",
+ "source_sig": "c02ff554650f6a5b",
+ "read_at": "2026-10-28T04:37:33+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.004,
+ "turns": 5,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\19\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\19\\frame-1-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\19\\frame-2-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\19\\frame-3-marked.png"
+ ],
+ "reading": {
+  "marked": "No admin marks (arrow, circle, box or text overlays on the frames) are visible in any of the three frames or the composite. The only text on the picture is the WRONG tags, the frame times, the title and the admin's notes at the bottom, plus the reference caption 'PRODUCT SAMPLE · P1 Cherry Cola canonical front (A15), padded, shape, colours and label only' beside a reference can image. No zoom panel is shown.",
+  "right_version": "no right frame",
+  "product_and_scene": "The product is a slim, tall silver can with a white upper body, a red swoosh at the top, a 'CELSIUS' wordmark, 'SPARKLING' and 'CHERRY COLA' text, a dark red and pink band near the base, and a pink stripe along the lower side. It appears upright, standing on the desk surface in front of the keyboard, near the front edge of the desk. Its height is roughly the depth of the keyboard, and it looks smaller than the monitor. The scene is an office desk with two monitors, a keyboard, a mouse, a paper note beside the keyboard, a man in a maroon shirt with glasses seated at the desk, and a back room with shelves, wire baskets and labelled bins. …",
+  "admin_words": "Title: \"product render is looking fake, sitting in the air or in just a little bit of the desks edge (which is still wrong in the way that it is sitting and not real life physics and logical feeling), everythings wrong about the product in this one\". Sample note: \"(a miss example only, no right version)\". Caption at the bottom: \"product render is looking fake, sitting in the air or in just a little bit of the desks edge (which is still wrong in the way that it is sitting and not real life physics and logical feeling), everythings wrong about the product in this one\".",
+  "unclear": "At this size I cannot tell whether the can rests fully on the desk or only on the desk's edge, or whether any part of it hangs over the edge or floats; the base contact is not clear in any of the three frames. I cannot confirm the admin's phrase 'sitting in the air'. The exact product-to-reference match (label text such as 'LIVE FIT' and the small print) is not legible at this resolution. No admin marks are visible, so I cannot tell which detail the admin was pointing at. The reference caption says 'P1 Cherry Cola canonical front (A15)', which I cannot verify against the frames.",
+  "frames_seen": [
+   {
+    "frame": "WRONG 0:03.30",
+    "seen": "Over-the-shoulder view from behind a man in a maroon shirt and glasses, seated at a desk with a monitor (blue game screen with a grid of coloured tiles), a second monitor to the right, and a keyboard he is reaching toward. One Celsius Sparkling Cherry Cola can stands upright on the dark desk surface in front of the keyboard, near the front edge of the desk, roughly centred under the monitor. …"
+   },
+   {
+    "frame": "WRONG 0:04.20",
+    "seen": "Same seated view and layout. The can stands on the dark desk in front of the keyboard, at about the same place and size as in 0:03.30, slightly to the left of its position there. The man's head and hand are in a similar place; the tile grid on the monitor shows a different colour arrangement. The camera is at the same height and angle."
+   },
+   {
+    "frame": "WRONG 0:06.53",
+    "seen": "Same seated view, with the camera a little further back and slightly higher than in the earlier frames, so the room and monitors sit a little differently in the frame. The can stands upright on the dark desk in front of the keyboard, roughly in the same place and size as before, and its label looks paler, with the red top swoosh partly visible. …"
+   }
+  ],
+  "prompts_saved": "the wrong take only"
+ }
+}

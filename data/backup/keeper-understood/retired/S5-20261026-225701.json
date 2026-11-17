@@ -1,0 +1,37 @@
+{
+ "id": "S5",
+ "moment_id": 5,
+ "title": "The can proportions are good but it doesnt look like a real actual real can/tin that actually was in the video,, rather it looks like a video edit or image placement, i looks a bit 3d and doesnt blend",
+ "source_sig": "97d26fbac215d11f",
+ "read_at": "2026-10-26T22:55:02+01:00",
+ "model": "claude-sonnet-5-5",
+ "cost_usd": 0.0952,
+ "turns": 5,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\5\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\5\\frame-1-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\5\\frame-2-marked.png"
+ ],
+ "reading": {
+  "the_miss": "The can has the right proportions, size and position, but it does not look like a can that was in the room. Its sharpness, contrast, saturation and even studio shading, and its tight, small reflection, differ from the soft phone footage around it. That makes it read as a pasted or 3D-rendered product image that does not blend. The admin says the same: it looks like a video edit or image placement, a bit 3D.",
+  "right_version": "The RIGHT frame shows the same can at the same spot and size, but softened and colour-matched to the room's daylight. It has a more natural viewing angle, lower contrast, and a longer soft reflection on the glossy wood. It looks like a real can photographed by the same phone camera.",
+  "product_and_scene": "A sealed CELSIUS Sparkling Watermelon slim aluminium can, standing upright on its base with the tab flat and the label turned about 30 degrees toward the camera. It stands at the lower-left corner of a bare dark glossy wood desk, in front of the man's resting forearm and nearer the camera than he is. The shot is a locked desk-level medium close-up, phone-shot and vertical, in a bright showroom with glass partition, plants, keyboard and mouse at the right edge. The can is about a third of the frame height at the lower left, and the man texts behind it. The can's source image (Image 2) is a studio product shot on a plain light-grey backdrop.",
+  "mechanism": "From the wrong prompt, Image 3 was a 'size and placement guide only', so the model took only the can's size and spot. Its look came from the studio product image (Image 2), and the model kept that clean, glossy, evenly lit studio finish. The can therefore did not take the room's soft phone-camera look, light colour, softness or wood reflection. The prompt's lighting and reflection wording was not enough to override this. The corrected prompt made Image 3 a photo of how the can really stands on this desk. …",
+  "when_it_recurs": "Whenever a clean studio product image is composited into real phone-shot footage as a static prop, and the placement reference is limited to 'size and spot only'. The product then keeps its studio rendering: sharp, glossy and evenly lit, with a small reflection. This is most likely on a small product in the foreground of a soft handheld-looking shot, on glossy wood where a reflection is expected.",
+  "qc_check": "At the first frame and later frames, compare the can with the surrounding footage and with the in-scene reference (the Image 3 photo of the can on this desk). Check that its sharpness, contrast, saturation and colour cast match the man, desk and keyboard. Check that the top and lid angle are natural for the camera height. Check that it has a soft reflection on the wood and a contact shadow like the keyboard's. Fail it if the can looks crisper, brighter or more saturated than its surroundings, or if its edges look cut out, so it reads as an overlay or 3D insert. Separately, check that the size and spot (lower-left, in front of the forearm) still hold.",
+  "prompts": "The corrected prompt changes the role of Image 3. The wrong prompt said 'size and placement guide only… use only that size and that spot'. The corrected prompt calls it 'a photo of how the can really stands on this desk' and takes its size, spot, viewing angle, softness, light and reflection on the wood. It states that 'the can in the video looks like the can in Image 3, a real aluminium can photographed by the same phone camera as the rest of the shot'. In the Core Task it adds 'studio finish' to the list of Image 2 traits not to use. At beat 1 it says the can keeps 'exactly the size and the look it has in Image 3, with only a thin sliver of its lid edge showing'. …",
+  "admin_feedback": "The can's proportions are good, but it does not look like a real can that was in the video. It looks like a video edit or image placement, a bit 3D, and it does not blend with the scene.",
+  "uncertain": "The frames are from two different videos (A and B), so the differences in lighting, reflection and lid angle may partly come from the two generations and not only from the prompt wording. The RIGHT frame carries a burned-in caption that the prompt said to avoid, and it is unclear whether that take had the caption removed or kept it. The Image 3 reference photo is not shown, so how close the RIGHT can is to it cannot be checked. Only the first frame (0:00.00) is shown, so it is not known whether the can stays this way for the rest of the shot. …",
+  "frames_seen": [
+   {
+    "frame": "WRONG 0:00.00",
+    "seen": "Portrait frame of a man in a blue polo and black-framed glasses, head bowed over a phone held in both hands. A red box marks the lower-left desk corner. A sealed CELSIUS watermelon can stands upright on the dark wood there, in front of his resting forearm and nearer the camera. It is about 105 px wide and 305 px tall in the 720x1280 frame. …"
+   },
+   {
+    "frame": "RIGHT 0:00.00",
+    "seen": "Same scene and framing. A green box marks the same lower-left desk area, and the can stands in front of the forearm at about the same size, roughly 105 px wide and 310 px tall. This can is softer and a little lower in contrast. Its silver and white carry the cool, slightly grey-blue cast of the room. The lid is shown in perspective. …"
+   }
+  ]
+ }
+}

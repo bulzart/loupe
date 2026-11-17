@@ -1,0 +1,33 @@
+{
+ "id": "S21",
+ "moment_id": 21,
+ "title": "wrong placement, wrong product render, everything's wrong here",
+ "source_sig": "161ab3ee725de63f",
+ "read_at": "2026-11-05T00:26:52+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.0027,
+ "turns": 3,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\21\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\21\\frame-1-marked.png"
+ ],
+ "reading": {
+  "marked": "A red box is drawn around the Celsius Peach Vibe can on the upper-left shelf in the full frame. The zoom, which is the close-range view of the same area, has a red box around the can as well, framing the whole can from its dark top to its base. No arrow, circle or text is drawn on the frame itself.",
+  "right_version": "no right frame",
+  "product_and_scene": "Product: a Celsius Peach Vibe energy drink can, upright, white body with red 'CELSIUS' and 'PEACH VIBE' lettering, red swoosh and teal palm graphics, dark top. Its size is small against the shelf figurines and the man's head, and it looks about as tall as the figurine next to it. It stands on the upper-left wall shelf at the far side of the room, not on the desk where the man sits and not in his hands. Scene: a small bedroom-office with a white wall, whiteboard, shelves, a desk with a marble top and a black phone case. Camera: a vertical handheld-style frame at seated height, slightly low, with the man in the right half and the can in the upper-left corner of the frame.",
+  "admin_words": "Title: \"wrong placement, wrong product render, everything's wrong here\". Admin's words at the bottom of the picture: \"wrong placement, wrong product render, everything's wrong here\". Sample kind: not tagged. Frame tag: FRAME 1 · WRONG · 0:05.91, VIDEO A · as generated, NO RIGHT VERSION, CLOSE RANGE. Model wan3_0_prime, run 20261019-235823-19, video 17, analyze-recreate. Images sent with this generation: Image 1 · A28 · download (20).jpg (the man), Image 2 · A41 · peach vibe front - cans usa.png (the can), Image 3 · video-17-guide.png (the original video's frame; its original file is not recorded).",
+  "unclear": "The frame is small at the reduced size, so the can's exact height and its contact with the shelf are hard to judge; I cannot confirm the figurine heights precisely. The image does not show the original video's frame beyond the guide thumbnail, so I cannot compare the can's placement with the source. The can's reflection and label text at full size are soft.",
+  "frames_seen": [
+   {
+    "frame": "WRONG 0:05.91",
+    "seen": "Vertical shot of a young man with curly hair, white tank top, gold chain and white earbud, seated at a desk with his head turned to his right (viewer's left) and looking off-frame. Behind him a white wall, a whiteboard with handwritten notes, and two white wall shelves holding small figurines, toys and a painting. A black lanyard hangs from the shelf edge. On the lower left, a laptop edge; …"
+   },
+   {
+    "frame": "Close-range zoom of the same frame",
+    "seen": "Enlarged view of the upper shelf: the Celsius Peach Vibe can stands upright on the shelf, dark top, white body with red 'CELSIUS' and 'PEACH VIBE' lettering, red swoosh logo and teal palm-leaf graphics. Beside it, a red and green figurine and other toys sit on the shelf. The can is tall and narrow against the figurines, and it is set on the shelf surface near the wall, not on the desk."
+   }
+  ],
+  "prompts_saved": "kept in the record: the flawed version's prompt (the generations the frames called WRONG come from); no correct version's prompt (no frame of this sample is called RIGHT)"
+ }
+}

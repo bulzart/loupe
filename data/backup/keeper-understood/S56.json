@@ -1,0 +1,44 @@
+{
+ "id": "S56",
+ "moment_id": 56,
+ "title": "On the Video A version (wrong one) the package is rendered correctly but it moves without any logical means, whether by character moving it or something else, and on the Video B version (correct one) the package stays in the same place persistently and is correct.",
+ "source_sig": "4339aff2e136a0ef",
+ "read_at": "2026-11-07T00:13:06+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.0056,
+ "turns": 7,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\56\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\56\\frame-1-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\56\\frame-2-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\56\\frame-3-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\56\\frame-4-marked.png"
+ ],
+ "reading": {
+  "marked": "No arrow, circle, box or written mark is visible on any of the four composite frames or on the four single marked frame files. The composite shows no zoom panel under any frame. The only text is the tag bar above each frame and the admin's notes at the bottom.",
+  "right_version": "Frames 3 and 4 (Video B, correct version, generation 1 of 2, clip c1, 0–13.433 s). In both, the Nutro 'Energy & Focus' carton lies flat on the wooden desk in the lower part of the frame, in roughly the same area at 0:00.00 and 0:03.80, beside the laptop and not on the man's torso. The camera and the man's framing stay the same throughout.",
+  "product_and_scene": "The product is a light-blue, rectangular Nutro 'Energy & Focus' carton with a purple top edge and yellow and white panels. It lies flat and closed on a dark wooden table, and it is roughly the size of a hand in these frames. Beside it are a dark laptop at the left edge and a white wall with a rail of hanging items behind the man. The scene is a home office with a fixed portrait camera at seated eye level. The man wears a white 'YOUNGLA' T-shirt and wireless earbuds.",
+  "admin_words": "Title: On the Video A version (wrong one) the package is rendered correctly but it moves without any logical means, whether by character moving it or something else, and on the Video B version (correct one) the package stays in the same place persistently and is correct. Explanation: Frames tagged 'as generated' are from video A (the version as generated); frames tagged 'correct version' are from video B (the right version, a different video). …",
+  "unclear": "No marks are visible, so I cannot tell what the admin meant to point at. The record's product line is cut off at 'thinn', so the full product description is not visible here. Frames 3 and 4 are not identical: the carton's angle and its exact spot differ slightly, and the frames give no view of the carton's underside or back. Frame 1 has the man's hand in front of his chest, which does not touch the carton, so the cause of any movement cannot be seen in the frames.",
+  "frames_seen": [
+   {
+    "frame": "WRONG 0:00.00",
+    "seen": "Video A, as generated, generation 1 of 2. Portrait frame, fixed camera at seated eye level. A man in a white T-shirt sits at a wooden desk, gesturing with his right hand in front of his chest. A dark laptop is at the lower left edge. The Nutro 'Energy & Focus' carton lies flat on the desk in the lower-left-centre, angled diagonally, with its long side running away from the camera. …"
+   },
+   {
+    "frame": "WRONG 0:03.80",
+    "seen": "Video A, as generated, generation 2 of 2, clip c2. Same portrait framing and fixed camera. The man sits upright behind the desk, looking to his right, with both arms down out of view. The carton now lies flat in the lower-centre of the frame, in front of his torso, with its long side roughly horizontal and its 'Energy & Focus' label facing the camera. Its size is about the same as in frame 1. …"
+   },
+   {
+    "frame": "RIGHT 0:00.00",
+    "seen": "Video B, correct version, generation 1 of 2, clip c1. Same portrait framing and fixed camera. The man sits upright, looking toward the camera, with his hands out of view. The carton lies flat on the desk in the lower right-centre, angled diagonally, with its label turned sideways. The laptop is at the lower left. The carton is about the same size as in the wrong frames."
+   },
+   {
+    "frame": "RIGHT 0:03.80",
+    "seen": "Video B, correct version, generation 1 of 2, clip c1. Same portrait framing and fixed camera. The man sits upright, looking toward the camera, with his hands out of view. The carton lies flat in the lower-centre-left of the frame, close to the laptop's right edge, angled with its label turned sideways. Its position is close to frame 3's, shifted slightly left, and it is about the same size."
+   }
+  ],
+  "prompts_saved": "kept in the record: the flawed version's prompt (the generations the frames called WRONG come from) and the correct version's prompt (the generations the frames called RIGHT come from)"
+ }
+}

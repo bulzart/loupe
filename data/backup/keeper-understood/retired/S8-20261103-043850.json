@@ -1,0 +1,29 @@
+{
+ "id": "S8",
+ "moment_id": 8,
+ "title": "First the person is seen drinking water (where we could've just put him drinking our Celsius energy drink) and then after the scene cut out Celsius is seen in the background making sense of the meme \"3hours of sleep don't affect me\" i.e in the original video he was imagining drinking water but he wasn't instead the water was in the background (where is our Celsius can instead now) but he was just tripping due to the lack amount of sleep",
+ "source_sig": "6e2e291f1aed9ecd",
+ "read_at": "2026-11-02T22:08:55+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.0028,
+ "turns": 3,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\8\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\8\\frame-1-marked.png"
+ ],
+ "reading": {
+  "marked": "A red box, drawn on the zoom, encloses the can standing on the mower deck, with its edges running just outside the can and the mower deck surface beneath it. The box marks only that can. No arrow or circle is present.",
+  "right_version": "no right frame",
+  "product_and_scene": "Product: a slim silver-based can with a white upper, red/pink band and CELSIUS-style lettering, standing upright and unopened on the yellow deck of a ride-on mower (HUSTLER). The can is small against the mower, roughly the height of its deck bolts, and sits on a flat yellow metal surface in front of a dark mower block. Scene: outdoors on gravel, with the mower's engine and frame behind. Camera: static, wide, low angle, facing the mower's front-left; the zoom is a close crop on the can and deck.",
+  "admin_words": "Title: \"First the person is seen drinking water (where we could've just put him drinking our Celsius energy drink) and then after the scene cut out Celsius is seen in the background making sense of the meme \"3hours of sleep don't affect me\" i.e in the original video he was imagining drinking water but he wasn't instead the water was in the background (where is our Celsius can instead now) but he was just tripping due to the lack amount of sleep\". Sample line: miss example only, no right version. Model wan3_0; from run 20261013-230824-13 video 08 at 0:05.03 (analyze-recreate); product Canonical shape; kinds not tagged. …",
+  "unclear": "The frame is at a small scale: the can's printed lettering and its exact colour bands are hard to read beyond 'CELSIUS'-like text and a red/pink band. The admin's sample line calls the product 'Canonical shape', and the composite's text names the reference image as ref-can-cherrycola.jpg, which I cannot match to the can shown here from this frame alone. Whether a person appears elsewhere in the clip is not visible in this single frame.",
+  "frames_seen": [
+   {
+    "frame": "WRONG 0:05.03",
+    "seen": "A yellow ride-on mower (labelled HUSTLER on its deck housing) sits on a gravel surface, seen from the front-left at a low angle. Its engine, belts and frame fill the upper half; the mower deck is at the lower centre. A yellow-and-hi-vis-clad arm/edge is in the bottom-left corner. …"
+   }
+  ],
+  "prompts_saved": "kept in the record: the flawed version's prompt (the generations the frames called WRONG come from); no correct version's prompt (no frame of this sample is called RIGHT)"
+ }
+}

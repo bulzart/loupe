@@ -1,0 +1,54 @@
+{
+ "id": "S16",
+ "moment_id": 16,
+ "title": "The character stays stale for too long without any necessary or logic means until it starts actioning, that could've been reasonable if the script required a bit of a pause in order to make the video scenario make sense, but not just stale for multiple seconds and do nothing because in this specific video theres no point and no necessarity to do so",
+ "source_sig": "d815128decfee455",
+ "read_at": "2026-11-05T00:27:39+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.0053,
+ "turns": 9,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\16\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\16\\frame-1-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\16\\frame-2-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\16\\frame-3-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\16\\frame-4-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\16\\frame-5-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\16\\frame-6-marked.png"
+ ],
+ "reading": {
+  "marked": "I see no arrow, circle, box or other drawn mark in any of the six frames or their zooms. The only text on the frames is the subtitle and the WRONG tags with their times. Nothing is pointed at frame by frame.",
+  "right_version": "no right frame",
+  "product_and_scene": "The product is a slim silver Celsius sparkling watermelon can with a red top band, a red C logo, a watermelon slice graphic and the word SPARKLING. It is held in the man's hand at chest height in frames 1 to 4 and near his shoulder in frame 6, at roughly the length of his hand. The scene is an elevator with brushed-metal walls and overhead light streaks. Two people stand in it: the young man in the navy sweater on the left and a woman in a white blouse on the right. Frame 5 cuts to a separate black-letterboxed inset of a man in a headset in a room. The camera is a steady, near-front view in frames 1 to 4, fades in frame 4, and moves to a closer side view of the man in frame 6.",
+  "admin_words": "Title: \"The character stays stale for too long without any necessary or logic means until it starts actioning, that could've been reasonable if the script required a bit of a pause in order to make the video scenario make sense, but not just stale for multiple seconds and do nothing because in this specific video theres no point and no necessarity to do so\". …",
+  "unclear": "No frames exist between 0:04.80 and 0:07.53, so I cannot see how the man moves from the standing pose in frames 1 to 4 to the can-opening in frame 6, or when the inset of the headset man ends. The picture shows no drawn marks, so I cannot tell which detail the admin meant to point at. The inset man's place in the video is not explained by the picture.",
+  "frames_seen": [
+   {
+    "frame": "WRONG 0:00.00",
+    "seen": "Two people in a metal-walled elevator, seen from the front. A young man in a navy crew-neck sweater is on the left, holding a silver Celsius sparkling watermelon can at chest height in his right hand, with the can at about the length of his hand. His mouth is closed and his eyes look up and to the side. …"
+   },
+   {
+    "frame": "WRONG 0:00.87",
+    "seen": "Same framing and same two people. The man's mouth is slightly open and his eyes look up and to the left. He still holds the can at chest height, in the same position. The woman still glances up with a slight smile. Same subtitle."
+   },
+   {
+    "frame": "WRONG 0:02.93",
+    "seen": "Same framing and people. The man's mouth is open a little more, eyes up, can held at chest height in the same position. The woman still looks up-right with a slight smile. Same subtitle."
+   },
+   {
+    "frame": "WRONG 0:03.63",
+    "seen": "Same two people and framing, but the whole frame is washed out and faded toward white, as in a fade transition. The man still holds the can at chest height and looks up with his mouth slightly open. The woman looks up with a slight smile. Same subtitle."
+   },
+   {
+    "frame": "WRONG 0:04.80",
+    "seen": "Black letterboxed frame. The subtitle sits in the top black band. In a smaller rectangle in the middle, a different man wearing a headset, wide-eyed and leaning toward the camera, with a Christmas tree and a microphone arm behind him. The elevator and the two people from the earlier frames are not visible."
+   },
+   {
+    "frame": "WRONG 0:07.53",
+    "seen": "A closer view of the young man in the navy sweater, now seen from the side in a tight framing. His head is tilted down and his eyes are lowered or closed. His hands hold the silver Celsius watermelon can at about shoulder height, with one hand gripping the bottom and the other at the top of the can, working the opening tab. The elevator wall is behind him. The woman is not visible. Same subtitle."
+   }
+  ],
+  "prompts_saved": "kept in the record: the flawed version's prompt (the generations the frames called WRONG come from); no correct version's prompt (no frame of this sample is called RIGHT)"
+ }
+}

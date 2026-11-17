@@ -339,7 +339,7 @@ def main(with_keeper=False):
     ep = _qcr._extract_prompt(next(x for x in _qcr.library() if x["id"] == "S1"))
     check("the data collector is never given the prompts of the takes and is told to give no verdict", "PROMPT-A" not in ep and "PROMPT-B" not in ep
           and "give NO verdict" in _qcr.EXTRACT_ROLE and "prompt" not in _qcr.EXTRACT_ROLE.split("Answer ONE JSON")[1], ep[:200])
-    check("the judge runs on Opus 5.5 and the collector on Haiku 5.5 unless the admin sets another model", _qcr.DEFAULT_MODEL == "claude-opus-5-5"
+    check("the judge runs on Sonnet 5.5 and the collector on Haiku 5.5 unless the admin sets another model", _qcr.DEFAULT_MODEL == "claude-sonnet-5-5"
           and _qcr.EXTRACT_MODEL_DEFAULT == "claude-haiku-5-5")
     req("PATCH", "/api/misses/1", {"wrong_prompt": "PROMPT-A the can on the desk."})
     s, d, _ = req("POST", "/api/qc/brief", {"model": "wan3_0_prime"}, key=kq)
@@ -430,6 +430,47 @@ def main(with_keeper=False):
     finally:
         scon.close()
     check("the seed carries the prompts of both boxes with the misses", str(seeded_prompt or "").startswith("PROMPT-A"))
+    from loupe_app import backup as _backup
+    (core.DATA / "keys").mkdir(parents=True, exist_ok=True)
+    (core.DATA / "keys" / "pipeline.key").write_text("test-key-plain", encoding="utf-8")
+    (core.DATA / "captures").mkdir(parents=True, exist_ok=True)
+    (core.DATA / "captures" / "9001.json").write_bytes(json.dumps({"response": "https://s3.x/a.mp4?X-Amz-Signature=abc&x=1"}).encode("utf-8"))
+    bm = _backup.export()
+    bdb_path = _backup.backup_dir() / "loupe-full.db"
+    bcon = _sqlite3.connect(f"file:{bdb_path.as_posix()}?mode=ro", uri=True)
+    lcon = core.db()
+    try:
+        names = [r[0] for r in lcon.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")]
+        same = {t: (lcon.execute(f'SELECT COUNT(*) FROM "{t}"').fetchone()[0], bcon.execute(f'SELECT COUNT(*) FROM "{t}"').fetchone()[0]) for t in names}
+    finally:
+        bcon.close()
+        lcon.close()
+    check("the full backup holds every table of the live database with the same rows (settings, keys, sessions, history included)",
+          bool(names) and all(a == b for a, b in same.values()) and bm["tables"] == {t: a for t, (a, b) in same.items()} and bm["holds_secrets"] is True, str(same))
+    check("the backup copies the agents' key files as they are and the capture files without signed query strings",
+          (_backup.backup_dir() / "keys" / "pipeline.key").read_text(encoding="utf-8") == "test-key-plain"
+          and (_backup.backup_dir() / "captures" / "9001.json").read_text(encoding="utf-8").count("<signed-query-removed>") == 1
+          and "X-Amz-Signature" not in (_backup.backup_dir() / "captures" / "9001.json").read_text(encoding="utf-8")
+          and (_backup.backup_dir() / "backup.json").is_file())
+    fresh2 = Path(_tempfile.mkdtemp(prefix="loupe-backup-"))
+    _shutil.copytree(_backup.backup_dir(), fresh2 / "backup")
+    core.DATA = fresh2
+    try:
+        r1 = _backup.restore()
+        r2 = _backup.restore()
+        _rc = _sqlite3.connect(str(fresh2 / "loupe.db"))
+        try:
+            miss_n = _rc.execute("SELECT COUNT(*) FROM misses").fetchone()[0]
+        finally:
+            _rc.close()
+        r3 = _backup.restore(replace=True)
+    finally:
+        core.DATA = old_data
+    check("a restore into a data folder with no database brings back the database, the key files and the captures; with a database it refuses, and with replace it moves the old one aside",
+          r1["restored"] and miss_n == kept and (fresh2 / "keys" / "pipeline.key").is_file() and (fresh2 / "captures" / "9001.json").is_file()
+          and r2["restored"] is False and "replace" in r2["reason"]
+          and r3["restored"] and r3["old_database_moved_to"].startswith("loupe.db.before-restore-") and (fresh2 / r3["old_database_moved_to"]).is_file(), str((r1, r2, r3)))
+    _shutil.rmtree(_backup.backup_dir(), ignore_errors=True)
     s, d, _ = req("PATCH", f"/api/moments/1", {"status": "active"})
     long_title = ("The can size changes drastically and unexpectedly without any logical reasoning, " * 8).strip()
     s, d, _ = req("POST", "/api/misses", {"run": "20261001-000000-07", "video": "04", "title": long_title, "model": "wan3_0_prime", "wrong_path": wrong})

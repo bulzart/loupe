@@ -1,0 +1,34 @@
+{
+ "id": "S40",
+ "moment_id": 40,
+ "title": "Nueorgum pack of 6 or 9 i can't really recall was perfectly rendered, graphics and package size is on point active",
+ "source_sig": "0a2b195054141d27",
+ "read_at": "2026-11-05T00:26:04+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.0032,
+ "turns": 5,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\40\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\40\\frame-1-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\40\\frame-2-marked.png"
+ ],
+ "reading": {
+  "marked": "Frame 1 has no zoom and no mark. Frame 2 has one zoom, titled 'zoom: marked place', with a green box drawn on the frame's zoomed area. The box encloses the blue gum carton lying flat on the desk, with the dark phone and yellow sticky note at its upper left and loose papers below it.",
+  "right_version": "Both RIGHT frames show the same scene: a seated man at a desk with the blue gum carton lying flat among the desk items, its size set against the dark phone beside it and the sticky note. The carton has a blue face with a white label, and it is shown as a small flat box rather than a large one.",
+  "product_and_scene": "The product is a blue gum carton lying flat on a dark desk, sized about like the dark phone next to it; its face is blue with a light label. The scene is a home or small office desk with a seated man in a blue sweater, a laptop, a brass lamp, a window at right, papers stacked on the desk, and two spiky balls at the front right. The camera is static, at a medium shot at desk height, level with the man.",
+  "admin_words": "Title: 'Nueorgum pack of 6 or 9 i can't really recall was perfectly rendered, graphics and package size is on point active'. No other admin notes were given.",
+  "unclear": "The carton's text, the piece count (6 or 9) and the exact graphics are too small to read at this size in either frame. The zoom crop is a close view of the desk, and only frame 2 carries a mark. The admin's title does not say which of the six listed reference images the carton was built from, and the six sent images are only shown as thumbnails.",
+  "frames_seen": [
+   {
+    "frame": "RIGHT 0:00.00",
+    "seen": "Medium shot of a man in a light blue zip-neck sweater seated at a dark desk in an office. A laptop with a sunset-beach wallpaper is open at left, and a brass desk lamp stands behind it. A dark keyboard, stacks of loose white papers, a yellow sticky note, a dark phone, a small blue gum carton lying flat, a red-capped pen or marker, a yellow spiky ball and a red spiky ball are on the desk. …"
+   },
+   {
+    "frame": "RIGHT 0:03.67",
+    "seen": "Same static framing and set as frame 1: the man seated at the desk with the laptop at left, lamp, window at right, and the same desk items in similar positions. The blue gum carton lies flat on the desk to the right of the dark phone and the yellow sticky note, about the size of the phone. The subtitle is the same as in frame 1."
+   }
+  ],
+  "prompts_saved": "kept in the record: the correct version's prompt (the generations the frames called RIGHT come from); no flawed version's prompt (no frame of this sample is called WRONG)"
+ }
+}

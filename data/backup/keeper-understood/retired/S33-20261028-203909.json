@@ -1,0 +1,34 @@
+{
+ "id": "S33",
+ "moment_id": 33,
+ "title": "Video 02 at 0:00.00",
+ "source_sig": "331f9d643ca70a2f",
+ "read_at": "2026-10-28T19:28:31+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.0035,
+ "turns": 4,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\33\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\33\\frame-1-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\33\\frame-2-marked.png"
+ ],
+ "reading": {
+  "marked": "No arrow, circle, box or drawn text is visible on either frame image beyond the FRAME/WRONG tags and the video captions. The composite shows no zoom panels under the frames.",
+  "right_version": "no right frame",
+  "product_and_scene": "Product: Neuro \"Energy & Focus\" box (P3s E&F 9-piece Spearmint carton, as titled), a small upright teal box with a GUM label, standing on the desk at the right of the keyboard. Scene: a man at a desk with a monitor at left, a mechanical keyboard with blue backlighting, a headset with a boom mic, a grey hoodie with a badge, and a room with wooden shutters, curtains and a tufted sofa. Camera: static, portrait framing, medium shot, same framing in both frames.",
+  "admin_words": "Title: \"Video 02 at 0:00.00\". Sample header: \"model: wan3_0_prime; from run 20261027-233328-27 video 02 at 0:00.00 (analyze-recreate) | product: P3s E&F 9-piece Spearmint carton; kinds: not tagged\"; \"a miss example only, no right version\". No explanation, idea, could-be-better, missed-by-agents or correct notes were given.",
+  "unclear": "The composite and frame images show no admin marks, so it is not possible to tell what, if anything, the admin pointed at. The frames are from a two-generation take (clip c1 at 0–6.1 s and clip c2 at 6.1–12.433 s); the frames are not shown with their prompts, so the prompt text is not visible here. The exact size of the box relative to the keyboard in frame 2 is an estimate from the image.",
+  "frames_seen": [
+   {
+    "frame": "WRONG 0:00.00",
+    "seen": "A man in a grey hooded sweatshirt with a headset and boom mic sits at a desk, arms crossed, facing the camera. A Neuro \"Energy & Focus\" box stands upright on the desk to the right of the keyboard, roughly as tall as the keyboard's key rows and small against the man's torso. Warm, even daylight. Behind him are wooden louvred shutters, cream curtains, and a beige tufted sofa. …"
+   },
+   {
+    "frame": "WRONG 0:07.90",
+    "seen": "The same man in the same grey hoodie and headset, arms crossed, at the same desk with the keyboard and monitor edge at left. The room is much darker: low-key light falls on his face and the curtains, the shutters and sofa are in shadow, and the background is near black. …"
+   }
+  ],
+  "prompts_saved": "the wrong take only"
+ }
+}

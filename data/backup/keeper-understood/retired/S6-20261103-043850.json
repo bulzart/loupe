@@ -1,0 +1,29 @@
+{
+ "id": "S6",
+ "moment_id": 6,
+ "title": "First the person is seen drinking water (where we could've just put him drinking our Celsius energy drink) and then after the scene cut out Celsius is seen in the background making sense of the meme \"3hours of sleep don't affect me\" i.e in the original video he was imagining drinking water but he wasn't instead the water was in the background (where is our Celsius can instead now) but he was just tripping due to the lack amount of sleep",
+ "source_sig": "069bc416408cc3a8",
+ "read_at": "2026-11-02T22:08:42+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.0026,
+ "turns": 3,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\6\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\6\\frame-1-marked.png"
+ ],
+ "reading": {
+  "marked": "The admin's red rectangle sits on the close-range zoom (the frame itself is left clean). It encloses the man's upper body and the white cup at his mouth, with the hedge and house behind him. Nothing else is marked.",
+  "right_version": "no right frame",
+  "product_and_scene": "Product: none visible as a Celsius can; the man drinks from a plain white unlabelled cylinder or bottle, roughly the size of his hand, held near his mouth. Scene: an outdoor paved work area beside a box truck, with a hedge, a house, and orange leaf blowers. Camera: static, eye-level, medium shot, vertical framing.",
+  "admin_words": "Title: First the person is seen drinking water (where we could've just put him drinking our Celsius energy drink) and then after the scene cut out Celsius is seen in the background making sense of the meme \"3hours of sleep don't affect me\" i.e in the original video he was imagining drinking water but he wasn't instead the water was in the background (where is our Celsius can instead now) but he was just tripping due to the lack amount of sleep. Frame in the picture: 1 frame: Frame 1 WRONG 0:00.00, Video A (as generated), generation 1 of 4, clip c1 (0–3.2 s). Sample S6, miss example only, no right version. Model wan3_0; from run 20261013-230824-13 video 08 at 0:00.00 (analyze-recreate); …",
+  "unclear": "The cup's label, if any, and its exact size relative to the hand cannot be read at this resolution. The admin's marked zoom is the only close view; the wider frame does not show the Celsius can or any scene cut. The composite lists three reference images sent with the generation (character1.jpg, ref-can-cherrycola.jpg, video-08-c2-a2-guide.png), but the frame shows no product on set beyond the cup in his hand.",
+  "frames_seen": [
+   {
+    "frame": "WRONG 0:00.00",
+    "seen": "A man in sunglasses, a yellow-green high-visibility long-sleeve shirt with reflective stripes, a grey-green neck gaiter and grey work trousers sits on an orange-and-white cooler on a paved lot in front of a box truck's open rear side. He holds a white, unlabelled cylindrical cup or bottle to his mouth with his right hand, drinking; his left arm rests on his knee. …"
+   }
+  ],
+  "prompts_saved": "kept in the record: the flawed version's prompt (the generations the frames called WRONG come from); no correct version's prompt (no frame of this sample is called RIGHT)"
+ }
+}

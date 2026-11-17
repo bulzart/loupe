@@ -1,0 +1,34 @@
+{
+ "id": "S34",
+ "moment_id": 34,
+ "title": "On the first frame neurogum's package size is excellent just the graphics looking a bit weary and the problem is that the package seems standing midway nor falling nor staying looking like leaning into something but there's actually nothing to lean to, but in the second frame which is the continuity of the video the package size changes which should not has occured",
+ "source_sig": "d2d4f3793d9cdb89",
+ "read_at": "2026-10-28T20:39:34+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.0049,
+ "turns": 5,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\34\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\34\\frame-1-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\34\\frame-2-marked.png"
+ ],
+ "reading": {
+  "marked": "Frame 1 (0:00.00): a blue arrow runs from the man's crossed forearm down and to the right, its tip on the Neuro carton on the desk. The zoom shows the carton's upper graphics and the arrow tip at its top-left area, with the bottom cut off by the zoom edge. Frame 2 (0:07.53): a blue arrow runs from the man's nose and mouth area down and to the right, its tip on the upper right part of the carton. The zoom shows the carton's top-right corner at the edge of the crop. No circles or boxes are drawn in either frame. The text 'Hero vs villain' in frame 1 and 'Villain vs villain' in frame 2 are captions in the video picture; the picture does not show whether they are admin marks.",
+  "right_version": "no right frame",
+  "product_and_scene": "Product: the Neuro 'Energy & Focus' carton, P3s E&F 9-piece Spearmint, in a cyan carton with a green GUM badge, Natural Caffeine, L-theanine and B Vitamins, Zero Sugar, Spearmint flavour tag, 9 Pieces, Dietary Supplement. In the reference product shot it is a tall upright box. In the frames it is a small upright carton on a desk, read against the keyboard (about 500 px wide). Scene: a home-office or studio desk, a man in a grey hoodie with a 02-22 ID badge and a headset mic, arms crossed, seated behind the desk, with a backlit keyboard in front of him, a dark monitor on the left, a tufted beige sofa behind the desk on the right, curtains and a wood-louvred wall. …",
+  "admin_words": "Title: On the first frame neurogum's package size is excellent just the graphics looking a bit weary and the problem is that the package seems standing midway nor falling nor staying looking like leaning into something but there's actually nothing to lean to, but in the second frame which is the continuity of the video the package size changes which should not has occured",
+  "unclear": "The carton's base in frame 1 is cut off by the zoom crop, so whether it rests on the desk or floats cannot be confirmed. In frame 2 the carton's lower edge is at the desk line, and whether it touches the surface cannot be confirmed at this size. The graphics are too small in both frames to read beyond the brand, flavour and 'Energy & Focus' text. The 'Hero vs villain' and 'Villain vs villain' captions may be part of the video rather than admin marks. The message that carried the coordinate note (original 1192x2325, displayed 1025x2000) had no file path, so I used the composite and the two marked frames read above.",
+  "frames_seen": [
+   {
+    "frame": "EXAMPLE 0:00.00",
+    "seen": "Video A, generation 1 of 2, clip c1. A man in a dark grey hoodie with a headset and boom mic sits with his arms crossed behind a desk. A blue-backlit mechanical keyboard runs across the lower middle, a dark monitor is on the left, and a beige tufted sofa is behind the desk on the right. …"
+   },
+   {
+    "frame": "EXAMPLE 0:07.53",
+    "seen": "Video A, generation 2 of 2, clip c2. Same man, same hoodie, headset and crossed arms, same keyboard, monitor, sofa and wood-louvred wall, but the room is much darker, with low-key lighting and a cooler tone. The carton is on the desk to the right of the man and the keyboard, about 0.24 of the keyboard's width (roughly 118 px against 495 px in the 720 px frame). …"
+   }
+  ],
+  "prompts_saved": "the wrong take only"
+ }
+}

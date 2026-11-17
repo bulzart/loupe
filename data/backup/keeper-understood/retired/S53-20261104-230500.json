@@ -1,0 +1,34 @@
+{
+ "id": "S53",
+ "moment_id": 53,
+ "title": "The wrong frame the package is wayyyy thicker, even though the size is correct just the depth is way off, the right sample's depth is correct (thin)",
+ "source_sig": "2b520a347f687433",
+ "read_at": "2026-11-04T23:03:51+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.0036,
+ "turns": 4,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\53\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\53\\frame-1-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\53\\frame-2-marked.png"
+ ],
+ "reading": {
+  "marked": "No circle, arrow, box or red/green mark is visible on either frame, in the composite or in the single frame files. No zoom panel is visible under either frame. The admin's marks, if any were made, do not appear in these files, so I cannot say what they point at.",
+  "right_version": "Frame 2 (VIDEO B, clip c1, run 20261029-231113-recreate-celsius-neurogum video 14, 0:01.67): the carton lies flat on a desk beside a keyboard, shown from the front-top, with a thin depth and a size that is small against the monitor and keyboard.",
+  "product_and_scene": "The product is the blue Neuro Energy & Focus carton with a light-blue label and a green stripe. In the wrong frame it sits on a kitchen counter in front of a bowl, and the box looks deep and chunky next to the bowl, roughly as wide as the bowl. In the right frame it lies on an office desk next to a keyboard and reads as a thin, flat box. The record gives the product as the Neuro Energy & Focus Spearmint 6-piece carton, front render (A91), padded sm. The wrong scene is a handheld, tilted-up portrait kitchen shot of a man eating. The right scene is a portrait office shot from over a second man's shoulder, with a static camera.",
+  "admin_words": "Title: \"The wrong frame the package is wayyyy thicker, even though the size is correct just the depth is way off, the right sample's depth is correct (thin)\". The admin wrote no other notes.",
+  "unclear": "Depth in the wrong frame is hard to judge because the carton is close to the lens and the camera is tilted, so the thickness can't be measured against the bowl or the counter. The right frame is small, so its label and edges are only roughly visible. No marks or zoom panels are present, so the admin's points cannot be confirmed in the picture.",
+  "frames_seen": [
+   {
+    "frame": "WRONG 0:00.00",
+    "seen": "Portrait kitchen shot, camera held handheld and tilted upward, with the ceiling and a smoke detector at the top. A curly-haired man in a grey sleeveless tee leans over a grey countertop, looking down at a phone in his left hand while his right hand holds a spoon over a white bowl of food. …"
+   },
+   {
+    "frame": "RIGHT 0:01.67",
+    "seen": "Portrait office shot from behind and over the shoulder of a second man in a dark jacket, who is in the lower-right foreground. A man in a dark polo shirt sits at a cherry-wood desk behind a black monitor on a stand, with a keyboard in front of him. The blue Neuro Energy & Focus carton lies flat on the desk between the keyboard and the monitor, and it is small in the frame. …"
+   }
+  ],
+  "prompts_saved": "kept in the record: the flawed version's prompt (the generations the frames called WRONG come from) and the correct version's prompt (the generations the frames called RIGHT come from)"
+ }
+}

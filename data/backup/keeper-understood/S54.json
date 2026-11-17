@@ -1,0 +1,34 @@
+{
+ "id": "S54",
+ "moment_id": 54,
+ "title": "The wrong frame the package is wayyyy thicker, even though the size is correct just the depth is way off, the right sample's depth is correct (thin)",
+ "source_sig": "1ecd397943cfe376",
+ "read_at": "2026-11-05T00:23:56+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.0047,
+ "turns": 5,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\54\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\54\\frame-1-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\54\\frame-2-marked.png"
+ ],
+ "reading": {
+  "marked": "Frame WRONG 0:00.00: a red box around the lower centre of the frame, covering the white bowl with food and the blue carton on the counter in front of it. The zoom shows the box enclosing the bowl and the whole carton, with the carton at its centre. Frame RIGHT 0:01.67: a green box around the desk area, covering the keyboard, the carton lying on the desk above it and the man's right hand. The zoom shows the box enclosing the carton, with the carton at its centre and the keyboard below it. No other marks are on either frame.",
+  "right_version": "The RIGHT frame (0:01.67, Video B) shows the carton lying flat and thin on the office desk, small against the keyboard. Its depth looks slim. The reference image Video B Image 4 (IMG_6917.jpg) in the composite panel shows the carton seen edge-on as a thin, flat pack.",
+  "product_and_scene": "The product is a light-blue carton with dark lettering and green accents, shaped as a rectangular box. In the WRONG frame it sits on a kitchen counter next to a white bowl, roughly as wide as the bowl, and it looks deep and chunky, viewed from the front and slightly above. In the RIGHT frame it lies flat on an office desk beside a keyboard, looks about a third of the keyboard's length, and looks thin. The WRONG scene is a home kitchen filmed from a high, handheld-looking camera. The RIGHT scene is an office filmed at medium distance, with a man at the desk and a second man in the foreground.",
+  "admin_words": "Title: 'The wrong frame the package is wayyyy thicker, even though the size is correct just the depth is way off, the right sample's depth is correct (thin)'.",
+  "unclear": "The exact depth of the carton cannot be measured from the frames; the thickness difference is judged by eye from the zoom and the reference images. The carton's printed text is too small and blurred to read in either frame. The RIGHT frame's carton is small in the picture, so its edges and top are hard to make out. The composite does not show the carton's real-world size, only its size relative to the bowl and the keyboard.",
+  "frames_seen": [
+   {
+    "frame": "WRONG 0:00.00",
+    "seen": "Video A, as generated. A kitchen seen from a high, handheld-looking angle, looking down at a light grey stone counter. A man with curly hair, a grey sleeveless tee with a red graphic and tattooed arms leans over the counter, holding a phone in his left hand and a spoon in his right, over a white bowl of food. …"
+   },
+   {
+    "frame": "RIGHT 0:01.67",
+    "seen": "Video B, correct version (run 20261029-231113-recreate-celsius-neurogum video 14, clip c1). An office with cream walls, a dark wood cabinet with two mugs on top, and a black monitor on a stand at the left. A man with curly hair in a black polo shirt sits at a desk, looking to his left, with his hands on the desk. …"
+   }
+  ],
+  "prompts_saved": "kept in the record: the flawed version's prompt (the generations the frames called WRONG come from) and the correct version's prompt (the generations the frames called RIGHT come from)"
+ }
+}

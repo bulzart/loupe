@@ -67,7 +67,7 @@ KEEPER_CALL_TIMEOUT = 240     # seconds one keeper (judge) call may run before i
 TEMPLATE_READ = 10      # samples whose saved prompts a template request reads whole
 PROMPTS_READ = TEMPLATE_READ      # cited samples whose saved prompts the final prompts round of an answer sends whole, in the order cited
 PRODUCT_IMAGES_MAX = 6  # the product images the judge may list for one request (the admin, 2026-10-30: the judge decides which and how many)
-DEFAULT_MODEL = "claude-opus-5-5"     # the keeper is the judge: Opus 5.5 (the user, 2026-10-28); the Haiku collector below only collects
+DEFAULT_MODEL = "claude-sonnet-5-5"     # the keeper is the judge: Sonnet 5.5 (the user, 2026-11-17; Opus 5.5 before); the Haiku collector below only collects
 EFFORTS = ("high", "xhigh", "max")   # the reasoning effort every keeper and collector call is started with; never low or medium
 EFFORT_DEFAULT = "high"
 
@@ -632,7 +632,7 @@ def _origin(s: dict) -> str:
 # A collector session (Haiku 5.5, the user, 2026-10-28: it only collects data and gives no verdict) opens each sample's picture ONCE (the composite with its
 # WRONG / RIGHT / EXAMPLE frames and the admin's marks, the frames themselves when a detail is small) and describes what it shows, with the admin's words
 # restated; it never sees the samples' prompts and never says what went wrong, why, when it recurs, what to check or which version or prompt is better:
-# the judge (the keeper, Opus 5.5) decides all of that, with each sample's prompts (every box its frames speak through) handed to it whole from the
+# the judge (the keeper, Sonnet 5.5) decides all of that, with each sample's prompts (every box its frames speak through) handed to it whole from the
 # record.  Each collection is kept as one JSON file per sample in DATA/keeper/understood/.  Only a sample that is new, or whose words, frames or image changed since, is read again; when every active sample
 # has a current collection nothing runs.  A sample that leaves the library (archived, deleted) has its collection moved to understood/retired/.
 EXTRACT_MODEL_DEFAULT = "claude-haiku-5-5"

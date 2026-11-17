@@ -1,0 +1,34 @@
+{
+ "id": "S25",
+ "moment_id": 25,
+ "title": "The swap for the product was not correct here and too force, in the original video there was a pen on the girl's hand and the model just swapped the pen for a celsius (our product) can/tin, and pretending to write with it which is illogical and doesn't happen in real world scenarios and too forced, if the character wasa just holding the pen and not writing with it and then do a swap it would've make sense up until a certain point but writing with the can is wrong",
+ "source_sig": "9db124aa094dbe3e",
+ "read_at": "2026-10-28T04:36:53+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.004,
+ "turns": 5,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\25\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\25\\frame-1-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\25\\frame-2-marked.png"
+ ],
+ "reading": {
+  "marked": "Frame WRONG 0:05.50: a red box (thin outline) encloses the Celsius can and the right hand gripping it, in the lower right of the frame; the zoom under it shows that same region. Frame EXAMPLE 0:04.87: a blue box encloses the right hand and the black pencil it holds on the notebook, in the lower right of the frame; the zoom under it shows that same region. No arrow or circle is drawn. The admin's text is in the composite's bottom panel.",
+  "right_version": "no right frame",
+  "product_and_scene": "Product: a Celsius energy drink can, Peach Vibe design (white/silver body with red 'PEACH VIBE' lettering and a green palm graphic), upright with its pull tab on top, held in the woman's right hand. Its size is about the span of her hand and wrist, and it sits at the same level as the notebook. Scene: a student's bedroom desk with a laptop on the left, an open notebook, a ceiling fan, anime-style and other posters on the wall, a bed with a patterned blanket at the right edge. The woman wears a lavender fleece top. Camera: static, eye-level, portrait framing; the two frames match in position.",
+  "admin_words": "Title: \"The swap for the product was not correct here and too force, in the original video there was a pen on the girl's hand and the model just swapped the pen for a celsius (our product) can/tin, and pretending to write with it which is illogical and doesn't happen in real world scenarios and too forced, if the character wasa just holding the pen and not writing with it and then do a swap it would've make sense up until a certain point but writing with the can is wrong\". Composite note: the same text, as the admin's words. Sample header: \"SAMPLE S25 (a miss example only, no right version)\"; model wan3_0_prime; …",
+  "unclear": "Single still frames cannot show motion, so whether the generated hand moves in a writing motion is not visible; the still shows the can gripped in the hand, not a pen-like tip on paper. The EXAMPLE frame is a single moment, so whether the pencil is writing or only held cannot be confirmed from the still. The green object at the mouth is the same in both frames but its nature is not clear. The composite's product sample (Cherry Cola and Peach Vibe cans) is a reference image; the can in the WRONG frame matches the Peach Vibe design, which can only be confirmed by that reference. The text on the can body beyond the brand and flavor is small and partly blurred.",
+  "frames_seen": [
+   {
+    "frame": "WRONG 0:05.50",
+    "seen": "Generated frame (720x1280, portrait). A young woman with curly hair in a high bun and a lavender fleece top sits at a desk in a bedroom, facing left toward an open laptop. Her left hand is raised to her mouth holding a green object. …"
+   },
+   {
+    "frame": "EXAMPLE 0:04.87",
+    "seen": "Original video frame (1080x1920, portrait) with the caption 'life as student (saturday)' at the top. The same woman, same desk, same lavender fleece, same green object at her mouth, same background and camera position. Her right hand, at the lower right, rests on an open notebook and holds a black pencil with a silver end, angled up and to the right, with the tip on the paper as if writing."
+   }
+  ],
+  "prompts_saved": "none"
+ }
+}

@@ -1,0 +1,44 @@
+{
+ "id": "S11",
+ "moment_id": 11,
+ "title": "First the person is seen drinking water (where we could've just put him drinking our Celsius energy drink) and then after the scene cut out Celsius is seen in the background making sense of the meme \"3hours of sleep don't affect me\" i.e in the original video he was imagining drinking water but he wasn't instead the water was in the background (where is our Celsius can instead now) but he was just tripping due to the lack amount of sleep",
+ "source_sig": "651780e708c2325f",
+ "read_at": "2026-11-05T00:28:48+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.0048,
+ "turns": 7,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\11\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\11\\frame-1-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\11\\frame-2-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\11\\frame-3-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\11\\frame-4-marked.png"
+ ],
+ "reading": {
+  "marked": "Frame 1 (EXAMPLE 0:00.00): a blue box encloses the seated man, from his head down to the orange barrier block, with the drinking hand and cup at the centre of the box. Frame 2 (EXAMPLE 0:04.07): no mark is visible; no zoom is shown under it. Frame 3 (EXAMPLE 0:05.40): a blue box encloses the can standing on the mower deck and the deck edge around it; the zoom shows the can at the centre of the box. Frame 4 (EXAMPLE 0:07.10): no mark is visible; no zoom is shown under it.",
+  "right_version": "no right frame",
+  "product_and_scene": "The product is a silver and red Celsius can, standing upright on the deck of a yellow Hustler ride-on mower in frame 3. Against the mower it reads as small, about a hand's height above the deck. In frame 1 the man drinks from a small white or clear bottle or cup, not a can. In frame 4 the product is a blue MOTOR OIL jug, about the size of a large jerrycan, held in two hands. The scene is an outdoor work site on pale grey gravel or pavement with a trailer, a house and a mower. The camera moves between a medium-wide shot of the seated man (frame 1), a blurred close shot from the side (frame 2), a low shot of the mower (frame 3) and a first-person shot of the jug (frame 4).",
+  "admin_words": "Title: 'First the person is seen drinking water (where we could've just put him drinking our Celsius energy drink) and then after the scene cut out Celsius is seen in the background making sense of the meme \"3hours of sleep don't affect me\" i.e in the original video he was imagining drinking water but he wasn't instead the water was in the background (where is our Celsius can instead now) but he was just tripping due to the lack amount of sleep'. The admin's words are the same as the title; there is no separate explanation, idea or could-be-better note in the record.",
+  "unclear": "The drink in frame 1 is small and could be a bottle or a cup, so I cannot confirm it is water. The Celsius lettering in frame 3 is legible only in the zoom. Frame 2 is too blurred to confirm whether the pale object on the deck is the can. The record gives no frame tagged WRONG or RIGHT, so the admin's comparison to the original video cannot be checked from the picture.",
+  "frames_seen": [
+   {
+    "frame": "EXAMPLE 0:00.00",
+    "seen": "Outdoors on a paved driveway in front of a trailer and a house with shrubs. A man in a yellow high-visibility long-sleeve shirt with reflective stripes, grey work pants, brown boots, dark sunglasses and a green neck gaiter sits on an orange and white barrier block. He holds a small white or clear bottle or cup to his mouth and drinks. Camera is a steady medium-wide shot at his eye level. …"
+   },
+   {
+    "frame": "EXAMPLE 0:04.07",
+    "seen": "Close, out-of-focus shot from behind and to the side of the same man, who wears a green mesh cap, sunglasses, a stud earring and the yellow high-visibility shirt. He looks off to the right. The background is a blurred yellow ride-on mower with its engine and deck. A small pale can is faintly visible on the deck in the blur. The caption '3 hours of sleep don't affect me' is across the upper middle."
+   },
+   {
+    "frame": "EXAMPLE 0:05.40",
+    "seen": "Outdoors on gravel. A yellow ride-on mower with the word HUSTLER on its frame, an engine with a grey air cleaner, and a large yellow mower deck. A silver and red can, labelled CELSIUS in the zoom, stands upright on the middle of the deck. The camera is low and angled at the mower. No person is in the frame."
+   },
+   {
+    "frame": "EXAMPLE 0:07.10",
+    "seen": "First-person point-of-view shot on grey gravel. Two hands hold a blue plastic jug with a white label reading MOTOR OIL and a carry handle. A yellow high-visibility sleeve is at the lower right. Grey trousers and brown boots are visible below the jug."
+   }
+  ],
+  "prompts_saved": "kept in the record: the prompt box of Video A, an example prompt: its frames in this sample are called EXAMPLE, a suggestion of what could have changed or how it could have been done another way, neither a bad generation nor a correct one (the generations of that video its Example frames come from)"
+ }
+}

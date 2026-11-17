@@ -1,0 +1,25 @@
+{
+ "exported": "2026-11-17T23:28:33+01:00",
+ "tables": {
+  "api_keys": 2,
+  "audit": 736,
+  "captures": 876,
+  "consults": 1119,
+  "filehash": 1464,
+  "flag_inputs": 134,
+  "flags": 37,
+  "misses": 30,
+  "moments": 30,
+  "sessions": 1,
+  "settings": 47,
+  "usage": 4348
+ },
+ "files": {
+  "keys": 2,
+  "captures": 876,
+  "keeper-understood": 51
+ },
+ "flags_scrubbed": 0,
+ "holds_secrets": true,
+ "note": "the whole record: every table of the database (settings with the passphrase hash and the keeper session, API key hashes, the login session, consults, audit, usage and file indexes, captures, flags, samples), the agents' key files, the raw capture files and the keeper's readings; signed URLs lose their query string in the flag records and the capture files; restore with `python loupe.py backup restore`"
+}

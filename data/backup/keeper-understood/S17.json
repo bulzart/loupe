@@ -1,0 +1,34 @@
+{
+ "id": "S17",
+ "moment_id": 17,
+ "title": "The wrong sample's product (which is the can/tin) is loking fake and like ai slop, texture,lightning isn't correct and is looking like more of a product image placement through photoshop rather than an actual product render in the video scene",
+ "source_sig": "b206aac1cee44175",
+ "read_at": "2026-11-05T00:27:21+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.004,
+ "turns": 5,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\17\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\17\\frame-1-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\17\\frame-2-marked.png"
+ ],
+ "reading": {
+  "marked": "Frame 1 (WRONG, Video A): a red rectangle surrounds the can and the table in front of the laptop, from the laptop's right edge down to the lower part of the frame. Its zoom panel shows the same box: the can centred in the box with the laptop behind it and the table around it. Frame 2 (RIGHT, Video B): a green rectangle surrounds the can, the woman's phone hand and the laptop's left edge. Its zoom panel shows the can in front of the woman's hand and the laptop, with the box reaching up to the woman's sweater. The admin's marks point at the can in both frames.",
+  "right_version": "Frame 2 (RIGHT, Video B): the can stands upright on the table, nearer the camera and larger, placed between the woman's phone hand and the laptop with the laptop behind it. Its label is readable, with the cherry illustration and the black band. The can's base sits lower in the frame than in Frame 1.",
+  "product_and_scene": "Product: a Celsius Sparkling cherry-cola-style can, silver with a red C logo, CELSIUS wordmark, cherry illustration, pink stripe and black nutrition band, shown upright with a dark top. Size: roughly a hand-length tall against the laptop; in Frame 1 it is smaller and further back, in Frame 2 larger and closer. Scene: a bright office with light wood table, a dark laptop, a woman in a cream top at the desk, an orange wall, a blind, a framed painting and a cream cabinet. Camera: static, eye-level, slightly front-left in both frames. …",
+  "admin_words": "Title: \"The wrong sample's product (which is the can/tin) is loking fake and like ai slop, texture,lightning isn't correct and is looking like more of a product image placement through photoshop rather than an actual product render in the video scene\"",
+  "unclear": "At this size I cannot judge the texture or the lighting on the can's surface, only its shape, label and placement. The real size of the can is not stated, so the size comparison rests on the laptop and the woman's hand. The camera and the woman's position differ slightly between the two frames, so the frames are not identical. The admin notes do not say which frame or detail the phrase 'texture, lightning' refers to. The original video the generations came from is not recorded.",
+  "frames_seen": [
+   {
+    "frame": "WRONG 0:00.00",
+    "seen": "Video A, as generated. A seated woman in a cream sleeveless top sits at a desk, looking down-left at a silver phone in her left hand. An open dark laptop is on the right of the table. A silver-and-black Celsius Sparkling can stands upright on the light wood table in front of the laptop's right edge, its base about level with the laptop's lower edge. …"
+   },
+   {
+    "frame": "RIGHT 0:00.00",
+    "seen": "Video B, correct version. Same room, same woman in the same cream top, looking forward-left with mouth slightly open. The can stands upright on the table in front of the laptop and between the woman's phone hand and the laptop's left side, so the laptop sits behind it. The can is larger here, its base lower and nearer the camera, and its top reaches about the laptop's screen edge. …"
+   }
+  ],
+  "prompts_saved": "kept in the record: the flawed version's prompt (the generations the frames called WRONG come from) and the correct version's prompt (the generations the frames called RIGHT come from)"
+ }
+}

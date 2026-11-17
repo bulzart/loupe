@@ -1,0 +1,37 @@
+{
+ "id": "S26",
+ "moment_id": 26,
+ "title": "The package size and proportion is excellent,  do not ever render packages that are beyond this size, all packs have this size except the pouch which is bigger but different form, the render details lightning and texture are a bit off and a bit faded but the size is correct keep that in mind.",
+ "source_sig": "7bbc2efd853fad8d",
+ "read_at": "2026-10-27T01:56:23+01:00",
+ "model": "claude-sonnet-5-5",
+ "cost_usd": 0.072,
+ "turns": 4,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\26\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\26\\frame-1-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\26\\frame-2-marked.png"
+ ],
+ "reading": {
+  "the_miss": "This is not a size or placement miss. The admin presents the carton's size and proportion as correct and as the reference to keep. What is off is the render quality: the carton's lighting and texture are somewhat off and faded, with colours and printing less crisp than the table's wood and the laptop. The sample is saved as a scenario/example of the right size.",
+  "right_version": "Scenario, not a wrong/right pair. The admin says the carton size and proportion in these frames are right, about a third of the laptop's side edge, flat beside the laptop's near right corner, and that no pack should be rendered larger than this. The pouch is the one exception: it is bigger and a different form. Only the lighting and texture should be sharper and less faded.",
+  "product_and_scene": "Product: one small closed sky-blue paperboard gum carton ('Energy & Focus' label), roughly a flat square-ish box. It lies flat on its back, front art up, turned a little to the right, on bare light wood in front of the laptop's near right corner with a short gap, well inside the table's right and front edges. Scene: an indoor, handheld, vertical cafe/library shot with soft cool daylight from tall windows. Two seated men: the right one in a black puffer jacket looking at a phone, the left one in a grey hoodie writing with his head on his hand. A navy laptop and a notebook are on the table. The camera is fixed with a slight sway, a medium shot from above and in front of the table. …",
+  "mechanism": "As far as the frames and words show: the prompt states the carton's size as a fraction of the laptop's side edge and anchors it to a placement marker, and the model kept that size and spot in both frames. The faded look comes from the model rendering the small carton with muted colour and soft detail instead of the wood's sharpness, so the lighting and texture do not match the rest of the scene. The admin gives no deeper cause.",
+  "when_it_recurs": "A new plan that puts a small gum carton or similar pack on a table in a real filmed clip, with a placement marker and a size given relative to a nearby object such as the laptop. The size should stay as in this sample, and the render quality of lighting and texture can again come out faded. A new plan could also render a pack bigger than this, which the admin says must never happen, except for the pouch.",
+  "qc_check": "Compare the carton's length against the laptop's near side edge. It should be about a third, with the carton flat on its back beside the laptop's near right corner, a short gap, wood on every side, and the same size and spot in every frame. Flag any pack that looks larger than this (the pouch excepted). Then check the carton's surface: highlight on top, darker near edges, contact shadow, printed colours at full strength, sharpness matching the wood. Flag it if it looks faded or flat.",
+  "prompts": "Only the wrong take's prompt is given, and the sample is an example, not a miss/right pair. That prompt states the carton's size ('a third as long as the laptop's side edge'), flat posture, position ('in front of the laptop's near right corner', short gap, well inside the table edges), its lighting (soft highlight on top, darker near edges, contact shadow, printed colours at full strength) and 'exactly where and as big as the marker in @Image4'. No corrected prompt is saved.",
+  "admin_feedback": "The admin says the package size and proportion are excellent and must be kept: never render packs beyond this size, since all packs are this size except the pouch, which is bigger and a different form. The lighting and texture of the render are a bit off and faded, but the size is correct.",
+  "uncertain": "The admin does not say which kinds of pack 'all packs' covers beyond the pouch exception, and the sample has no product kind tags. The exact size ratio is judged by eye against the laptop's side edge, with no measurement. The frames do not show which of the lighting or texture details is the worst. The wrong take's output is not shown beyond these two example frames.",
+  "frames_seen": [
+   {
+    "frame": "EXAMPLE 0:04.33",
+    "seen": "Vertical shot of two men at a light-wood table by tall windows. The man on the right wears a black puffer jacket and white t-shirt. He looks at a phone in his left hand, and his other hand rests near his knee. The man on the left wears a grey hoodie, rests his head on his hand and looks down at his writing. A dark navy laptop sits at the table's left. …"
+   },
+   {
+    "frame": "EXAMPLE 0:02.63",
+    "seen": "The same shot and framing, with the camera slightly shifted from the sway. The right man holds the phone up. The left man's hand is blurred over the laptop keyboard in a key tap, and the right hand of the man in the jacket is not on the carton. The same cyan carton lies flat in the same spot and at the same size in front of the laptop's near right corner, on wood, with a soft shadow. …"
+   }
+  ]
+ }
+}

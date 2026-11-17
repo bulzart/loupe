@@ -1,0 +1,33 @@
+{
+ "id": "S46",
+ "moment_id": 46,
+ "title": "Excellent Neurogum package size and render",
+ "source_sig": "a0a8691eca7e8c11",
+ "read_at": "2026-11-05T00:25:07+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.0031,
+ "turns": 3,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\46\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\46\\frame-1-marked.png"
+ ],
+ "reading": {
+  "marked": "Frame 1: a green rectangle outlines the blue Neurogum-style carton lying flat on the marble counter in the full frame. The close-range zoom under it carries the same green rectangle around the carton, framing the carton and the top edge of the glass nipple-shaped object above it. The marks point only at the carton and the nearby object.",
+  "right_version": "Frame 1 (RIGHT, 0:00.00, VIDEO A, as generated) is the right version: the blue carton lies flat on the counter at a believable small size next to the magazine and the glass object, and its front shows the Energy Focus print. The composite gives no other right frame.",
+  "product_and_scene": "Product: a blue, flat, rectangular carton with the Energy Focus print and a small brand mark, lying flat on its face (its wide front toward the camera), not standing upright, not open. Its size is small against the counter, roughly the length of a magazine's width in the full frame. The source render used for the sample is the EF 6-piece Peppermint front (image 2 of the three images sent). Scene: an attic office with a man at a desk, a white door, a red armchair, an AC unit, a patterned rug, a wood chair, a stainless trash can, and a marble countertop. Camera: a standing-height wide view of the room, portrait orientation, with the carton marked in the lower-middle area of the frame.",
+  "admin_words": "Title: \"Excellent Neurogum package size and render\". No other notes were written by the admin.",
+  "unclear": "The carton's exact dimensions cannot be measured from the frame; its size is judged only against the magazine, the glass object and the counter. The small print on the carton (beyond the Energy Focus logotype and brand mark) is not legible in the wide frame, and the close-range zoom is cropped so the carton's edges are cut near the green rectangle. The one-frame sample has no other frames to compare motion or consistency.",
+  "frames_seen": [
+   {
+    "frame": "RIGHT 0:00.00",
+    "seen": "Wide portrait-orientation view of a small attic-style room with sloped white ceiling and two recessed ceiling lights. A man in a blue polo shirt sits at a desk with two monitors on the right, in a black mesh office chair. A white door with a window is on the back wall, with a wall-mounted AC unit below it and a red armchair to its right. …"
+   },
+   {
+    "frame": "Close-range zoom (under frame 1)",
+    "seen": "A close crop of the same marble counter. A clear glass nipple-shaped object sits at the top, and the blue carton lies flat in the center inside a green rectangle. The carton's front face shows a light blue background, a white and dark blue \"Energy Focus\" logotype, a green stripe and a small brand mark at the left. The carton is lying on its side at a diagonal, with its top edge facing the camera. …"
+   }
+  ],
+  "prompts_saved": "kept in the record: the correct version's prompt (the generations the frames called RIGHT come from); no flawed version's prompt (no frame of this sample is called WRONG)"
+ }
+}

@@ -1,0 +1,34 @@
+{
+ "id": "S43",
+ "moment_id": 43,
+ "title": "On the first frame the paper goes through or under the Neurogum package which is not correct and doesn't happen in real life logic (we could've placed the package above the blue book in the right since it would've make it more natural and avoid colliding the product with the videos original products), in the second frame the package changed orientation(rotated) without any means(i.e no character or action on the video stimulated that rotation) which is wrong too",
+ "source_sig": "ef427c93b8278846",
+ "read_at": "2026-11-05T00:25:39+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.0038,
+ "turns": 4,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\43\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\43\\frame-1-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\43\\frame-2-marked.png"
+ ],
+ "reading": {
+  "marked": "Neither frame shows a circle, arrow, box or red mark in the picture I could see, and the composite shows no zoom panels; the admin's marks are not visible to me. The admin's text points at the paper and the Neurogum package in frame 1, and at the package's orientation in frame 2.",
+  "right_version": "no right frame",
+  "product_and_scene": "The product is a small rectangular blue-and-teal box labelled 'Energy & Focus' with a Neuro logo, the Neurogum package. In frame 1 it stands upright; in frame 2 it lies on its side with the label upside down. Its height is about a third of the teal hardcover book beside it. The scene is a classroom: a grey desk with a white paper sheet of handwriting, a yellow highlighter, the teal book, and seated students in the background. The camera is handheld: close and looking down in frame 1, wider and at desk height in frame 2.",
+  "admin_words": "Title: On the first frame the paper goes through or under the Neurogum package which is not correct and doesn't happen in real life logic (we could've placed the package above the blue book in the right since it would've make it more natural and avoid colliding the product with the videos original products), in the second frame the package changed orientation(rotated) without any means(i.e no character or action on the video stimulated that rotation) which is wrong too. Sample note: a miss example only, no right version. Model wan3_0_prime, from run 20261029-231113-recreate-celsius-neurogum video 20 at 0:00.53 (analyze-recreate). Product: XS 9-piece Spearmint front render. Kinds: not tagged.",
+  "unclear": "At this resolution I cannot tell whether the paper passes through the package or only lies beneath its base in frame 1; the contact area is small. I also cannot see the admin's marks, so I cannot confirm which spot each mark points at. Whether the box's rotation between frames happens over a visible movement is not clear from these two frames alone.",
+  "frames_seen": [
+   {
+    "frame": "WRONG 0:00.53",
+    "seen": "Video A, generation 1 of 2, clip c1. A man in a white zip jacket and clear glasses leans over a grey desk in a classroom, his right hand pointing at a sheet of lined paper with green and black handwriting. A second hand enters from the lower left and holds the lower edge of the paper. …"
+   },
+   {
+    "frame": "WRONG 0:06.37",
+    "seen": "Video A, generation 2 of 2, clip c2. The man in the white jacket is at the right, seated, gesturing with both open hands toward the desk. A student in a camouflage jacket is at the left, head down in his hands. The Energy & Focus box now lies flat on its side on the desk, centre-bottom of the frame, with its label upside down relative to frame 1. …"
+   }
+  ],
+  "prompts_saved": "kept in the record: the flawed version's prompt (the generations the frames called WRONG come from); no correct version's prompt (no frame of this sample is called RIGHT)"
+ }
+}

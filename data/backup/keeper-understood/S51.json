@@ -1,0 +1,34 @@
+{
+ "id": "S51",
+ "moment_id": 51,
+ "title": "The wrong sample the Neurogum's packages size is thicker and bigger which is not correct for the product, and on the right frame sample it is correct",
+ "source_sig": "65fe1c9f7327445d",
+ "read_at": "2026-11-05T00:24:17+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.0043,
+ "turns": 5,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\51\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\51\\frame-1-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\51\\frame-2-marked.png"
+ ],
+ "reading": {
+  "marked": "Frame 1 (WRONG): a red rectangle encloses the carton on the table, from just under the man's wrist down to the bottom edge of the frame, and also takes in part of the glass at the left. The zoom shows the carton inside the box. Frame 2 (RIGHT): a green rectangle encloses the carton on the steel table, next to the black spoon and the base of the white cups. The zoom shows the carton inside the box.",
+  "right_version": "Frame 2 (RIGHT, Video B): the Neuro Energy & Focus carton on a steel table, lying flat and low-profile, with its label facing the camera and its width a little more than one white cup top. It sits in a restaurant scene with a hot-sauce bottle, cups, and cheese plates around it.",
+  "product_and_scene": "The product is the pale-blue Neuro Energy & Focus carton, a flat box with a Neuro logo and Energy & Focus wording on the front. In the WRONG frame it appears thicker and bulkier and sits in a dim living room on a stone-look table, beside a clear ribbed glass. In the RIGHT frame it appears thinner and flatter and sits on a stainless-steel table in a restaurant, among cups, a hot-sauce bottle, a spoon, and cheese plates. The WRONG camera is a static portrait medium shot at table height. The RIGHT camera is a static portrait medium-close shot at eye level. Both show a man seated at the table.",
+  "admin_words": "Title: 'The wrong sample the Neurogum's packages size is thicker and bigger which is not correct for the product, and on the right frame sample it is correct'. Bottom note, repeated: 'The wrong sample the Neurogum's packages size is thicker and bigger which is not correct for the product, and on the right frame sample it is correct'. No separate explanation, idea, could-be-better, what-agents-missed, or correct-note text was given.",
+  "unclear": "The carton's real thickness and size cannot be measured: there is no ruler, and the glass and cups are the only size references. The estimates above are by eye. The label on the WRONG carton is rotated and only partly legible. The two frames come from different scenes, people, and angles, so the comparison is only of the carton itself. I did not open the separate single-frame files at a larger size beyond the marked ones.",
+  "frames_seen": [
+   {
+    "frame": "WRONG 0:00.00",
+    "seen": "Video A, as generated, at 0:00.00. A man in a navy T-shirt printed 'TIRED' sits at a table in a dim, modern room, looking down at a black phone held in both hands. A pale-blue Neuro Energy & Focus carton lies flat on the grey stone table in front of him, its label rotated so the text reads upside down from the viewer. A tall clear ribbed glass stands at the left edge. …"
+   },
+   {
+    "frame": "RIGHT 0:00.00",
+    "seen": "Video B, correct version (run 20261029-231113-recreate-celsius-neurogum, video 23), at 0:00.00. A man in a light-blue button-up shirt over a black undershirt sits at a restaurant table with a stainless-steel top. A red hot-sauce bottle, three white paper cups, a black spoon, and plates of shredded cheese are around him. …"
+   }
+  ],
+  "prompts_saved": "kept in the record: the flawed version's prompt (the generations the frames called WRONG come from) and the correct version's prompt (the generations the frames called RIGHT come from)"
+ }
+}

@@ -1,0 +1,29 @@
+{
+ "id": "S42",
+ "moment_id": 42,
+ "title": "Nueorgum pack was perfectly rendered here in this sample, graphics and package size is on point active",
+ "source_sig": "a546e853676c4df6",
+ "read_at": "2026-11-05T00:25:50+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.0026,
+ "turns": 2,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\42\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\42\\frame-1-marked.png"
+ ],
+ "reading": {
+  "marked": "Frame 1 (RIGHT, 0:00.00, VIDEO A, as generated) has a close-range zoom with a green rectangle drawn around the gum carton on the desk, beside the man's watch-wearing hand. The rectangle encloses the whole carton and a little of the desk around it. The marks are on the pack only; nothing else is circled.",
+  "right_version": "Frame 1 is the only frame, and it is tagged RIGHT. It shows the 'Energy & Focus' gum carton lying on the desk beside the man's hand, with its blue graphics and label legible at close range. Its size looks in proportion to the hand and watch.",
+  "product_and_scene": "Product: an Energy & Focus gum carton (blue, with white and dark lettering, 'Energy & Focus' visible), lying flat on a black desk beside a laptop. Scene: an office with a man in a black cap and dark t-shirt at the desk and a second man in the background. Camera: a static, medium-wide shot at eye level, with a close-range crop of the carton beside it.",
+  "admin_words": "Title: \"Nueorgum pack was perfectly rendered here in this sample, graphics and package size is on point active\". Body: \"Nueorgum pack was perfectly rendered here in this sample, graphics and package size is on point\". Kinds: not tagged. Product: Energy & Focus Gum, Spearmint, 6-piece carton. The sample is marked as the correct version only, and its single frame is tagged RIGHT.",
+  "unclear": "The admin's title says 'Nueorgum' while the product and file names say 'Neurogum' and 'NG'; I have recorded the title as written. The package's small print and back text are not legible at this size. The exact carton size relative to the hand is an estimate from the close-range crop, not a measurement.",
+  "frames_seen": [
+   {
+    "frame": "RIGHT 0:00.00",
+    "seen": "Wide shot, eye level, static camera. A man in a black cap, dark t-shirt and earbud sits at a black desk and looks to the right. His left hand rests on a dark laptop trackpad, with a steel watch on that wrist. A small blue gum carton lies on the desk in front of his wrist, in the lower centre of the frame. …"
+   }
+  ],
+  "prompts_saved": "kept in the record: the correct version's prompt (the generations the frames called RIGHT come from); no flawed version's prompt (no frame of this sample is called WRONG)"
+ }
+}

@@ -1,0 +1,39 @@
+{
+ "id": "S59",
+ "moment_id": 59,
+ "title": "the guy uses the celsius can like if it was a bottle by uncaping it and rotating the hand around it, better place a celsius in the table instead (like we did with Video B, right sample)",
+ "source_sig": "035e327d300e6144",
+ "read_at": "2026-11-07T00:23:46+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.0045,
+ "turns": 5,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\59\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\59\\frame-1-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\59\\frame-2-marked.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\59\\frame-3-marked.png"
+ ],
+ "reading": {
+  "marked": "I see no drawn circle, arrow, box or text on the composite or on the three single frame files. The zoom panels the admin may have made are not visible under any frame. The admin's note refers to the can in the hand (frames WRONG 0:00.87 and WRONG 0:00.30) and to a can placed on the table (frame RIGHT 0:00.50), but no mark is visible pointing at either.",
+  "right_version": "Frame RIGHT 0:00.50 (Video B, correct version): a Celsius Peach Vibe can stands upright on the desk ledge in front of the seated man, next to the backpack and a pen, and the man's hand rests by his lap holding a small slim object.",
+  "product_and_scene": "Product: the Celsius Peach Vibe slim can, silver-white with a red and white label. In the wrong frames it is held in the man's hand at lap level, roughly vertical, and is about the size of his hand. In the right frame it stands on the desk ledge at about the height of a hand, label facing the camera. Scene: a tiered university lecture hall with purple seats, green wall panels, a grey backpack and dark jacket on the desk ledge. Camera: static, wide, front view, slightly raised. Posture: man seated in the second row, facing forward with his head turned slightly. The two videos show different men: Video A has curly hair and no glasses, Video B has a beard and glasses.",
+  "admin_words": "Title: \"the guy uses the celsius can like if it was a bottle by uncaping it and rotating the hand around it, better place a celsius in the table instead (like we did with Video B, right sample)\". Sample header: \"SAMPLE S59 (a miss with its correct version)\"; model wan3_0_prime; from run 20261104-225639-04, video 41 at 0:00.87 (analyze-recreate); product: the Celsius Peach Vibe slim 355 ml can, canonical front (A35), whole can with it + the same can angled (A34). Frames: Frame 1 WRONG 0:00.87, Video A (as generated); Frame 2 WRONG 0:00.30, Video A (as generated); Frame 3 RIGHT 0:00.50, Video B (correct version). …",
+  "unclear": "The label of the can in the wrong frames is too small to read, so I cannot confirm the brand or the design from them. I cannot tell from the frames whether the can is uncapped or how the hand turns it, as the admin describes. The small object in the right frame's hand is too small to identify. The admin's marks, if any were drawn, are not visible in the files. The composite frames do not show the zoom panels the record describes.",
+  "frames_seen": [
+   {
+    "frame": "WRONG 0:00.87",
+    "seen": "Video A, as generated. Lecture hall with tiered rows of dark purple seats, green acoustic panels at the back right, a grey backpack and a dark jacket on the desk ledge. A young man with short curly dark hair, no glasses, grey T-shirt, seated in the second-row seat, left of centre. He holds a slim silver-white can at lap level, close to his right hand, with the can roughly vertical. …"
+   },
+   {
+    "frame": "WRONG 0:00.30",
+    "seen": "Video A, as generated. Same hall, same camera position, same seat, bag and jacket. The same young man with curly hair and no glasses, grey T-shirt. He holds a slim silver-white can low at his lap or waist, close to his hand, in the same way as in frame 1. Nothing is standing on the desk ledge in front of him."
+   },
+   {
+    "frame": "RIGHT 0:00.50",
+    "seen": "Video B, correct version. Same hall, camera and seat arrangement, bag and jacket on the desk. The man here has a beard and dark-rimmed glasses, not the curly-haired man of Video A. A Celsius Peach Vibe can stands upright on the desk ledge in front of him, beside the backpack. …"
+   }
+  ],
+  "prompts_saved": "kept in the record: the flawed version's prompt (the generations the frames called WRONG come from) and the correct version's prompt (the generations the frames called RIGHT come from)"
+ }
+}

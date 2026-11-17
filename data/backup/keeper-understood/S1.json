@@ -1,0 +1,29 @@
+{
+ "id": "S1",
+ "moment_id": 1,
+ "title": "The person seems like it is eating from the our product (Neurogum pouch) like it was a snack, meanwhile it is not supposed to be like that, they are focus gums and not chips",
+ "source_sig": "b88e6e8869c0b330",
+ "read_at": "2026-11-05T00:29:36+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.0026,
+ "turns": 3,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\1\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\1\\frame-1-marked.png"
+ ],
+ "reading": {
+  "marked": "The red box in the zoom encloses the man's upper body, head, and the blue pouch held at his chest. The box has no arrow or text. In the full frame it sits over the man and the pouch, which is the only mark.",
+  "right_version": "no right frame",
+  "product_and_scene": "The product is a bright blue, stand-up pouch labelled 'Neurro' with 'Energy & Focus' and a green band, shown as a soft flexible bag with an opening at the top. Against his hands it reads as a pouch about the size of a snack bag, not a large tub. The scene is a classroom office with a desk, laptop, whiteboard and motivational poster. The camera is a handheld, portrait-framed, slightly low view from the desk side.",
+  "admin_words": "Title: The person seems like it is eating from the our product (Neurogum pouch) like it was a snack, meanwhile it is not supposed to be like that, they are focus gums and not chips. Product: Extra Strength 90-piece pouch, Spearmint. Model: wan3_0_prime. Run 20261014-220030-13, video 01, at 0:00.00 (analyze-recreate). Images sent with the generation: Image 1 C13-head.jpg (its original file is not recorded); Image 2 P08-front-p40.jpg (its original file is not recorded); Image 3 P08-left-p40.jpg (its original file is not recorded). The sample has no right version.",
+  "unclear": "The pouch label is small at full frame, so the exact wording beyond 'Neurro', 'Energy & Focus' and the green band cannot be read. Whether the pouch is opened or torn cannot be confirmed from a still. The picture does not show whether the man is putting the product in his mouth, only that it is held near his face. The admin's note names the product as 'Neurogum' and the zoom's label reads 'Neurro'; I have restated both as written.",
+  "frames_seen": [
+   {
+    "frame": "WRONG 0:00.00",
+    "seen": "A man in a light grey knit sweater and black knit headband sits at a desk in a classroom with a cinder-block wall, a fluorescent ceiling light, a whiteboard, and a 'BE inspired BY THE success OF OTHERS' poster behind him. A laptop sits on the wooden desk at the left edge. He is seated and leaning slightly forward, with his legs stretched out toward the camera and black trousers covering his lap. …"
+   }
+  ],
+  "prompts_saved": "kept in the record: the flawed version's prompt (the generations the frames called WRONG come from); no correct version's prompt (no frame of this sample is called RIGHT)"
+ }
+}

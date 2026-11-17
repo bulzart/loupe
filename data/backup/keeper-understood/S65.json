@@ -1,0 +1,29 @@
+{
+ "id": "S65",
+ "moment_id": 65,
+ "title": "perfect neurogum product render",
+ "source_sig": "437631c6d62a941d",
+ "read_at": "2026-11-11T00:47:09+01:00",
+ "model": "claude-haiku-5-5",
+ "cost_usd": 0.0037,
+ "turns": 3,
+ "images_read": true,
+ "images": [
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\65\\composite.png",
+  "C:\\Users\\Glaresquare1\\.claude\\loupe\\data\\samples\\65\\frame-1-marked.png"
+ ],
+ "reading": {
+  "marked": "The frame carries no circle, arrow, box or text mark, and it has no zoom. The composite shows nothing marked, so nothing is pointed at.",
+  "right_version": "This frame is the right version: the carton is shown lying flat on the desk, with its 'Energy & Focus' label and the partial 'Neuro' wordmark visible, and the man and the room around it are in the shot.",
+  "product_and_scene": "Product: a light-blue carton labelled 'Energy & Focus' with a partial 'Neuro' wordmark, lying flat on the wooden desk at the lower left of the frame. Next to the man's forearm and the laptop it looks small, and its opening is not visible. Scene: a man sits at a desk in a dorm-like room, in profile, speaking to the right; a dark laptop with an Apple logo is in front of him, and a bed and door are behind. Camera: portrait-format, handheld or static, roughly eye level, medium shot, slightly tilted.",
+  "admin_words": "Title: perfect neurogum product render. The header of the sample also states: model wan3_0_prime; from run 20261110-190823-celsius-neurogum-recreate video 26 at 0:00.00 (analyze-recreate); product: the Neuro Energy & Focus Extra Strength 9-piece Spearmint carton, canonical fron + the client's real carton lying flat f; kinds: not tagged. No explanation, idea, could-be-better note, missed item or correct note was written.",
+  "unclear": "The header's product line appears cut off ('canonical fron' and 'real carton lying flat f' look truncated), so the full wording is not known. The carton's top face and the exact front label are not clearly legible at this size. The carton's true size cannot be judged precisely from the frame alone. The composite holds only the one frame, with no zoom.",
+  "frames_seen": [
+   {
+    "frame": "RIGHT 0:00.00",
+    "seen": "Portrait frame, VIDEO A as generated. A man in a dark graphic t-shirt sits at a desk in a dorm-like room, seen from the side in profile facing right, with an AirPod in his ear, speaking and looking to the right. …"
+   }
+  ],
+  "prompts_saved": "kept in the record: the correct version's prompt (the generations the frames called RIGHT come from); no flawed version's prompt (no frame of this sample is called WRONG)"
+ }
+}
