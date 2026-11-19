@@ -22,6 +22,10 @@ from . import core, facts, media, misses, runs
 
 LOCK_WAIT = int(os.environ.get("LOUPE_KEEPER_LOCK_WAIT") or 120)     # seconds a consult waits for a running keeper call before it answers from the brief (mode busy)
 SYNC_LOCK_WAIT = int(os.environ.get("LOUPE_KEEPER_SYNC_LOCK_WAIT") or 20)
+# The admin, 2026-11-19 ("spawn many judges"): while the one keeper session is busy, a consult that has waited CLONE_AFTER seconds is answered by a CLONE of it (the keeper's
+# session forked with --fork-session: it holds the same library and conversation, runs in its own process, and is thrown away after the answer), at most MAX_CLONES at once.
+CLONE_AFTER = int(os.environ.get("LOUPE_KEEPER_CLONE_AFTER") or 4)
+MAX_CLONES = int(os.environ.get("LOUPE_KEEPER_MAX_CLONES") or 16)
 
 
 class KeeperBusy(RuntimeError):
@@ -61,6 +65,7 @@ class _TimedLock:
 
 
 _keeper_lock = _TimedLock()
+_clone_slots = threading.Semaphore(MAX_CLONES)
 ROT_TURNS = 30           # a keeper session this long is replaced by a fresh one rebuilt from the library (nothing is lost: the library is the memory)
 # The admin, 2026-10-30: "make it up to 10 instead of 6, and raise 150second judge call timeout to 240, and raise the 150k characters to 250k".
 KEEPER_CALL_TIMEOUT = 240     # seconds one keeper (judge) call may run before its process tree is ended; the collector keeps its own 300 s
@@ -1191,22 +1196,24 @@ def effort() -> str:
     return e if e in EFFORTS else EFFORT_DEFAULT
 
 
-def _claude_cmd(exe: str, model: str, sid: str, resume: bool, role: str | None = None, max_turns: int = 6) -> list[str]:
+def _claude_cmd(exe: str, model: str, sid: str, resume: bool, role: str | None = None, max_turns: int = 6, fork: bool = False) -> list[str]:
     """The command line of one keeper or reader call: Read only, no MCP servers, JSON out, at the keeper's effort (the CLI still runs a model that has
     no effort levels)."""
     cmd = [exe, "-p", "--model", model, "--effort", effort(), "--tools", "Read", "--allowedTools", "Read", "--strict-mcp-config", "--output-format", "json",
            "--max-turns", str(max_turns), "--append-system-prompt", role or ROLE, "--add-dir", str(core.DATA / "samples")]
+    if resume and fork:              # a clone of the keeper: a new session id branched from the keeper's conversation, which itself stays as it is
+        return cmd + ["--resume", sid, "--fork-session"]
     return cmd + (["--resume", sid] if resume else ["--session-id", sid])
 
 
 def _run_claude(prompt: str, sid: str, resume: bool, model: str, timeout: int = KEEPER_CALL_TIMEOUT, role: str | None = None, cwd: Path | None = None,
-                max_turns: int = 6) -> dict:
+                max_turns: int = 6, fork: bool = False) -> dict:
     """One headless claude call.  The prompt goes in on stdin, not on the command line: a digest that carries the collector's descriptions of the pictures is longer
     than a Windows command line may be (32767 characters)."""
     exe = _claude()
     if not exe:
         raise RuntimeError("the claude CLI was not found on PATH")
-    cmd = _claude_cmd(exe, model, sid, resume, role, max_turns)
+    cmd = _claude_cmd(exe, model, sid, resume, role, max_turns, fork)
     flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
     wd = cwd or (core.DATA / "keeper")
     wd.mkdir(parents=True, exist_ok=True)
@@ -1771,12 +1778,18 @@ def consult(key_name: str, ctx: dict, question: str, purpose: str = "qc") -> dic
     if not lib_now:                      # nothing to hold: no keeper session is started for an empty library
         res = {"mode": "empty", "purpose": purpose, "hints": [], "relevant": [], "samples": [], "template": "", "library_size": 0, "text": "The library is empty."}
     busy = ""
-    try:
-        if res is None:
-            _keeper_lock.__enter__()
-    except KeeperBusy as e:
-        busy = str(e)
-    with (_Held(_keeper_lock) if not busy and res is None else _Nothing()):
+    got = False                          # this consult holds the keeper lock
+    clone = False                        # this consult is answered by a clone of the keeper session (the lock was busy), never by the keeper itself
+    if res is None:
+        if _keeper_lock.acquire(timeout=CLONE_AFTER):
+            got = True
+        elif (core.setting_get("keeper", {}) or {}).get("session_id") and _clone_slots.acquire(blocking=False):
+            clone = True
+        elif _keeper_lock.acquire(timeout=max(1, LOCK_WAIT - CLONE_AFTER)):
+            got = True
+        else:
+            busy = f"busy: another keeper call has been running for more than {LOCK_WAIT} s"
+    with (_Held(_keeper_lock) if got else _Nothing()):
         try:
             if res is not None:
                 raise StopIteration
@@ -1787,6 +1800,8 @@ def consult(key_name: str, ctx: dict, question: str, purpose: str = "qc") -> dic
             st = core.setting_get("keeper", {}) or {}
             sig = _sig()
             booted = False                      # a session this consult starts itself is never booted again when it reports lost
+            if clone and (not st.get("session_id") or _worn(st, model)):
+                raise RuntimeError("busy: the keeper session is due to be replaced and is in use; a clone cannot be started from it")
             if _worn(st, model):
                 st, c = _boot(len(library()), sig, model)
                 cost += c
@@ -1794,6 +1809,8 @@ def consult(key_name: str, ctx: dict, question: str, purpose: str = "qc") -> dic
             delta = ""
             if st.get("library_sig") != sig:
                 dl = _delta(st, sig)
+                if dl is None and clone:
+                    raise RuntimeError("busy: the keeper session is due to be rebuilt and is in use; a clone cannot be started from it")
                 if dl is None:                  # too much changed for a delta, or no record of the lines held: a fresh session told the whole library
                     st, c = _boot(len(library()), sig, model)
                     cost += c
@@ -1832,9 +1849,11 @@ def consult(key_name: str, ctx: dict, question: str, purpose: str = "qc") -> dic
 
             prompt = ask(delta + note)
             try:
-                d = _run_claude(prompt, st["session_id"], True, st["model"])
+                d = _run_claude(prompt, st["session_id"], True, st["model"], fork=clone)
+                if clone and d.get("session_id"):
+                    st["session_id"] = d["session_id"]      # the clone's own session: the rounds below continue in it; nothing of it is saved
             except SessionLost:
-                if booted:                      # the session this consult has just started is not found: report it, never boot again
+                if booted or clone:             # the session this consult has just started is not found: report it, never boot again (a clone never replaces the keeper)
                     raise
                 restarted = _session_lost(st, key_name)
                 st, c = _boot(len(library()), sig, model)
@@ -1847,7 +1866,8 @@ def consult(key_name: str, ctx: dict, question: str, purpose: str = "qc") -> dic
             st["chars"] = st.get("chars", 0) + _carried(prompt, d)
             st["library_sig"] = sig
             st["last_used"] = core.now()
-            core.setting_set("keeper", st)
+            if not clone:
+                core.setting_set("keeper", st)
             parsed = _json_of(d.get("result", ""))
             read_ids, asked0, turns1 = [], [], 0
             if tmpl:
@@ -1861,7 +1881,7 @@ def consult(key_name: str, ctx: dict, question: str, purpose: str = "qc") -> dic
             prompts_judged, prompts_unread = _prompts_seen(parsed, cite_key, asked, read_ids, sent_ids)
             cost += cost3
             turns2 += turns1 + turns3
-            if turns2:
+            if turns2 and not clone:
                 st["turns"] = st.get("turns", 0) + turns2
                 core.setting_set("keeper", st)
             ids = {s["id"]: s for s in library()}
@@ -1910,12 +1930,16 @@ def consult(key_name: str, ctx: dict, question: str, purpose: str = "qc") -> dic
             pass
         except Exception as e:  # noqa: BLE001
             err = str(e)[:300]
+    if clone:
+        _clone_slots.release()
     if res is None:
         # no keeper: QC still gets the plain best-match list; planning gets NOTHING (without the keeper's judgement a raw list would over-steer a plan)
         mode = "busy" if err.startswith("busy") else ("unavailable" if pre_video else "fallback")
         res = ({"mode": mode, "purpose": "plan", "hints": [], "library_size": len(lib_now), "keeper_error": err} if plan
                else {"mode": mode, "purpose": "template", "template": "", "basis": [], "library_size": len(lib_now), "keeper_error": err} if tmpl
                else {**fallback, "mode": mode, "purpose": "qc", "keeper_error": err})
+    if clone and res.get("mode") == "keeper":
+        res["answered_by"] = "clone"      # a fork of the keeper session answered because the keeper was in use
     if restarted:
         res["keeper_restarted"] = restarted      # the session Loupe held was gone: a fresh one was started and told the whole library (in the audit log too)
     ms = int((time.time() - t0) * 1000)
